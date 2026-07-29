@@ -3,6 +3,7 @@ import { requireOrg } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { ActionForm } from "@/components/ActionForm";
+import { MultiLineInvoiceForm } from "@/components/MultiLineInvoiceForm";
 import {
   createInvoiceAction,
   recordPaymentAction,
@@ -40,46 +41,23 @@ export default async function InvoicesPage({
 
       <div className="surface" style={{ padding: "1.25rem" }}>
         <h3 style={{ marginTop: 0 }}>{t("add")}</h3>
-        <ActionForm action={createInvoiceAction} className="stack">
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-              gap: "0.75rem",
-            }}
-          >
-            <div className="field">
-              <label>{t("customer")}</label>
-              <select name="customer_id" className="select">
-                <option value="">—</option>
-                {(customers || []).map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="field">
-              <label>{t("description")}</label>
-              <input name="description" required className="input" defaultValue="Service" />
-            </div>
-            <div className="field">
-              <label>{t("qty")}</label>
-              <input name="quantity" type="number" step="0.01" defaultValue={1} className="input" />
-            </div>
-            <div className="field">
-              <label>{t("unitPrice")}</label>
-              <input name="unit_price" type="number" step="0.01" defaultValue={0} className="input" />
-            </div>
-            <div className="field">
-              <label>Tax</label>
-              <input name="tax_amount" type="number" step="0.01" defaultValue={0} className="input" />
-            </div>
-          </div>
-          <button type="submit" className="btn btn-primary">
-            {t("save")}
-          </button>
-        </ActionForm>
+        <MultiLineInvoiceForm
+          customers={customers || []}
+          action={createInvoiceAction}
+          labels={{
+            customer: t("customer"),
+            lines: t("lines"),
+            description: t("description"),
+            qty: t("qty"),
+            unitPrice: t("unitPrice"),
+            tax: t("tax"),
+            save: t("save"),
+            addLine: t("addLine"),
+            removeLine: t("removeLine"),
+            subtotal: t("subtotal"),
+            total: t("total"),
+          }}
+        />
       </div>
 
       <div className="surface" style={{ padding: "1.25rem" }}>

@@ -76,7 +76,9 @@
     "notes": "Notes",
     "empty": "No records yet.",
     "save": "Save",
-    "delete": "Delete"
+    "delete": "Delete",
+    "edit": "Edit",
+    "cancel": "Cancel"
   },
   "Appointments": {
     "title": "Appointments",
@@ -87,9 +89,38 @@
     "endsAt": "Ends",
     "status": "Status",
     "notes": "Notes",
-    "reminder": "Reminder sent",
+    "reminder": "Reminder marked",
     "empty": "No appointments yet.",
-    "save": "Save"
+    "save": "Save",
+    "calendar": "Calendar",
+    "list": "List",
+    "today": "Today",
+    "prev": "Prev",
+    "next": "Next",
+    "delete": "Delete"
+  },
+  "Invoices": {
+    "title": "Invoices",
+    "add": "Create invoice",
+    "number": "Invoice no.",
+    "customer": "Customer",
+    "status": "Status",
+    "total": "Total",
+    "paid": "Paid",
+    "recordPayment": "Record payment",
+    "amount": "Payment amount",
+    "method": "Method",
+    "empty": "No invoices yet.",
+    "save": "Save",
+    "lines": "Line items",
+    "description": "Description",
+    "qty": "Qty",
+    "unitPrice": "Unit price",
+    "submitLhdn": "Submit to LHDN",
+    "tax": "Tax",
+    "addLine": "Add line",
+    "removeLine": "Remove",
+    "subtotal": "Subtotal"
   },
   "Inventory": {
     "title": "Inventory",
@@ -113,25 +144,6 @@
     "success": "Sale complete — invoice created & stock deducted.",
     "cart": "Cart",
     "total": "Total"
-  },
-  "Invoices": {
-    "title": "Invoices",
-    "add": "Create invoice",
-    "number": "Invoice no.",
-    "customer": "Customer",
-    "status": "Status",
-    "total": "Total",
-    "paid": "Paid",
-    "recordPayment": "Record payment",
-    "amount": "Payment amount",
-    "method": "Method",
-    "empty": "No invoices yet.",
-    "save": "Save",
-    "lines": "Line items",
-    "description": "Description",
-    "qty": "Qty",
-    "unitPrice": "Unit price",
-    "submitLhdn": "Submit to LHDN"
   },
   "Accounting": {
     "title": "Light accounting",

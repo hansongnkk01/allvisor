@@ -27,7 +27,3 @@ export class MyInvoisSandboxProvider implements LhdnProvider {
     };
   }
 }
-
-export function getLhdnProvider(): LhdnProvider {
-  return new MyInvoisSandboxProvider();
-}

@@ -4,8 +4,9 @@ import { requireOrg } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { ActionForm } from "@/components/ActionForm";
+import { AppointmentBoard } from "@/components/AppointmentBoard";
 import { createAppointmentAction } from "@/app/actions";
-import { formatDateTime } from "@/lib/utils";
+import type { AppointmentStatus } from "@/lib/types";
 
 export default async function AppointmentsPage({
   params,
@@ -98,37 +99,31 @@ export default async function AppointmentsPage({
       </div>
 
       <div className="surface" style={{ padding: "1.25rem" }}>
-        <div className="table-wrap">
-          <table className="data">
-            <thead>
-              <tr>
-                <th>{t("titleLabel")}</th>
-                <th>{t("patient")}</th>
-                <th>{t("startsAt")}</th>
-                <th>{t("status")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(appointments || []).map((a) => (
-                <tr key={a.id}>
-                  <td>{a.title}</td>
-                  <td>{a.customers?.name || "—"}</td>
-                  <td>{formatDateTime(a.starts_at)}</td>
-                  <td>
-                    <span className="badge">{a.status}</span>
-                  </td>
-                </tr>
-              ))}
-              {!appointments?.length ? (
-                <tr>
-                  <td colSpan={4} className="muted">
-                    {t("empty")}
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
+        <AppointmentBoard
+          appointments={(appointments || []).map((a) => ({
+            id: a.id,
+            title: a.title,
+            starts_at: a.starts_at,
+            ends_at: a.ends_at,
+            status: a.status as AppointmentStatus,
+            notes: a.notes,
+            reminder_sent: a.reminder_sent,
+            customers: a.customers,
+          }))}
+          labels={{
+            calendar: t("calendar"),
+            list: t("list"),
+            today: t("today"),
+            patient: t("patient"),
+            status: t("status"),
+            notes: t("notes"),
+            reminder: t("reminder"),
+            delete: t("delete"),
+            empty: t("empty"),
+            prev: t("prev"),
+            next: t("next"),
+          }}
+        />
       </div>
     </div>
   );

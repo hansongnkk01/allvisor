@@ -3,7 +3,9 @@ import { requireOrg } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { ActionForm } from "@/components/ActionForm";
-import { deleteCustomerAction, upsertCustomerAction } from "@/app/actions";
+import { CustomerRow } from "@/components/CustomerRow";
+import { upsertCustomerAction } from "@/app/actions";
+import type { Customer } from "@/lib/types";
 
 export default async function CustomersPage({
   params,
@@ -22,6 +24,16 @@ export default async function CustomersPage({
     .order("created_at", { ascending: false });
 
   const title = ctx.organization.niche === "clinic" ? t("titleClinic") : t("title");
+  const rowLabels = {
+    name: t("name"),
+    email: t("email"),
+    phone: t("phone"),
+    notes: t("notes"),
+    save: t("save"),
+    delete: t("delete"),
+    edit: t("edit"),
+    cancel: t("cancel"),
+  };
 
   return (
     <div className="stack" style={{ gap: "1.25rem" }}>
@@ -73,23 +85,7 @@ export default async function CustomersPage({
             </thead>
             <tbody>
               {(customers || []).map((c) => (
-                <tr key={c.id}>
-                  <td>{c.name}</td>
-                  <td>{c.phone || "—"}</td>
-                  <td>{c.email || "—"}</td>
-                  <td>
-                    <form
-                      action={async () => {
-                        "use server";
-                        await deleteCustomerAction(c.id);
-                      }}
-                    >
-                      <button type="submit" className="btn btn-ghost" style={{ padding: "0.35rem 0.7rem" }}>
-                        {t("delete")}
-                      </button>
-                    </form>
-                  </td>
-                </tr>
+                <CustomerRow key={c.id} customer={c as Customer} labels={rowLabels} />
               ))}
               {!customers?.length ? (
                 <tr>

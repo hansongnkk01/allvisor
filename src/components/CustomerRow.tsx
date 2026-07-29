@@ -1,0 +1,121 @@
+"use client";
+
+import { useState } from "react";
+import { ActionForm } from "@/components/ActionForm";
+import { deleteCustomerAction, upsertCustomerAction } from "@/app/actions";
+import type { Customer } from "@/lib/types";
+
+type Labels = {
+  name: string;
+  email: string;
+  phone: string;
+  notes: string;
+  save: string;
+  delete: string;
+  edit: string;
+  cancel: string;
+};
+
+export function CustomerRow({
+  customer,
+  labels,
+}: {
+  customer: Customer;
+  labels: Labels;
+}) {
+  const [editing, setEditing] = useState(false);
+
+  if (editing) {
+    return (
+      <tr>
+        <td colSpan={4}>
+          <ActionForm
+            action={upsertCustomerAction}
+            onSuccess={() => setEditing(false)}
+            className="stack"
+            style={{ padding: "0.5rem 0" }}
+          >
+            <input type="hidden" name="id" value={customer.id} />
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+                gap: "0.5rem",
+              }}
+            >
+              <div className="field">
+                <label>{labels.name}</label>
+                <input name="name" required className="input" defaultValue={customer.name} />
+              </div>
+              <div className="field">
+                <label>{labels.email}</label>
+                <input
+                  name="email"
+                  type="email"
+                  className="input"
+                  defaultValue={customer.email || ""}
+                />
+              </div>
+              <div className="field">
+                <label>{labels.phone}</label>
+                <input name="phone" className="input" defaultValue={customer.phone || ""} />
+              </div>
+            </div>
+            <div className="field">
+              <label>{labels.notes}</label>
+              <textarea name="notes" className="textarea" defaultValue={customer.notes || ""} />
+            </div>
+            <div className="row">
+              <button type="submit" className="btn btn-primary">
+                {labels.save}
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() => setEditing(false)}
+              >
+                {labels.cancel}
+              </button>
+            </div>
+          </ActionForm>
+        </td>
+      </tr>
+    );
+  }
+
+  return (
+    <tr>
+      <td>
+        <div>{customer.name}</div>
+        {customer.notes ? (
+          <div className="muted" style={{ fontSize: "0.8rem", marginTop: 2 }}>
+            {customer.notes}
+          </div>
+        ) : null}
+      </td>
+      <td>{customer.phone || "—"}</td>
+      <td>{customer.email || "—"}</td>
+      <td>
+        <div className="row" style={{ justifyContent: "flex-end" }}>
+          <button
+            type="button"
+            className="btn btn-soft"
+            style={{ padding: "0.35rem 0.7rem" }}
+            onClick={() => setEditing(true)}
+          >
+            {labels.edit}
+          </button>
+          <form
+            action={async () => {
+              await deleteCustomerAction(customer.id);
+            }}
+          >
+            <button type="submit" className="btn btn-ghost" style={{ padding: "0.35rem 0.7rem" }}>
+              {labels.delete}
+            </button>
+          </form>
+        </div>
+      </td>
+    </tr>
+  );
+}

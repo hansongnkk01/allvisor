@@ -76,7 +76,9 @@
     "notes": "Nota",
     "empty": "Belum ada rekod.",
     "save": "Simpan",
-    "delete": "Padam"
+    "delete": "Padam",
+    "edit": "Edit",
+    "cancel": "Batal"
   },
   "Appointments": {
     "title": "Temujanji",
@@ -87,9 +89,15 @@
     "endsAt": "Tamat",
     "status": "Status",
     "notes": "Nota",
-    "reminder": "Peringatan dihantar",
+    "reminder": "Peringatan ditanda",
     "empty": "Tiada temujanji lagi.",
-    "save": "Simpan"
+    "save": "Simpan",
+    "calendar": "Kalendar",
+    "list": "Senarai",
+    "today": "Hari ini",
+    "prev": "Sebelum",
+    "next": "Seterus",
+    "delete": "Padam"
   },
   "Inventory": {
     "title": "Inventori",
@@ -131,7 +139,11 @@
     "description": "Penerangan",
     "qty": "Kuantiti",
     "unitPrice": "Harga unit",
-    "submitLhdn": "Hantar ke LHDN"
+    "submitLhdn": "Hantar ke LHDN",
+    "tax": "Cukai",
+    "addLine": "Tambah item",
+    "removeLine": "Buang",
+    "subtotal": "Subjumlah"
   },
   "Accounting": {
     "title": "Perakaunan ringkas",

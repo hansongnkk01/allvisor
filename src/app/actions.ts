@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getOrgContext } from "@/lib/org";
 import { isNiche } from "@/lib/niches";
-import { getLhdnProvider } from "@/lib/lhdn/sandbox";
+import { getLhdnProvider } from "@/lib/lhdn";
 import { canUseLhdn } from "@/lib/subscription";
 import { revalidateApp, revalidateAppLayout } from "@/lib/revalidate";
 import type {
@@ -154,14 +154,59 @@ export async function adjustStockAction(formData: FormData) {
 export async function createInvoiceAction(formData: FormData) {
   const { supabase, organization } = await requireMember();
   const customerId = String(formData.get("customer_id") || "") || null;
-  const description = String(formData.get("description") || "Service").trim();
-  const quantity = Number(formData.get("quantity") || 1);
-  const unitPrice = Number(formData.get("unit_price") || 0);
   const taxAmount = Number(formData.get("tax_amount") || 0);
-  const productId = String(formData.get("product_id") || "") || null;
 
-  const lineTotal = quantity * unitPrice;
-  const total = lineTotal + taxAmount;
+  let lines: Array<{
+    description: string;
+    quantity: number;
+    unit_price: number;
+    product_id?: string | null;
+  }> = [];
+
+  const linesJson = String(formData.get("lines_json") || "");
+  if (linesJson) {
+    try {
+      const parsed = JSON.parse(linesJson) as Array<{
+        description?: string;
+        quantity?: number;
+        unit_price?: number;
+        product_id?: string | null;
+      }>;
+      lines = parsed
+        .map((line) => ({
+          description: String(line.description || "").trim(),
+          quantity: Number(line.quantity || 0),
+          unit_price: Number(line.unit_price || 0),
+          product_id: line.product_id || null,
+        }))
+        .filter((line) => line.description && line.quantity > 0);
+    } catch {
+      return { error: "Invalid invoice lines" };
+    }
+  } else {
+    const description = String(formData.get("description") || "Service").trim();
+    const quantity = Number(formData.get("quantity") || 1);
+    const unitPrice = Number(formData.get("unit_price") || 0);
+    const productId = String(formData.get("product_id") || "") || null;
+    if (description) {
+      lines = [
+        {
+          description,
+          quantity,
+          unit_price: unitPrice,
+          product_id: productId,
+        },
+      ];
+    }
+  }
+
+  if (!lines.length) return { error: "Add at least one invoice line" };
+
+  const subtotal = lines.reduce(
+    (sum, line) => sum + line.quantity * line.unit_price,
+    0
+  );
+  const total = subtotal + taxAmount;
 
   const { count } = await supabase
     .from("invoices")
@@ -177,7 +222,7 @@ export async function createInvoiceAction(formData: FormData) {
       customer_id: customerId,
       invoice_number: invoiceNumber,
       status: "unpaid" as InvoiceStatus,
-      subtotal: lineTotal,
+      subtotal,
       tax_amount: taxAmount,
       total,
       amount_paid: 0,
@@ -187,15 +232,19 @@ export async function createInvoiceAction(formData: FormData) {
 
   if (error || !invoice) return { error: error?.message || "Invoice failed" };
 
-  await supabase.from("invoice_lines").insert({
-    invoice_id: invoice.id,
-    organization_id: organization.id,
-    product_id: productId,
-    description,
-    quantity,
-    unit_price: unitPrice,
-    line_total: lineTotal,
-  });
+  const { error: linesError } = await supabase.from("invoice_lines").insert(
+    lines.map((line) => ({
+      invoice_id: invoice.id,
+      organization_id: organization.id,
+      product_id: line.product_id || null,
+      description: line.description,
+      quantity: line.quantity,
+      unit_price: line.unit_price,
+      line_total: line.quantity * line.unit_price,
+    }))
+  );
+
+  if (linesError) return { error: linesError.message };
 
   revalidateApp("/invoices", "/dashboard", "/accounting", "/lhdn");
   return { success: true, invoiceId: invoice.id };
@@ -276,6 +325,14 @@ export async function createAppointmentAction(formData: FormData) {
 export async function updateAppointmentStatusAction(id: string, status: AppointmentStatus) {
   const { supabase } = await requireMember();
   const { error } = await supabase.from("appointments").update({ status }).eq("id", id);
+  if (error) return { error: error.message };
+  revalidateApp("/appointments", "/dashboard");
+  return { success: true };
+}
+
+export async function deleteAppointmentAction(id: string) {
+  const { supabase } = await requireMember();
+  const { error } = await supabase.from("appointments").delete().eq("id", id);
   if (error) return { error: error.message };
   revalidateApp("/appointments", "/dashboard");
   return { success: true };

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "@/i18n/navigation";
 
 export function ActionForm({
   action,
@@ -15,6 +16,7 @@ export function ActionForm({
   className?: string;
   style?: React.CSSProperties;
 }) {
+  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -35,6 +37,7 @@ export function ActionForm({
             setError(result.error);
             return;
           }
+          router.refresh();
           onSuccess?.();
         });
       }}
