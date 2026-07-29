@@ -15,6 +15,7 @@ import {
 } from "date-fns";
 import { updateAppointmentStatusAction, deleteAppointmentAction } from "@/app/actions";
 import { DayHourTimetable } from "@/components/DayHourTimetable";
+import { PatientName } from "@/components/PatientName";
 import type { AppointmentStatus } from "@/lib/types";
 
 type Appt = {
@@ -25,7 +26,7 @@ type Appt = {
   status: AppointmentStatus;
   notes: string | null;
   reminder_sent: boolean;
-  customers?: { name: string } | null;
+  customers?: { name: string; risk_level?: "high" | "medium" | "low" | null } | null;
 };
 
 const STATUSES: AppointmentStatus[] = [
@@ -272,8 +273,11 @@ function AppointmentList({
             <div>
               <strong>{a.title}</strong>
               <div className="muted" style={{ fontSize: "0.85rem" }}>
-                {a.customers?.name || "—"} ·{" "}
-                {new Date(a.starts_at).toLocaleString()} –{" "}
+                <PatientName
+                  name={a.customers?.name || "—"}
+                  risk={a.customers?.risk_level}
+                />{" "}
+                · {new Date(a.starts_at).toLocaleString()} –{" "}
                 {new Date(a.ends_at).toLocaleTimeString([], {
                   hour: "2-digit",
                   minute: "2-digit",

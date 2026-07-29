@@ -1,10 +1,15 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { redirect } from "@/i18n/navigation";
 import { requireOrg } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { ActionForm } from "@/components/ActionForm";
-import { createExpenseAction, createIncomeAction } from "@/app/actions";
+import { createExpenseAction, createIncomeAction, isSectionUnlocked } from "@/app/actions";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
+import { canAccessSensitive } from "@/lib/roles";
+import { SectionLockGate } from "@/components/SectionLockGate";
+import { SectionActivityLog } from "@/components/SectionActivityLog";
+import { fetchSectionLogs } from "@/lib/section-logs";
 
 const CLINIC_EXPENSE_CATS = [
   "Rent",
@@ -33,10 +38,26 @@ export default async function AccountingPage({
   setRequestLocale(locale);
   const t = await getTranslations("Accounting");
   const ctx = await requireOrg(locale);
+
+  if (!canAccessSensitive(ctx.membership.role)) {
+    redirect({ href: "/dashboard", locale });
+  }
+
+  const unlocked = await isSectionUnlocked("accounting");
+  if (!unlocked) {
+    return (
+      <SectionLockGate
+        section="accounting"
+        title={t("title")}
+        subtitle={t("lockSubtitle")}
+      />
+    );
+  }
+
   const supabase = await createClient();
   const isClinic = ctx.organization.niche === "clinic";
 
-  const [{ data: expenses }, { data: ledger }] = await Promise.all([
+  const [{ data: expenses }, { data: ledger }, logs] = await Promise.all([
     supabase
       .from("expenses")
       .select("*")
@@ -48,6 +69,7 @@ export default async function AccountingPage({
       .eq("organization_id", ctx.organization.id)
       .order("entry_date", { ascending: false })
       .order("created_at", { ascending: false }),
+    fetchSectionLogs(ctx.organization.id, ["accounting"]),
   ]);
 
   const income = (ledger || [])
@@ -62,7 +84,7 @@ export default async function AccountingPage({
     <div className="stack" style={{ gap: "1.25rem" }}>
       <PageHeader title={t("title")} subtitle={t("subtitle")} />
 
-      <div className="grid-kpi">
+      <div className="fluid-grid-kpi">
         <div className="surface kpi">
           <div className="kpi-label">{t("income")}</div>
           <div className="kpi-value">{formatCurrency(income)}</div>
@@ -81,13 +103,7 @@ export default async function AccountingPage({
         </div>
       </div>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-          gap: "1rem",
-        }}
-      >
+      <div className="fluid-grid">
         <div className="surface" style={{ padding: "1.25rem" }}>
           <h3 style={{ marginTop: 0 }}>{t("addIncome")}</h3>
           <ActionForm action={createIncomeAction} className="stack">
@@ -169,84 +185,88 @@ export default async function AccountingPage({
         </div>
       </div>
 
-      <div className="surface" style={{ padding: "1.25rem" }}>
-        <h3 style={{ marginTop: 0 }}>{t("cashFlowLedger")}</h3>
-        <div className="table-wrap">
-          <table className="data">
-            <thead>
-              <tr>
-                <th>{t("date")}</th>
-                <th>{t("type")}</th>
-                <th>{t("description")}</th>
-                <th>{t("source")}</th>
-                <th>{t("amount")}</th>
-                <th>{t("recordedAt")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(ledger || []).map((e) => (
-                <tr key={e.id}>
-                  <td>{formatDate(e.entry_date)}</td>
-                  <td>
-                    <span className="badge">{e.entry_type}</span>
-                  </td>
-                  <td>{e.description || "—"}</td>
-                  <td>{e.source}</td>
-                  <td
-                    style={{
-                      color: e.entry_type === "income" ? "var(--ok, #0a7)" : "inherit",
-                      fontWeight: 600,
-                    }}
-                  >
-                    {e.entry_type === "income" ? "+" : "−"}
-                    {formatCurrency(Number(e.amount))}
-                  </td>
-                  <td>{formatDateTime(e.created_at)}</td>
-                </tr>
-              ))}
-              {!ledger?.length ? (
+      <div className="fluid-grid">
+        <div className="surface" style={{ padding: "1.25rem" }}>
+          <h3 style={{ marginTop: 0 }}>{t("cashFlowLedger")}</h3>
+          <div className="table-wrap">
+            <table className="data">
+              <thead>
                 <tr>
-                  <td colSpan={6} className="muted">
-                    {t("emptyLedger")}
-                  </td>
+                  <th>{t("date")}</th>
+                  <th>{t("type")}</th>
+                  <th>{t("description")}</th>
+                  <th>{t("source")}</th>
+                  <th>{t("amount")}</th>
+                  <th>{t("recordedAt")}</th>
                 </tr>
-              ) : null}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {(ledger || []).map((e) => (
+                  <tr key={e.id}>
+                    <td>{formatDate(e.entry_date)}</td>
+                    <td>
+                      <span className="badge">{e.entry_type}</span>
+                    </td>
+                    <td>{e.description || "—"}</td>
+                    <td>{e.source}</td>
+                    <td
+                      style={{
+                        color: e.entry_type === "income" ? "var(--ok, #0a7)" : "inherit",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {e.entry_type === "income" ? "+" : "−"}
+                      {formatCurrency(Number(e.amount))}
+                    </td>
+                    <td>{formatDateTime(e.created_at)}</td>
+                  </tr>
+                ))}
+                {!ledger?.length ? (
+                  <tr>
+                    <td colSpan={6} className="muted">
+                      {t("emptyLedger")}
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
 
-      <div className="surface" style={{ padding: "1.25rem" }}>
-        <h3 style={{ marginTop: 0 }}>{t("expenseList")}</h3>
-        <div className="table-wrap">
-          <table className="data">
-            <thead>
-              <tr>
-                <th>{t("date")}</th>
-                <th>{t("category")}</th>
-                <th>{t("description")}</th>
-                <th>{t("amount")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(expenses || []).map((e) => (
-                <tr key={e.id}>
-                  <td>{formatDate(e.expense_date)}</td>
-                  <td>{e.category}</td>
-                  <td>{e.description || "—"}</td>
-                  <td>{formatCurrency(Number(e.amount))}</td>
-                </tr>
-              ))}
-              {!expenses?.length ? (
+        <div className="surface" style={{ padding: "1.25rem" }}>
+          <h3 style={{ marginTop: 0 }}>{t("expenseList")}</h3>
+          <div className="table-wrap">
+            <table className="data">
+              <thead>
                 <tr>
-                  <td colSpan={4} className="muted">
-                    {t("empty")}
-                  </td>
+                  <th>{t("date")}</th>
+                  <th>{t("category")}</th>
+                  <th>{t("description")}</th>
+                  <th>{t("amount")}</th>
                 </tr>
-              ) : null}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {(expenses || []).map((e) => (
+                  <tr key={e.id}>
+                    <td>{formatDate(e.expense_date)}</td>
+                    <td>{e.category}</td>
+                    <td>{e.description || "—"}</td>
+                    <td>{formatCurrency(Number(e.amount))}</td>
+                  </tr>
+                ))}
+                {!expenses?.length ? (
+                  <tr>
+                    <td colSpan={4} className="muted">
+                      {t("empty")}
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
         </div>
+
+        <SectionActivityLog title={t("activity")} logs={logs} />
       </div>
     </div>
   );

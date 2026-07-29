@@ -1,12 +1,17 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { redirect } from "@/i18n/navigation";
 import { requireOrg } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { ActionForm } from "@/components/ActionForm";
-import { updateOrgSettingsAction } from "@/app/actions";
+import { isSectionUnlocked, updateOrgSettingsAction } from "@/app/actions";
 import { canUseLhdn } from "@/lib/subscription";
 import { formatDateTime } from "@/lib/utils";
 import { Link } from "@/i18n/navigation";
+import { canAccessSensitive } from "@/lib/roles";
+import { SectionLockGate } from "@/components/SectionLockGate";
+import { SectionActivityLog } from "@/components/SectionActivityLog";
+import { fetchSectionLogs } from "@/lib/section-logs";
 
 export default async function LhdnPage({
   params,
@@ -17,16 +22,31 @@ export default async function LhdnPage({
   setRequestLocale(locale);
   const t = await getTranslations("Lhdn");
   const ctx = await requireOrg(locale);
+
+  if (!canAccessSensitive(ctx.membership.role)) {
+    redirect({ href: "/dashboard", locale });
+  }
+
+  const unlocked = await isSectionUnlocked("lhdn");
+  if (!unlocked) {
+    return (
+      <SectionLockGate section="lhdn" title={t("title")} subtitle={t("lockSubtitle")} />
+    );
+  }
+
   const allowed = canUseLhdn(
     ctx.organization.subscription_plan,
     ctx.organization.subscription_status
   );
   const supabase = await createClient();
-  const { data: submissions } = await supabase
-    .from("lhdn_submissions")
-    .select("*, invoices(invoice_number)")
-    .eq("organization_id", ctx.organization.id)
-    .order("created_at", { ascending: false });
+  const [{ data: submissions }, logs] = await Promise.all([
+    supabase
+      .from("lhdn_submissions")
+      .select("*, invoices(invoice_number)")
+      .eq("organization_id", ctx.organization.id)
+      .order("created_at", { ascending: false }),
+    fetchSectionLogs(ctx.organization.id, ["lhdn"]),
+  ]);
 
   return (
     <div className="stack" style={{ gap: "1.25rem" }}>
@@ -70,41 +90,44 @@ export default async function LhdnPage({
         </div>
       )}
 
-      <div className="surface" style={{ padding: "1.25rem" }}>
-        <h3 style={{ marginTop: 0 }}>{t("submissions")}</h3>
-        <div className="table-wrap">
-          <table className="data">
-            <thead>
-              <tr>
-                <th>Invoice</th>
-                <th>{t("status")}</th>
-                <th>{t("uuid")}</th>
-                <th>Submitted</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(submissions || []).map((s) => (
-                <tr key={s.id}>
-                  <td>{s.invoices?.invoice_number || "—"}</td>
-                  <td>
-                    <span className="badge">{s.status}</span>
-                  </td>
-                  <td style={{ fontFamily: "monospace", fontSize: "0.8rem" }}>
-                    {s.uuid || "—"}
-                  </td>
-                  <td>{s.submitted_at ? formatDateTime(s.submitted_at) : "—"}</td>
-                </tr>
-              ))}
-              {!submissions?.length ? (
+      <div className="fluid-grid">
+        <div className="surface" style={{ padding: "1.25rem" }}>
+          <h3 style={{ marginTop: 0 }}>{t("submissions")}</h3>
+          <div className="table-wrap">
+            <table className="data">
+              <thead>
                 <tr>
-                  <td colSpan={4} className="muted">
-                    {t("empty")}
-                  </td>
+                  <th>Invoice</th>
+                  <th>{t("status")}</th>
+                  <th>{t("uuid")}</th>
+                  <th>Submitted</th>
                 </tr>
-              ) : null}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {(submissions || []).map((s) => (
+                  <tr key={s.id}>
+                    <td>{s.invoices?.invoice_number || "—"}</td>
+                    <td>
+                      <span className="badge">{s.status}</span>
+                    </td>
+                    <td style={{ fontFamily: "monospace", fontSize: "0.8rem" }}>
+                      {s.uuid || "—"}
+                    </td>
+                    <td>{s.submitted_at ? formatDateTime(s.submitted_at) : "—"}</td>
+                  </tr>
+                ))}
+                {!submissions?.length ? (
+                  <tr>
+                    <td colSpan={4} className="muted">
+                      {t("empty")}
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
         </div>
+        <SectionActivityLog title={t("activity")} logs={logs} />
       </div>
     </div>
   );

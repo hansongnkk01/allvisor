@@ -6,6 +6,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { ActionForm } from "@/components/ActionForm";
 import { AppointmentBoard } from "@/components/AppointmentBoard";
 import { createAppointmentAction } from "@/app/actions";
+import { SectionActivityLog } from "@/components/SectionActivityLog";
+import { fetchSectionLogs } from "@/lib/section-logs";
 import type { AppointmentStatus } from "@/lib/types";
 
 export default async function AppointmentsPage({
@@ -23,16 +25,16 @@ export default async function AppointmentsPage({
   }
 
   const supabase = await createClient();
-  const [{ data: appointments }, { data: customers }, { data: categories }] =
+  const [{ data: appointments }, { data: customers }, { data: categories }, logs] =
     await Promise.all([
       supabase
         .from("appointments")
-        .select("*, customers(name)")
+        .select("*, customers(name, risk_level)")
         .eq("organization_id", ctx.organization.id)
         .order("starts_at", { ascending: true }),
       supabase
         .from("customers")
-        .select("id, name")
+        .select("id, name, risk_level")
         .eq("organization_id", ctx.organization.id)
         .order("name"),
       supabase
@@ -40,6 +42,7 @@ export default async function AppointmentsPage({
         .select("id, name")
         .eq("organization_id", ctx.organization.id)
         .order("name"),
+      fetchSectionLogs(ctx.organization.id, ["appointment"]),
     ]);
 
   return (
@@ -129,27 +132,29 @@ export default async function AppointmentsPage({
               status: a.status as AppointmentStatus,
               notes: a.notes,
               reminder_sent: a.reminder_sent,
-              customers: a.customers,
-            }))}
-            labels={{
-              calendar: t("calendar"),
-              list: t("list"),
-              today: t("today"),
-              patient: t("patient"),
-              status: t("status"),
-              notes: t("notes"),
-              reminder: t("reminder"),
-              delete: t("delete"),
-              empty: t("empty"),
-              prev: t("prev"),
-              next: t("next"),
-              timetable: t("timetable"),
-              occupied: t("occupied"),
-              free: t("free"),
-            }}
-          />
+            customers: a.customers,
+          }))}
+          labels={{
+            calendar: t("calendar"),
+            list: t("list"),
+            today: t("today"),
+            patient: t("patient"),
+            status: t("status"),
+            notes: t("notes"),
+            reminder: t("reminder"),
+            delete: t("delete"),
+            empty: t("empty"),
+            prev: t("prev"),
+            next: t("next"),
+            timetable: t("timetable"),
+            occupied: t("occupied"),
+            free: t("free"),
+          }}
+        />
         </div>
       </div>
+
+      <SectionActivityLog title={t("activity")} logs={logs} />
     </div>
   );
 }

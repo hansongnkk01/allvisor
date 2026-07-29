@@ -7,6 +7,7 @@ import { Link } from "@/i18n/navigation";
 import { startOfDay, endOfDay } from "date-fns";
 import { DayHourTimetable } from "@/components/DayHourTimetable";
 import { DashboardAiPanel } from "@/components/DashboardAiPanel";
+import { PatientName } from "@/components/PatientName";
 
 export default async function DashboardPage({
   params,
@@ -61,7 +62,7 @@ export default async function DashboardPage({
     title: string;
     starts_at: string;
     ends_at: string;
-    customers?: { name: string } | null;
+    customers?: { name: string; risk_level?: "high" | "medium" | "low" | null } | null;
   }> = [];
   let todayAppts: typeof upcoming = [];
 
@@ -76,16 +77,19 @@ export default async function DashboardPage({
 
     const { data } = await supabase
       .from("appointments")
-      .select("*, customers(name)")
+      .select("*, customers(name, risk_level)")
       .eq("organization_id", orgId)
       .gte("starts_at", now.toISOString())
       .order("starts_at", { ascending: true })
       .limit(5);
-    upcoming = data || [];
+    upcoming = (data || []).map((a) => ({
+      ...a,
+      customers: Array.isArray(a.customers) ? a.customers[0] || null : a.customers,
+    }));
 
     const { data: todayData } = await supabase
       .from("appointments")
-      .select("id, title, starts_at, ends_at, customers(name)")
+      .select("id, title, starts_at, ends_at, customers(name, risk_level)")
       .eq("organization_id", orgId)
       .gte("starts_at", startOfDay(now).toISOString())
       .lte("starts_at", endOfDay(now).toISOString())
@@ -217,13 +221,7 @@ export default async function DashboardPage({
         />
       ) : null}
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-          gap: "1rem",
-        }}
-      >
+      <div className="fluid-grid">
         <div className="surface" style={{ padding: "1.25rem" }}>
           <h3 style={{ marginTop: 0 }}>{t("recentInvoices")}</h3>
           <div className="table-wrap">
@@ -270,7 +268,12 @@ export default async function DashboardPage({
                 <div key={a.id} style={{ borderBottom: "1px solid var(--line)", paddingBottom: 8 }}>
                   <strong>{a.title}</strong>
                   <div className="muted" style={{ fontSize: "0.9rem" }}>
-                    {a.customers?.name} · {formatDateTime(a.starts_at)}
+                    {a.customers?.name ? (
+                      <PatientName name={a.customers.name} risk={a.customers.risk_level} />
+                    ) : (
+                      "—"
+                    )}{" "}
+                    · {formatDateTime(a.starts_at)}
                   </div>
                 </div>
               ))}

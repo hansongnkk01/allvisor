@@ -4,7 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { ActionForm } from "@/components/ActionForm";
 import { CustomerRow } from "@/components/CustomerRow";
+import { SectionActivityLog } from "@/components/SectionActivityLog";
 import { upsertCustomerAction } from "@/app/actions";
+import { fetchSectionLogs } from "@/lib/section-logs";
 import { formatDateTime } from "@/lib/utils";
 import type { Customer } from "@/lib/types";
 
@@ -19,7 +21,7 @@ export default async function CustomersPage({
   const ctx = await requireOrg(locale);
   const supabase = await createClient();
 
-  const [{ data: customers }, { data: deletions }] = await Promise.all([
+  const [{ data: customers }, { data: deletions }, logs] = await Promise.all([
     supabase
       .from("customers")
       .select("*")
@@ -31,6 +33,7 @@ export default async function CustomersPage({
       .eq("organization_id", ctx.organization.id)
       .order("created_at", { ascending: false })
       .limit(30),
+    fetchSectionLogs(ctx.organization.id, ["customer"]),
   ]);
 
   const title = ctx.organization.niche === "clinic" ? t("titleClinic") : t("title");
@@ -45,6 +48,7 @@ export default async function CustomersPage({
     edit: t("edit"),
     cancel: t("cancel"),
     addedBy: t("addedBy"),
+    risk: t("risk"),
   };
 
   return (
@@ -64,6 +68,15 @@ export default async function CustomersPage({
             <div className="field">
               <label>{t("name")}</label>
               <input name="name" required className="input" />
+            </div>
+            <div className="field">
+              <label>{t("risk")}</label>
+              <select name="risk_level" className="select" defaultValue="">
+                <option value="">—</option>
+                <option value="low">{t("riskLow")}</option>
+                <option value="medium">{t("riskMedium")}</option>
+                <option value="high">{t("riskHigh")}</option>
+              </select>
             </div>
             <div className="field">
               <label>{t("ic")}</label>
@@ -94,6 +107,7 @@ export default async function CustomersPage({
             <thead>
               <tr>
                 <th>{t("name")}</th>
+                <th>{t("risk")}</th>
                 <th>{t("ic")}</th>
                 <th>{t("phone")}</th>
                 <th>{t("email")}</th>
@@ -107,7 +121,7 @@ export default async function CustomersPage({
               ))}
               {!customers?.length ? (
                 <tr>
-                  <td colSpan={6} className="muted">
+                  <td colSpan={7} className="muted">
                     {t("empty")}
                   </td>
                 </tr>
@@ -117,36 +131,39 @@ export default async function CustomersPage({
         </div>
       </div>
 
-      <div className="surface" style={{ padding: "1.25rem" }}>
-        <h3 style={{ marginTop: 0 }}>{t("deletedTitle")}</h3>
-        <p className="muted">{t("deletedHint")}</p>
-        <div className="table-wrap">
-          <table className="data">
-            <thead>
-              <tr>
-                <th>{t("name")}</th>
-                <th>{t("deletedBy")}</th>
-                <th>{t("deletedAt")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(deletions || []).map((d) => (
-                <tr key={d.id}>
-                  <td>{d.customer_name}</td>
-                  <td>{d.deleted_by_name || "—"}</td>
-                  <td>{formatDateTime(d.created_at)}</td>
-                </tr>
-              ))}
-              {!deletions?.length ? (
+      <div className="fluid-grid">
+        <div className="surface" style={{ padding: "1.25rem" }}>
+          <h3 style={{ marginTop: 0 }}>{t("deletedTitle")}</h3>
+          <p className="muted">{t("deletedHint")}</p>
+          <div className="table-wrap">
+            <table className="data">
+              <thead>
                 <tr>
-                  <td colSpan={3} className="muted">
-                    —
-                  </td>
+                  <th>{t("name")}</th>
+                  <th>{t("deletedBy")}</th>
+                  <th>{t("deletedAt")}</th>
                 </tr>
-              ) : null}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {(deletions || []).map((d) => (
+                  <tr key={d.id}>
+                    <td>{d.customer_name}</td>
+                    <td>{d.deleted_by_name || "—"}</td>
+                    <td>{formatDateTime(d.created_at)}</td>
+                  </tr>
+                ))}
+                {!deletions?.length ? (
+                  <tr>
+                    <td colSpan={3} className="muted">
+                      —
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
         </div>
+        <SectionActivityLog title={t("activity")} logs={logs} />
       </div>
     </div>
   );

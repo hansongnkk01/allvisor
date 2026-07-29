@@ -11,9 +11,11 @@ import { logActivity } from "@/lib/activity";
 import {
   defaultAdminPassword,
   hashAdminPassword,
+  sectionCookieName,
   verifyAdminPassword,
+  type LockedSection,
 } from "@/lib/admin-lock";
-import { canAccessAdmin, canManageStaff } from "@/lib/roles";
+import { canAccessSensitive, canManageStaff } from "@/lib/roles";
 import type {
   AppointmentStatus,
   InvoiceStatus,
@@ -31,7 +33,7 @@ async function requireMember() {
 
 async function requireAdminAccess() {
   const ctx = await requireMember();
-  if (!canAccessAdmin(ctx.membership.role)) {
+  if (!canAccessSensitive(ctx.membership.role)) {
     throw new Error("Admin access required");
   }
   return ctx;
@@ -45,7 +47,7 @@ async function getServiceAdmin() {
   return createAdminClient(url, serviceKey);
 }
 
-function adminCookieName(orgId: string) {
+function legacyAdminCookieName(orgId: string) {
   return `allvisor_admin_${orgId}`;
 }
 
@@ -95,6 +97,9 @@ export async function upsertCustomerAction(formData: FormData) {
     phone: String(formData.get("phone") || "") || null,
     ic_number: String(formData.get("ic_number") || "").trim() || null,
     notes: String(formData.get("notes") || "") || null,
+    risk_level: (["high", "medium", "low"].includes(String(formData.get("risk_level") || ""))
+      ? String(formData.get("risk_level"))
+      : null) as "high" | "medium" | "low" | null,
   };
   if (!payload.name) return { error: "Name required" };
 
@@ -1421,15 +1426,35 @@ export async function deletePriceListItemAction(id: string) {
   return { error: "Use Admin → Items/Services to manage prices" };
 }
 
-export async function isAdminUnlocked() {
+export async function isSectionUnlocked(section: LockedSection) {
   const ctx = await getOrgContext();
   if (!ctx) return false;
   const jar = await cookies();
-  return jar.get(adminCookieName(ctx.organization.id))?.value === "1";
+  if (jar.get(sectionCookieName(ctx.organization.id, section))?.value === "1") {
+    return true;
+  }
+  // backward compat for admin cookie name
+  if (section === "admin") {
+    return jar.get(legacyAdminCookieName(ctx.organization.id))?.value === "1";
+  }
+  return false;
 }
 
-export async function unlockAdminAction(formData: FormData) {
-  const { organization } = await requireMember();
+export async function isAdminUnlocked() {
+  return isSectionUnlocked("admin");
+}
+
+export async function unlockSectionAction(formData: FormData) {
+  const { organization, membership } = await requireMember();
+  if (!canAccessSensitive(membership.role)) {
+    return { error: "Only admin / supervisor / manager can unlock this section" };
+  }
+
+  const section = String(formData.get("section") || "admin") as LockedSection;
+  if (!["admin", "accounting", "lhdn"].includes(section)) {
+    return { error: "Invalid section" };
+  }
+
   const password = String(formData.get("password") || "");
   const ok = verifyAdminPassword(
     password,
@@ -1437,25 +1462,39 @@ export async function unlockAdminAction(formData: FormData) {
     organization.name,
     organization.created_at
   );
-  if (!ok) return { error: "Wrong admin password" };
+  if (!ok) return { error: "Wrong password" };
 
   const jar = await cookies();
-  jar.set(adminCookieName(organization.id), "1", {
+  jar.set(sectionCookieName(organization.id, section), "1", {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: 60 * 60 * 8,
   });
+  if (section === "admin") {
+    jar.set(legacyAdminCookieName(organization.id), "1", {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 60 * 60 * 8,
+    });
+  }
 
-  revalidateApp("/admin");
+  revalidateApp(`/${section === "lhdn" ? "lhdn" : section}`);
   return { success: true };
+}
+
+export async function unlockAdminAction(formData: FormData) {
+  formData.set("section", "admin");
+  return unlockSectionAction(formData);
 }
 
 export async function changeAdminPasswordAction(formData: FormData) {
   const { supabase, organization, membership } = await requireMember();
-  if (membership.role === "staff") return { error: "Forbidden" };
-  const unlocked = await isAdminUnlocked();
+  if (!canManageStaff(membership.role)) return { error: "Forbidden" };
+  const unlocked = await isSectionUnlocked("admin");
   if (!unlocked) return { error: "Admin unlock required" };
 
   const next = String(formData.get("new_password") || "").trim();

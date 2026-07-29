@@ -89,7 +89,12 @@
     "deletedTitle": "Deleted patients",
     "deletedHint": "Audit of who deleted patient records.",
     "deletedBy": "Deleted by",
-    "deletedAt": "Deleted at"
+    "deletedAt": "Deleted at",
+    "risk": "Risk",
+    "riskLow": "Low",
+    "riskMedium": "Medium",
+    "riskHigh": "High",
+    "activity": "Customer activity"
   },
   "Appointments": {
     "title": "Appointments",
@@ -113,7 +118,8 @@
     "delete": "Delete",
     "timetable": "Hour timetable",
     "occupied": "Occupied",
-    "free": "Free"
+    "free": "Free",
+    "activity": "Appointment activity"
   },
   "Invoices": {
     "title": "Invoices",
@@ -156,7 +162,8 @@
     "additional": "Additional charge",
     "additionalDesc": "Additional description",
     "additionalAmount": "Additional amount",
-    "optional": "optional"
+    "optional": "optional",
+    "activity": "Invoice activity"
   },
   "InvoiceDetail": {
     "back": "Back to invoices",
@@ -247,7 +254,8 @@
     "save": "Save",
     "addedAt": "Added at",
     "clinicSubtitle": "Clinic stock: medicines, consumables and supplies.",
-    "retailSubtitle": "Shop stock items for sale."
+    "retailSubtitle": "Shop stock items for sale.",
+    "activity": "Inventory activity"
   },
   "POS": {
     "title": "POS / Quick sale",
@@ -279,7 +287,9 @@
     "type": "Type",
     "source": "Source",
     "recordedAt": "Recorded at",
-    "expenseList": "Expense records"
+    "expenseList": "Expense records",
+    "activity": "Accounting activity",
+    "lockSubtitle": "Enter password to unlock accounting"
   },
   "Lhdn": {
     "title": "LHDN e-Invoice",
@@ -292,7 +302,9 @@
     "lockedPlan": "Your plan does not include e-Invoice. Upgrade in Admin to unlock.",
     "empty": "No submissions yet.",
     "liveConnected": "Live MyInvois credentials detected — submissions go to real LHDN API.",
-    "demoMode": "Demo mode: set LHDN_CLIENT_ID and LHDN_CLIENT_SECRET in env to use real MyInvois."
+    "demoMode": "Demo mode: set LHDN_CLIENT_ID and LHDN_CLIENT_SECRET in env to use real MyInvois.",
+    "activity": "LHDN activity",
+    "lockSubtitle": "Enter password to unlock LHDN"
   },
   "Staff": {
     "title": "Staff activity",

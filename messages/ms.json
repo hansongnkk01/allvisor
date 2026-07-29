@@ -89,7 +89,12 @@
     "deletedTitle": "Pesakit dipadam",
     "deletedHint": "Audit siapa yang padam rekod pesakit.",
     "deletedBy": "Dipadam oleh",
-    "deletedAt": "Dipadam pada"
+    "deletedAt": "Dipadam pada",
+    "risk": "Risiko",
+    "riskLow": "Rendah",
+    "riskMedium": "Sederhana",
+    "riskHigh": "Tinggi",
+    "activity": "Aktiviti pelanggan"
   },
   "Appointments": {
     "title": "Temujanji",
@@ -113,7 +118,8 @@
     "delete": "Padam",
     "timetable": "Jadual jam",
     "occupied": "Diambil",
-    "free": "Kosong"
+    "free": "Kosong",
+    "activity": "Aktiviti temujanji"
   },
   "Inventory": {
     "title": "Inventori",
@@ -129,7 +135,8 @@
     "save": "Simpan",
     "addedAt": "Ditambah pada",
     "clinicSubtitle": "Stok klinik: ubat, consumable dan bekalan.",
-    "retailSubtitle": "Stok kedai untuk jualan."
+    "retailSubtitle": "Stok kedai untuk jualan.",
+    "activity": "Aktiviti inventori"
   },
   "POS": {
     "title": "POS / Jualan pantas",
@@ -182,7 +189,8 @@
     "additional": "Caj tambahan",
     "additionalDesc": "Penerangan tambahan",
     "additionalAmount": "Jumlah tambahan",
-    "optional": "tidak wajib"
+    "optional": "tidak wajib",
+    "activity": "Aktiviti invois"
   },
   "InvoiceDetail": {
     "back": "Kembali ke invois",
@@ -279,7 +287,9 @@
     "type": "Jenis",
     "source": "Sumber",
     "recordedAt": "Direkod pada",
-    "expenseList": "Rekod perbelanjaan"
+    "expenseList": "Rekod perbelanjaan",
+    "activity": "Aktiviti perakaunan",
+    "lockSubtitle": "Masukkan kata laluan untuk buka perakaunan"
   },
   "Lhdn": {
     "title": "e-Invois LHDN",
@@ -292,7 +302,9 @@
     "lockedPlan": "Pelan anda tidak termasuk e-Invois. Naik taraf di Admin untuk membuka.",
     "empty": "Belum ada penghantaran.",
     "liveConnected": "Kredensial MyInvois dikesan — penghantaran pergi ke API LHDN sebenar.",
-    "demoMode": "Mod demo: tetapkan LHDN_CLIENT_ID dan LHDN_CLIENT_SECRET dalam env untuk MyInvois sebenar."
+    "demoMode": "Mod demo: tetapkan LHDN_CLIENT_ID dan LHDN_CLIENT_SECRET dalam env untuk MyInvois sebenar.",
+    "activity": "Aktiviti LHDN",
+    "lockSubtitle": "Masukkan kata laluan untuk buka LHDN"
   },
   "Staff": {
     "title": "Aktiviti staf",

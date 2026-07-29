@@ -2,6 +2,8 @@ export type Niche = "clinic" | "retail";
 
 export type MembershipRole = "owner" | "admin" | "supervisor" | "manager" | "staff";
 
+export type RiskLevel = "high" | "medium" | "low";
+
 export type SubscriptionPlan = "free" | "starter" | "growth" | "pro";
 export type SubscriptionStatus = "trialing" | "active" | "past_due" | "canceled";
 
@@ -69,6 +71,7 @@ export interface Customer {
   notes: string | null;
   created_by: string | null;
   created_by_name: string | null;
+  risk_level: RiskLevel | null;
   created_at: string;
 }
 

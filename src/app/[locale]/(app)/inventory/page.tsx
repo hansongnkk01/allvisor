@@ -5,6 +5,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { ActionForm } from "@/components/ActionForm";
 import { adjustStockAction, upsertProductAction } from "@/app/actions";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
+import { SectionActivityLog } from "@/components/SectionActivityLog";
+import { fetchSectionLogs } from "@/lib/section-logs";
 
 export default async function InventoryPage({
   params,
@@ -16,11 +18,14 @@ export default async function InventoryPage({
   const t = await getTranslations("Inventory");
   const ctx = await requireOrg(locale);
   const supabase = await createClient();
-  const { data: products } = await supabase
-    .from("products")
-    .select("*")
-    .eq("organization_id", ctx.organization.id)
-    .order("created_at", { ascending: false });
+  const [{ data: products }, logs] = await Promise.all([
+    supabase
+      .from("products")
+      .select("*")
+      .eq("organization_id", ctx.organization.id)
+      .order("created_at", { ascending: false }),
+    fetchSectionLogs(ctx.organization.id, ["inventory"]),
+  ]);
 
   const isClinic = ctx.organization.niche === "clinic";
 
@@ -140,6 +145,8 @@ export default async function InventoryPage({
           </table>
         </div>
       </div>
+
+      <SectionActivityLog title={t("activity")} logs={logs} />
     </div>
   );
 }

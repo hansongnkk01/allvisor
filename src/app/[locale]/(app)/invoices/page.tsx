@@ -8,6 +8,9 @@ import { MultiLineInvoiceForm } from "@/components/MultiLineInvoiceForm";
 import { createInvoiceAction, recordPaymentAction } from "@/app/actions";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { canEditInvoiceIdentity } from "@/lib/roles";
+import { SectionActivityLog } from "@/components/SectionActivityLog";
+import { PatientName } from "@/components/PatientName";
+import { fetchSectionLogs } from "@/lib/section-logs";
 import type { ServiceItem } from "@/lib/types";
 
 export default async function InvoicesPage({
@@ -21,11 +24,11 @@ export default async function InvoicesPage({
   const ctx = await requireOrg(locale);
   const supabase = await createClient();
 
-  const [{ data: invoices }, { data: customers }, { data: services }] =
+  const [{ data: invoices }, { data: customers }, { data: services }, logs] =
     await Promise.all([
       supabase
         .from("invoices")
-        .select("*, customers(name)")
+        .select("*, customers(name, risk_level)")
         .eq("organization_id", ctx.organization.id)
         .order("created_at", { ascending: false }),
       supabase
@@ -39,6 +42,7 @@ export default async function InvoicesPage({
         .eq("organization_id", ctx.organization.id)
         .eq("is_active", true)
         .order("name"),
+      fetchSectionLogs(ctx.organization.id, ["invoice", "pos"]),
     ]);
 
   return (
@@ -116,7 +120,19 @@ export default async function InvoicesPage({
                       {inv.invoice_number}
                     </div>
                   </td>
-                  <td>{inv.customers?.name || "—"}</td>
+                  <td>
+                    {inv.customers?.name ? (
+                      <PatientName
+                        name={inv.customers.name}
+                        risk={
+                          (inv.customers as { risk_level?: "high" | "medium" | "low" | null })
+                            .risk_level
+                        }
+                      />
+                    ) : (
+                      "—"
+                    )}
+                  </td>
                   <td>
                     <span className="badge">{inv.status}</span>
                   </td>
@@ -175,6 +191,8 @@ export default async function InvoicesPage({
           </table>
         </div>
       </div>
+
+      <SectionActivityLog title={t("activity")} logs={logs} />
     </div>
   );
 }

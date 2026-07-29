@@ -4,7 +4,7 @@ import { requireOrg } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { ActionForm } from "@/components/ActionForm";
-import { BranchGroup } from "@/components/BranchGroup";
+import { BranchGroup, ExpandSection } from "@/components/BranchGroup";
 import {
   addBranchStaffAction,
   addStaffAction,
@@ -361,10 +361,10 @@ export default async function AdminPage({
           key={branch.id}
           title={`${idx + 1}. ${branch.name}${branch.id === orgId ? ` (${t("thisClinic")})` : ""}`}
           defaultOpen={idx === 0}
+          toneIndex={idx}
         >
-          <div className="stack" style={{ gap: "1.25rem" }}>
-            <div>
-              <h4 style={{ marginTop: 0 }}>{t("categoriesTitle")}</h4>
+          <div className="stack" style={{ gap: "0.85rem" }}>
+            <ExpandSection title={t("categoriesTitle")} defaultOpen>
               <ActionForm
                 action={
                   branch.id === orgId
@@ -426,10 +426,9 @@ export default async function AdminPage({
                   </tbody>
                 </table>
               </div>
-            </div>
+            </ExpandSection>
 
-            <div>
-              <h4>{t("servicesTitle")}</h4>
+            <ExpandSection title={t("servicesTitle")}>
               <ActionForm
                 action={
                   branch.id === orgId
@@ -509,11 +508,10 @@ export default async function AdminPage({
                   </tbody>
                 </table>
               </div>
-            </div>
+            </ExpandSection>
 
             {isAdmin ? (
-              <div>
-                <h4>{t("staffTitle")}</h4>
+              <ExpandSection title={t("staffTitle")}>
                 <ActionForm
                   action={branch.id === orgId ? addStaffAction : addBranchStaffAction}
                   className="stack"
@@ -609,7 +607,7 @@ export default async function AdminPage({
                     </tbody>
                   </table>
                 </div>
-              </div>
+              </ExpandSection>
             ) : null}
           </div>
         </BranchGroup>

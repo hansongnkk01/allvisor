@@ -2,13 +2,14 @@
 
 import { useMemo } from "react";
 import { format } from "date-fns";
+import { PatientName } from "@/components/PatientName";
 
 type SlotAppt = {
   id: string;
   title: string;
   starts_at: string;
   ends_at: string;
-  customers?: { name: string } | null;
+  customers?: { name: string; risk_level?: "high" | "medium" | "low" | null } | null;
 };
 
 export function DayHourTimetable({
@@ -95,7 +96,14 @@ export function DayHourTimetable({
                       overflow: "hidden",
                     }}
                   >
-                    {items[0]?.customers?.name || items[0]?.title}
+                    {items[0]?.customers?.name ? (
+                      <PatientName
+                        name={items[0].customers.name}
+                        risk={items[0].customers.risk_level}
+                      />
+                    ) : (
+                      items[0]?.title
+                    )}
                   </div>
                 ) : null}
               </div>

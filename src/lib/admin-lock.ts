@@ -1,5 +1,7 @@
 import { createHash } from "crypto";
 
+export type LockedSection = "admin" | "accounting" | "lhdn";
+
 export function hashAdminPassword(password: string) {
   return createHash("sha256").update(password).digest("hex");
 }
@@ -18,4 +20,8 @@ export function verifyAdminPassword(
 ) {
   const expected = storedHash || hashAdminPassword(defaultAdminPassword(orgName, createdAt));
   return hashAdminPassword(input) === expected;
+}
+
+export function sectionCookieName(orgId: string, section: LockedSection) {
+  return `allvisor_${section}_${orgId}`;
 }

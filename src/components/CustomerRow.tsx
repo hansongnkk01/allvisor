@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ActionForm } from "@/components/ActionForm";
+import { PatientName } from "@/components/PatientName";
 import { deleteCustomerAction, upsertCustomerAction } from "@/app/actions";
 import type { Customer } from "@/lib/types";
 
@@ -16,6 +17,7 @@ type Labels = {
   edit: string;
   cancel: string;
   addedBy: string;
+  risk: string;
 };
 
 export function CustomerRow({
@@ -30,7 +32,7 @@ export function CustomerRow({
   if (editing) {
     return (
       <tr>
-      <td colSpan={6}>
+        <td colSpan={7}>
           <ActionForm
             action={upsertCustomerAction}
             onSuccess={() => setEditing(false)}
@@ -48,6 +50,19 @@ export function CustomerRow({
               <div className="field">
                 <label>{labels.name}</label>
                 <input name="name" required className="input" defaultValue={customer.name} />
+              </div>
+              <div className="field">
+                <label>{labels.risk}</label>
+                <select
+                  name="risk_level"
+                  className="select"
+                  defaultValue={customer.risk_level || ""}
+                >
+                  <option value="">—</option>
+                  <option value="low">low</option>
+                  <option value="medium">medium</option>
+                  <option value="high">high</option>
+                </select>
               </div>
               <div className="field">
                 <label>{labels.ic}</label>
@@ -96,13 +111,14 @@ export function CustomerRow({
   return (
     <tr>
       <td>
-        <div>{customer.name}</div>
+        <PatientName name={customer.name} risk={customer.risk_level} />
         {customer.notes ? (
           <div className="muted" style={{ fontSize: "0.8rem", marginTop: 2 }}>
             {customer.notes}
           </div>
         ) : null}
       </td>
+      <td>{customer.risk_level || "—"}</td>
       <td>{customer.ic_number || "—"}</td>
       <td>{customer.phone || "—"}</td>
       <td>{customer.email || "—"}</td>

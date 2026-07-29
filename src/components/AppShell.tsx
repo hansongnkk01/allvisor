@@ -109,8 +109,13 @@ export function AppShell({
   const tBrand = useTranslations("Brand");
   const pathname = usePathname();
   const keys = nicheNavKeys[niche].filter((key) => {
-    if (key !== "admin") return true;
-    return role === "owner" || role === "admin" || role === "supervisor";
+    if (key !== "admin" && key !== "accounting" && key !== "lhdn") return true;
+    return (
+      role === "owner" ||
+      role === "admin" ||
+      role === "supervisor" ||
+      role === "manager"
+    );
   });
 
   useEffect(() => {
@@ -178,7 +183,7 @@ export function AppShell({
         </aside>
 
         <main className="app-main">
-          <div style={{ maxWidth: 1100, margin: "0 auto" }}>{children}</div>
+          <div className="app-content">{children}</div>
         </main>
       </div>
     </div>
