@@ -1,36 +1,77 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Allvisor
 
-## Getting Started
+Multi-niche SaaS for Malaysian SMEs — **Clinic** and **Retail** first.
 
-First, run the development server:
+Stack: **Next.js** (Vercel) + **Supabase** + **GitHub** · Bilingual **BM / EN**
+
+## Features
+
+- Niche picker on landing (clinic / retail) with themed UI
+- Multi-tenant organizations + roles (`owner` / `admin` / `staff`)
+- CRM (patients / customers)
+- Clinic appointments
+- Retail POS (sale → invoice + stock deduct)
+- Inventory + stock adjustments
+- Invoices + payments
+- Light accounting (income / expense / P&L)
+- LHDN e-Invoice sandbox submission layer
+- Subscription plan gating (Free / Starter / Growth / Pro)
+
+## Setup
+
+### 1. Supabase
+
+1. Create a project at [supabase.com](https://supabase.com)
+2. SQL Editor → run [`supabase/migrations/001_initial.sql`](supabase/migrations/001_initial.sql)
+3. Authentication → enable Email provider
+4. Copy Project URL + anon key + service role key
+
+### 2. App env
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cd allvisor
+cp .env.example .env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Fill:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 3. Run locally
 
-## Learn More
+```bash
+npm install
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+Open [http://localhost:3000/ms](http://localhost:3000/ms)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 4. Deploy (GitHub → Vercel)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Push this repo to GitHub
+2. Import in Vercel (root directory: `allvisor` if monorepo parent)
+3. Add the same env vars in Vercel
+4. Deploy
 
-## Deploy on Vercel
+## Soft-launch checklist
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- [ ] Migration applied on production Supabase
+- [ ] Auth email templates configured
+- [ ] Env vars set on Vercel
+- [ ] Test clinic: register → patient → appointment → invoice → LHDN sandbox
+- [ ] Test retail: register → product → POS sale → stock → accounting
+- [ ] Confirm RLS: user A cannot see org B data
+- [ ] Staff role cannot delete organization / manage billing
+- [ ] Connect Billplz/Stripe when ready (plan upgrade UI already exists)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Scripts
+
+- `npm run dev` — development
+- `npm run build` — production build
+- `npm run start` — start production server
+- `npm run lint` — ESLint

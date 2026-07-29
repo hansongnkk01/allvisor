@@ -1,0 +1,135 @@
+"use client";
+
+import type { ReactNode } from "react";
+import { useTranslations } from "next-intl";
+import {
+  LayoutDashboard,
+  Users,
+  CalendarDays,
+  Package,
+  FileText,
+  Calculator,
+  Stamp,
+  UserCog,
+  Settings,
+  ShoppingCart,
+  LogOut,
+} from "lucide-react";
+import { Link, usePathname } from "@/i18n/navigation";
+import { nicheNavKeys } from "@/lib/niches";
+import type { Niche } from "@/lib/types";
+import { LanguageSwitcher } from "./LanguageSwitcher";
+import { signOutAction } from "@/app/actions";
+import { cn } from "@/lib/utils";
+
+const icons: Record<string, ReactNode> = {
+  dashboard: <LayoutDashboard size={18} />,
+  customers: <Users size={18} />,
+  appointments: <CalendarDays size={18} />,
+  inventory: <Package size={18} />,
+  invoices: <FileText size={18} />,
+  accounting: <Calculator size={18} />,
+  lhdn: <Stamp size={18} />,
+  staff: <UserCog size={18} />,
+  settings: <Settings size={18} />,
+  pos: <ShoppingCart size={18} />,
+};
+
+const hrefMap: Record<string, string> = {
+  dashboard: "/dashboard",
+  customers: "/customers",
+  appointments: "/appointments",
+  inventory: "/inventory",
+  invoices: "/invoices",
+  accounting: "/accounting",
+  lhdn: "/lhdn",
+  staff: "/staff",
+  settings: "/settings",
+  pos: "/pos",
+};
+
+export function AppShell({
+  niche,
+  orgName,
+  children,
+}: {
+  niche: Niche;
+  orgName: string;
+  children: React.ReactNode;
+}) {
+  const t = useTranslations("Nav");
+  const tBrand = useTranslations("Brand");
+  const pathname = usePathname();
+  const keys = nicheNavKeys[niche];
+
+  return (
+    <div data-niche={niche} className="min-h-screen">
+      <div className="app-grid">
+        <aside
+          className="surface"
+          style={{
+            margin: "1rem",
+            padding: "1.25rem 1rem",
+            position: "sticky",
+            top: "1rem",
+            height: "calc(100vh - 2rem)",
+            display: "flex",
+            flexDirection: "column",
+            gap: "1.25rem",
+          }}
+        >
+          <div>
+            <div className="display" style={{ fontSize: "1.55rem" }}>
+              {tBrand("name")}
+            </div>
+            <div className="muted" style={{ fontSize: "0.85rem", marginTop: 4 }}>
+              {orgName}
+            </div>
+          </div>
+
+          <nav className="stack" style={{ gap: "0.35rem", flex: 1 }}>
+            {keys.map((key) => {
+              const href = hrefMap[key];
+              const active = pathname === href || pathname.startsWith(`${href}/`);
+              const label =
+                key === "customers" && niche === "clinic"
+                  ? t("patients")
+                  : t(key as "dashboard");
+              return (
+                <Link
+                  key={key}
+                  href={href}
+                  className={cn("row")}
+                  style={{
+                    padding: "0.7rem 0.85rem",
+                    borderRadius: 12,
+                    background: active ? "var(--accent-soft)" : "transparent",
+                    color: active ? "var(--accent-ink)" : "var(--ink)",
+                    fontWeight: active ? 600 : 500,
+                  }}
+                >
+                  {icons[key]}
+                  <span>{label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+
+          <div className="stack" style={{ gap: "0.75rem" }}>
+            <LanguageSwitcher />
+            <form action={signOutAction}>
+              <button type="submit" className="btn btn-ghost" style={{ width: "100%" }}>
+                <LogOut size={16} />
+                {t("logout")}
+              </button>
+            </form>
+          </div>
+        </aside>
+
+        <main className="app-main">
+          <div style={{ maxWidth: 1100, margin: "0 auto" }}>{children}</div>
+        </main>
+      </div>
+    </div>
+  );
+}
