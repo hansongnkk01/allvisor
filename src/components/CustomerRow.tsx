@@ -9,6 +9,7 @@ type Labels = {
   name: string;
   email: string;
   phone: string;
+  ic: string;
   notes: string;
   save: string;
   delete: string;
@@ -28,7 +29,7 @@ export function CustomerRow({
   if (editing) {
     return (
       <tr>
-        <td colSpan={4}>
+        <td colSpan={5}>
           <ActionForm
             action={upsertCustomerAction}
             onSuccess={() => setEditing(false)}
@@ -46,6 +47,14 @@ export function CustomerRow({
               <div className="field">
                 <label>{labels.name}</label>
                 <input name="name" required className="input" defaultValue={customer.name} />
+              </div>
+              <div className="field">
+                <label>{labels.ic}</label>
+                <input
+                  name="ic_number"
+                  className="input"
+                  defaultValue={customer.ic_number || ""}
+                />
               </div>
               <div className="field">
                 <label>{labels.email}</label>
@@ -93,6 +102,7 @@ export function CustomerRow({
           </div>
         ) : null}
       </td>
+      <td>{customer.ic_number || "—"}</td>
       <td>{customer.phone || "—"}</td>
       <td>{customer.email || "—"}</td>
       <td>

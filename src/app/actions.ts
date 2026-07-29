@@ -1,11 +1,18 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { getOrgContext } from "@/lib/org";
 import { isNiche } from "@/lib/niches";
 import { getLhdnProvider } from "@/lib/lhdn";
 import { canUseLhdn } from "@/lib/subscription";
 import { revalidateApp, revalidateAppLayout } from "@/lib/revalidate";
+import { logActivity } from "@/lib/activity";
+import {
+  defaultAdminPassword,
+  hashAdminPassword,
+  verifyAdminPassword,
+} from "@/lib/admin-lock";
 import type {
   AppointmentStatus,
   InvoiceStatus,
@@ -19,6 +26,10 @@ async function requireMember() {
   if (!ctx) throw new Error("No organization");
   const supabase = await createClient();
   return { ...ctx, supabase };
+}
+
+function adminCookieName(orgId: string) {
+  return `allvisor_admin_${orgId}`;
 }
 
 export async function createOrganizationAction(formData: FormData) {
@@ -52,7 +63,8 @@ export async function createOrganizationAction(formData: FormData) {
 
   if (orgError) return { error: orgError.message };
 
-  revalidateApp("/dashboard"); revalidateAppLayout();
+  revalidateApp("/dashboard");
+  revalidateAppLayout();
   return { success: true };
 }
 
@@ -64,24 +76,48 @@ export async function upsertCustomerAction(formData: FormData) {
     name: String(formData.get("name") || "").trim(),
     email: String(formData.get("email") || "") || null,
     phone: String(formData.get("phone") || "") || null,
+    ic_number: String(formData.get("ic_number") || "").trim() || null,
     notes: String(formData.get("notes") || "") || null,
   };
   if (!payload.name) return { error: "Name required" };
 
-  const { error } = id
-    ? await supabase.from("customers").update(payload).eq("id", id)
-    : await supabase.from("customers").insert(payload);
+  const { data, error } = id
+    ? await supabase.from("customers").update(payload).eq("id", id).select("id").single()
+    : await supabase.from("customers").insert(payload).select("id").single();
 
   if (error) return { error: error.message };
-  revalidateApp("/customers", "/dashboard", "/appointments", "/invoices", "/pos");
+
+  await logActivity({
+    action: id ? "customer.update" : "customer.create",
+    summary: id
+      ? `Updated patient/customer: ${payload.name}`
+      : `Registered patient/customer: ${payload.name}`,
+    entityType: "customer",
+    entityId: data?.id || id || null,
+  });
+
+  revalidateApp("/customers", "/dashboard", "/appointments", "/invoices", "/pos", "/staff");
   return { success: true };
 }
 
 export async function deleteCustomerAction(id: string) {
   const { supabase } = await requireMember();
+  const { data: customer } = await supabase
+    .from("customers")
+    .select("name")
+    .eq("id", id)
+    .maybeSingle();
   const { error } = await supabase.from("customers").delete().eq("id", id);
   if (error) return { error: error.message };
-  revalidateApp("/customers", "/dashboard", "/appointments", "/invoices");
+
+  await logActivity({
+    action: "customer.delete",
+    summary: `Deleted patient/customer: ${customer?.name || id}`,
+    entityType: "customer",
+    entityId: id,
+  });
+
+  revalidateApp("/customers", "/dashboard", "/appointments", "/invoices", "/staff");
   return { success: true };
 }
 
@@ -101,12 +137,22 @@ export async function upsertProductAction(formData: FormData) {
   };
   if (!payload.name) return { error: "Name required" };
 
-  const { error } = id
-    ? await supabase.from("products").update(payload).eq("id", id)
-    : await supabase.from("products").insert(payload);
+  const { data, error } = id
+    ? await supabase.from("products").update(payload).eq("id", id).select("id").single()
+    : await supabase.from("products").insert(payload).select("id").single();
 
   if (error) return { error: error.message };
-  revalidateApp("/inventory", "/pos", "/dashboard");
+
+  await logActivity({
+    action: id ? "inventory.update" : "inventory.add",
+    summary: id
+      ? `Updated inventory item: ${payload.name}`
+      : `Added inventory item: ${payload.name} (qty ${payload.quantity})`,
+    entityType: "product",
+    entityId: data?.id || id || null,
+  });
+
+  revalidateApp("/inventory", "/pos", "/dashboard", "/staff");
   return { success: true };
 }
 
@@ -147,7 +193,14 @@ export async function adjustStockAction(formData: FormData) {
     .eq("id", productId);
   if (error) return { error: error.message };
 
-  revalidateApp("/inventory", "/pos", "/dashboard");
+  await logActivity({
+    action: type === "in" ? "inventory.stock_in" : "inventory.stock_out",
+    summary: `${type === "in" ? "Stock in" : "Stock out"} ${quantity} × ${product.name}`,
+    entityType: "product",
+    entityId: productId,
+  });
+
+  revalidateApp("/inventory", "/pos", "/dashboard", "/staff");
   return { success: true };
 }
 
@@ -249,7 +302,14 @@ export async function createInvoiceAction(formData: FormData) {
     note: "Invoice created",
   });
 
-  revalidateApp("/invoices", "/dashboard", "/accounting", "/lhdn");
+  await logActivity({
+    action: "invoice.create",
+    summary: `Created invoice ${invoiceNumber}${title ? ` (${title})` : ""}`,
+    entityType: "invoice",
+    entityId: invoice.id,
+  });
+
+  revalidateApp("/invoices", "/dashboard", "/accounting", "/lhdn", "/staff");
   return { success: true, invoiceId: invoice.id };
 }
 
@@ -309,7 +369,14 @@ export async function recordPaymentAction(formData: FormData) {
     });
   }
 
-  revalidateApp("/invoices", "/dashboard", "/accounting");
+  await logActivity({
+    action: "invoice.payment",
+    summary: `Recorded payment RM ${amount.toFixed(2)} for ${invoice.invoice_number}`,
+    entityType: "invoice",
+    entityId: invoiceId,
+  });
+
+  revalidateApp("/invoices", "/dashboard", "/accounting", "/staff");
   return { success: true };
 }
 
@@ -335,7 +402,7 @@ export async function createAppointmentAction(formData: FormData) {
     title,
     starts_at: String(formData.get("starts_at") || ""),
     ends_at: String(formData.get("ends_at") || ""),
-    status: (String(formData.get("status") || "scheduled") as AppointmentStatus),
+    status: String(formData.get("status") || "scheduled") as AppointmentStatus,
     notes: String(formData.get("notes") || "") || null,
     reminder_sent: formData.get("reminder_sent") === "on",
   };
@@ -344,9 +411,21 @@ export async function createAppointmentAction(formData: FormData) {
     return { error: "Missing appointment fields" };
   }
 
-  const { error } = await supabase.from("appointments").insert(payload);
+  const { data, error } = await supabase
+    .from("appointments")
+    .insert(payload)
+    .select("id")
+    .single();
   if (error) return { error: error.message };
-  revalidateApp("/appointments", "/dashboard");
+
+  await logActivity({
+    action: "appointment.create",
+    summary: `Booked appointment: ${payload.title}`,
+    entityType: "appointment",
+    entityId: data?.id || null,
+  });
+
+  revalidateApp("/appointments", "/dashboard", "/staff");
   return { success: true };
 }
 
@@ -354,7 +433,15 @@ export async function updateAppointmentStatusAction(id: string, status: Appointm
   const { supabase } = await requireMember();
   const { error } = await supabase.from("appointments").update({ status }).eq("id", id);
   if (error) return { error: error.message };
-  revalidateApp("/appointments", "/dashboard");
+
+  await logActivity({
+    action: "appointment.status",
+    summary: `Updated appointment status to ${status}`,
+    entityType: "appointment",
+    entityId: id,
+  });
+
+  revalidateApp("/appointments", "/dashboard", "/staff");
   return { success: true };
 }
 
@@ -362,7 +449,15 @@ export async function deleteAppointmentAction(id: string) {
   const { supabase } = await requireMember();
   const { error } = await supabase.from("appointments").delete().eq("id", id);
   if (error) return { error: error.message };
-  revalidateApp("/appointments", "/dashboard");
+
+  await logActivity({
+    action: "appointment.delete",
+    summary: "Deleted appointment",
+    entityType: "appointment",
+    entityId: id,
+  });
+
+  revalidateApp("/appointments", "/dashboard", "/staff");
   return { success: true };
 }
 
@@ -447,7 +542,14 @@ export async function posCheckoutAction(formData: FormData) {
     description: `POS sale ${invoiceNumber}`,
   });
 
-  revalidateApp("/pos", "/inventory", "/invoices", "/dashboard", "/accounting");
+  await logActivity({
+    action: "pos.checkout",
+    summary: `POS sale ${invoiceNumber} · ${product.name} × ${quantity}`,
+    entityType: "invoice",
+    entityId: invoice.id,
+  });
+
+  revalidateApp("/pos", "/inventory", "/invoices", "/dashboard", "/accounting", "/staff");
   return { success: true, invoiceId: invoice.id };
 }
 
@@ -456,7 +558,9 @@ export async function createExpenseAction(formData: FormData) {
   const category = String(formData.get("category") || "").trim();
   const description = String(formData.get("description") || "") || null;
   const amount = Number(formData.get("amount") || 0);
-  const expenseDate = String(formData.get("expense_date") || new Date().toISOString().slice(0, 10));
+  const expenseDate = String(
+    formData.get("expense_date") || new Date().toISOString().slice(0, 10)
+  );
 
   if (!category || amount <= 0) return { error: "Invalid expense" };
 
@@ -484,7 +588,52 @@ export async function createExpenseAction(formData: FormData) {
     description: description || category,
   });
 
-  revalidateApp("/accounting", "/dashboard");
+  await logActivity({
+    action: "accounting.expense",
+    summary: `Cash out RM ${amount.toFixed(2)} · ${category}`,
+    entityType: "expense",
+    entityId: expense.id,
+  });
+
+  revalidateApp("/accounting", "/dashboard", "/staff");
+  return { success: true };
+}
+
+export async function createIncomeAction(formData: FormData) {
+  const { supabase, organization } = await requireMember();
+  const category = String(formData.get("category") || "").trim() || "Other income";
+  const description = String(formData.get("description") || "").trim() || category;
+  const amount = Number(formData.get("amount") || 0);
+  const entryDate = String(
+    formData.get("entry_date") || new Date().toISOString().slice(0, 10)
+  );
+
+  if (amount <= 0) return { error: "Invalid income amount" };
+
+  const { data, error } = await supabase
+    .from("ledger_entries")
+    .insert({
+      organization_id: organization.id,
+      entry_type: "income",
+      source: "manual",
+      source_id: null,
+      amount,
+      entry_date: entryDate,
+      description: `${category}: ${description}`,
+    })
+    .select("id")
+    .single();
+
+  if (error) return { error: error.message };
+
+  await logActivity({
+    action: "accounting.income",
+    summary: `Cash in RM ${amount.toFixed(2)} · ${category}`,
+    entityType: "ledger",
+    entityId: data?.id || null,
+  });
+
+  revalidateApp("/accounting", "/dashboard", "/staff");
   return { success: true };
 }
 
@@ -504,13 +653,17 @@ export async function updateOrgSettingsAction(formData: FormData) {
     .eq("id", organization.id);
 
   if (error) return { error: error.message };
-  revalidateApp("/settings", "/lhdn"); revalidateAppLayout();
+  revalidateApp("/settings", "/lhdn");
+  revalidateAppLayout();
   return { success: true };
 }
 
 export async function upgradePlanAction(plan: SubscriptionPlan) {
   const { supabase, organization, membership } = await requireMember();
   if (membership.role === "staff") return { error: "Forbidden" };
+
+  const unlocked = await isAdminUnlocked();
+  if (!unlocked) return { error: "Admin unlock required" };
 
   const { error } = await supabase
     .from("organizations")
@@ -521,7 +674,16 @@ export async function upgradePlanAction(plan: SubscriptionPlan) {
     .eq("id", organization.id);
 
   if (error) return { error: error.message };
-  revalidateApp("/settings", "/lhdn"); revalidateAppLayout();
+
+  await logActivity({
+    action: "admin.upgrade_plan",
+    summary: `Upgraded plan to ${plan}`,
+    entityType: "organization",
+    entityId: organization.id,
+  });
+
+  revalidateApp("/settings", "/lhdn", "/admin");
+  revalidateAppLayout();
   return { success: true };
 }
 
@@ -553,7 +715,11 @@ export async function addStaffAction(formData: FormData) {
     email,
     password,
     email_confirm: true,
-    user_metadata: { full_name: fullName, locale: organization.locale_default },
+    user_metadata: {
+      full_name: fullName,
+      locale: organization.locale_default,
+      account_type: "allvisor-staff",
+    },
   });
 
   if (createError || !created.user) {
@@ -567,6 +733,14 @@ export async function addStaffAction(formData: FormData) {
   });
 
   if (error) return { error: error.message };
+
+  await logActivity({
+    action: "staff.add",
+    summary: `Added Allvisor staff account: ${fullName || email} (${role})`,
+    entityType: "membership",
+    entityId: created.user.id,
+  });
+
   revalidateApp("/staff");
   return { success: true };
 }
@@ -632,12 +806,23 @@ export async function submitInvoiceToLhdnAction(invoiceId: string) {
     .update({ lhdn_status: status })
     .eq("id", invoiceId);
 
-  revalidateApp("/lhdn", "/invoices");
+  await logActivity({
+    action: "lhdn.submit",
+    summary: `Submitted ${invoice.invoice_number} to LHDN (${status})`,
+    entityType: "invoice",
+    entityId: invoiceId,
+  });
+
+  revalidateApp("/lhdn", "/invoices", "/staff");
   return result.success
     ? { success: true, uuid: result.uuid }
     : { error: result.error || "LHDN submission failed" };
 }
 
+/**
+ * Status change adds a NEW invoice list row (same name/title) with the new status,
+ * instead of only mutating the original. Invoice numbers stay unique via suffix.
+ */
 export async function updateInvoiceStatusAction(formData: FormData) {
   const { supabase, organization, profile } = await requireMember();
   const invoiceId = String(formData.get("invoice_id") || "");
@@ -651,33 +836,112 @@ export async function updateInvoiceStatusAction(formData: FormData) {
 
   const { data: invoice } = await supabase
     .from("invoices")
-    .select("*")
+    .select("*, invoice_lines(*)")
     .eq("id", invoiceId)
     .single();
   if (!invoice) return { error: "Invoice not found" };
   if (invoice.status === toStatus) return { success: true };
 
-  const { error } = await supabase
+  const suffix = `${toStatus}-${Date.now().toString(36)}`;
+  const snapshotNumber = `${invoice.invoice_number}-${suffix}`;
+  const title = invoice.title || invoice.invoice_number;
+
+  const { data: snapshot, error } = await supabase
     .from("invoices")
-    .update({ status: toStatus })
-    .eq("id", invoiceId);
-  if (error) return { error: error.message };
+    .insert({
+      organization_id: organization.id,
+      customer_id: invoice.customer_id,
+      invoice_number: snapshotNumber,
+      title,
+      status: toStatus,
+      issue_date: invoice.issue_date,
+      due_date: invoice.due_date,
+      subtotal: invoice.subtotal,
+      tax_amount: invoice.tax_amount,
+      total: invoice.total,
+      amount_paid: toStatus === "paid" ? invoice.total : invoice.amount_paid,
+      notes: note || `Status snapshot from ${invoice.status} → ${toStatus}`,
+      lhdn_status: "not_submitted",
+    })
+    .select("*")
+    .single();
+
+  if (error || !snapshot) return { error: error?.message || "Failed to add status row" };
+
+  const lines = (invoice.invoice_lines || []) as Array<{
+    product_id: string | null;
+    price_list_item_id?: string | null;
+    description: string;
+    quantity: number;
+    unit_price: number;
+    line_total: number;
+  }>;
+
+  if (lines.length) {
+    await supabase.from("invoice_lines").insert(
+      lines.map((line) => ({
+        invoice_id: snapshot.id,
+        organization_id: organization.id,
+        product_id: line.product_id,
+        price_list_item_id: line.price_list_item_id || null,
+        description: line.description,
+        quantity: line.quantity,
+        unit_price: line.unit_price,
+        line_total: line.line_total,
+      }))
+    );
+  }
 
   await supabase.from("invoice_status_logs").insert({
     organization_id: organization.id,
-    invoice_id: invoiceId,
+    invoice_id: snapshot.id,
     from_status: invoice.status,
     to_status: toStatus,
     changed_by: profile.id,
-    note: note || `Status changed from ${invoice.status} to ${toStatus}`,
+    note: note || `List snapshot: ${invoice.status} → ${toStatus}`,
   });
 
-  revalidateApp("/invoices", "/dashboard", "/accounting");
+  if (toStatus === "paid" && Number(invoice.amount_paid) < Number(invoice.total)) {
+    const remaining = Number(invoice.total) - Number(invoice.amount_paid);
+    if (remaining > 0) {
+      await supabase.from("ledger_entries").insert({
+        organization_id: organization.id,
+        entry_type: "income",
+        source: "invoice_status",
+        source_id: snapshot.id,
+        amount: remaining,
+        entry_date: new Date().toISOString().slice(0, 10),
+        description: `Marked paid · ${title}`,
+      });
+    }
+  }
+
+  await logActivity({
+    action: "invoice.status",
+    summary: `Added invoice list row "${title}" as ${toStatus}`,
+    entityType: "invoice",
+    entityId: snapshot.id,
+  });
+
+  revalidateApp("/invoices", "/dashboard", "/accounting", "/staff");
+  return { success: true, invoiceId: snapshot.id };
+}
+
+export async function logInvoicePrintAction(invoiceId: string) {
+  await logActivity({
+    action: "invoice.print",
+    summary: `Printed invoice`,
+    entityType: "invoice",
+    entityId: invoiceId,
+  });
   return { success: true };
 }
 
 export async function upsertServiceItemAction(formData: FormData) {
   const { supabase, organization } = await requireMember();
+  const unlocked = await isAdminUnlocked();
+  if (!unlocked) return { error: "Admin unlock required" };
+
   const id = String(formData.get("id") || "");
   const categoryId = String(formData.get("category_id") || "") || null;
   if (!categoryId) return { error: "Category required" };
@@ -710,6 +974,8 @@ export async function upsertServiceItemAction(formData: FormData) {
 
 export async function deleteServiceItemAction(id: string) {
   const { supabase } = await requireMember();
+  const unlocked = await isAdminUnlocked();
+  if (!unlocked) return { error: "Admin unlock required" };
   const { error } = await supabase.from("service_items").delete().eq("id", id);
   if (error) return { error: error.message };
   revalidateApp("/admin", "/invoices");
@@ -718,6 +984,8 @@ export async function deleteServiceItemAction(id: string) {
 
 export async function upsertServiceCategoryAction(formData: FormData) {
   const { supabase, organization } = await requireMember();
+  const unlocked = await isAdminUnlocked();
+  if (!unlocked) return { error: "Admin unlock required" };
   const id = String(formData.get("id") || "");
   const payload = {
     organization_id: organization.id,
@@ -737,6 +1005,8 @@ export async function upsertServiceCategoryAction(formData: FormData) {
 
 export async function deleteServiceCategoryAction(id: string) {
   const { supabase } = await requireMember();
+  const unlocked = await isAdminUnlocked();
+  if (!unlocked) return { error: "Admin unlock required" };
   const { error } = await supabase.from("service_categories").delete().eq("id", id);
   if (error) return { error: error.message };
   revalidateApp("/admin", "/invoices");
@@ -744,7 +1014,6 @@ export async function deleteServiceCategoryAction(id: string) {
 }
 
 export async function upsertPriceListItemAction(formData: FormData) {
-  // Legacy no-op kept for compatibility — prices now live on service_items
   void formData;
   return { error: "Use Admin → Items/Services to set prices" };
 }
@@ -752,6 +1021,70 @@ export async function upsertPriceListItemAction(formData: FormData) {
 export async function deletePriceListItemAction(id: string) {
   void id;
   return { error: "Use Admin → Items/Services to manage prices" };
+}
+
+export async function isAdminUnlocked() {
+  const ctx = await getOrgContext();
+  if (!ctx) return false;
+  const jar = await cookies();
+  return jar.get(adminCookieName(ctx.organization.id))?.value === "1";
+}
+
+export async function unlockAdminAction(formData: FormData) {
+  const { organization } = await requireMember();
+  const password = String(formData.get("password") || "");
+  const ok = verifyAdminPassword(
+    password,
+    organization.admin_password_hash,
+    organization.name,
+    organization.created_at
+  );
+  if (!ok) return { error: "Wrong admin password" };
+
+  const jar = await cookies();
+  jar.set(adminCookieName(organization.id), "1", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 60 * 60 * 8,
+  });
+
+  revalidateApp("/admin");
+  return { success: true };
+}
+
+export async function changeAdminPasswordAction(formData: FormData) {
+  const { supabase, organization, membership } = await requireMember();
+  if (membership.role === "staff") return { error: "Forbidden" };
+  const unlocked = await isAdminUnlocked();
+  if (!unlocked) return { error: "Admin unlock required" };
+
+  const next = String(formData.get("new_password") || "").trim();
+  if (next.length < 6) return { error: "Password min 6 characters" };
+
+  const { error } = await supabase
+    .from("organizations")
+    .update({ admin_password_hash: hashAdminPassword(next) })
+    .eq("id", organization.id);
+  if (error) return { error: error.message };
+
+  await logActivity({
+    action: "admin.password",
+    summary: "Changed admin page password",
+    entityType: "organization",
+    entityId: organization.id,
+  });
+
+  revalidateApp("/admin");
+  return { success: true };
+}
+
+export async function getDefaultAdminPasswordHint() {
+  const ctx = await getOrgContext();
+  if (!ctx) return "";
+  if (ctx.organization.admin_password_hash) return "(custom password set)";
+  return defaultAdminPassword(ctx.organization.name, ctx.organization.created_at);
 }
 
 export async function signOutAction() {

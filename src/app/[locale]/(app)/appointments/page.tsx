@@ -142,6 +142,9 @@ export default async function AppointmentsPage({
             empty: t("empty"),
             prev: t("prev"),
             next: t("next"),
+            timetable: t("timetable"),
+            occupied: t("occupied"),
+            free: t("free"),
           }}
         />
       </div>

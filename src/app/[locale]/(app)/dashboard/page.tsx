@@ -5,6 +5,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { Link } from "@/i18n/navigation";
 import { startOfDay, endOfDay } from "date-fns";
+import { DayHourTimetable } from "@/components/DayHourTimetable";
+import { DashboardAiPanel } from "@/components/DashboardAiPanel";
 
 export default async function DashboardPage({
   params,
@@ -25,6 +27,8 @@ export default async function DashboardPage({
     { count: unpaidCount },
     { data: products },
     { data: recentInvoices },
+    { data: ledger },
+    { count: lhdnPending },
   ] = await Promise.all([
     supabase
       .from("customers")
@@ -42,6 +46,12 @@ export default async function DashboardPage({
       .eq("organization_id", orgId)
       .order("created_at", { ascending: false })
       .limit(5),
+    supabase.from("ledger_entries").select("entry_type, amount").eq("organization_id", orgId),
+    supabase
+      .from("invoices")
+      .select("*", { count: "exact", head: true })
+      .eq("organization_id", orgId)
+      .in("lhdn_status", ["not_submitted", "pending", "rejected"]),
   ]);
 
   let appointmentsToday = 0;
@@ -50,8 +60,10 @@ export default async function DashboardPage({
     id: string;
     title: string;
     starts_at: string;
+    ends_at: string;
     customers?: { name: string } | null;
   }> = [];
+  let todayAppts: typeof upcoming = [];
 
   if (niche === "clinic") {
     const { count } = await supabase
@@ -70,6 +82,23 @@ export default async function DashboardPage({
       .order("starts_at", { ascending: true })
       .limit(5);
     upcoming = data || [];
+
+    const { data: todayData } = await supabase
+      .from("appointments")
+      .select("id, title, starts_at, ends_at, customers(name)")
+      .eq("organization_id", orgId)
+      .gte("starts_at", startOfDay(now).toISOString())
+      .lte("starts_at", endOfDay(now).toISOString())
+      .order("starts_at", { ascending: true });
+    todayAppts = (todayData || []).map((a) => ({
+      id: a.id,
+      title: a.title,
+      starts_at: a.starts_at,
+      ends_at: a.ends_at,
+      customers: Array.isArray(a.customers)
+        ? a.customers[0] || null
+        : a.customers,
+    }));
   } else {
     const { data: paidToday } = await supabase
       .from("payments")
@@ -83,12 +112,43 @@ export default async function DashboardPage({
   const lowStockCount =
     products?.filter((p) => p.quantity <= p.low_stock_threshold).length || 0;
 
+  const income = (ledger || [])
+    .filter((e) => e.entry_type === "income")
+    .reduce((s, e) => s + Number(e.amount), 0);
+  const expense = (ledger || [])
+    .filter((e) => e.entry_type === "expense")
+    .reduce((s, e) => s + Number(e.amount), 0);
+
   return (
     <div className="stack" style={{ gap: "1.25rem" }}>
-      <PageHeader
-        title={`${t("welcome")}, ${ctx.profile.full_name || ctx.organization.name}`}
-        subtitle={ctx.organization.name}
-      />
+      <div
+        className="row"
+        style={{
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: "1rem",
+          flexWrap: "wrap",
+        }}
+      >
+        <PageHeader
+          title={`${t("welcome")}, ${ctx.profile.full_name || ctx.organization.name}`}
+          subtitle={ctx.organization.name}
+        />
+        <DashboardAiPanel
+          title={t("aiTitle")}
+          data={{
+            niche,
+            patients: customerCount || 0,
+            unpaidInvoices: unpaidCount || 0,
+            lowStock: lowStockCount,
+            income,
+            expense,
+            appointmentsToday,
+            lhdnPending: lhdnPending || 0,
+            orgHasTin: Boolean(ctx.organization.tin),
+          }}
+        />
+      </div>
 
       <div className="grid-kpi">
         {niche === "clinic" ? (
@@ -135,6 +195,18 @@ export default async function DashboardPage({
         )}
       </div>
 
+      {niche === "clinic" ? (
+        <DayHourTimetable
+          date={now}
+          appointments={todayAppts}
+          labels={{
+            timetable: t("miniTimetable"),
+            occupied: t("occupied"),
+            free: t("free"),
+          }}
+        />
+      ) : null}
+
       <div
         style={{
           display: "grid",
@@ -156,7 +228,12 @@ export default async function DashboardPage({
               <tbody>
                 {(recentInvoices || []).map((inv) => (
                   <tr key={inv.id}>
-                    <td>{inv.invoice_number}</td>
+                    <td>
+                      <div>{inv.title || inv.invoice_number}</div>
+                      <div className="muted" style={{ fontSize: "0.8rem" }}>
+                        {formatDateTime(inv.created_at)}
+                      </div>
+                    </td>
                     <td>
                       <span className="badge">{inv.status}</span>
                     </td>

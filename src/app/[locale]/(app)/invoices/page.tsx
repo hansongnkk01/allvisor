@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { ActionForm } from "@/components/ActionForm";
 import { MultiLineInvoiceForm } from "@/components/MultiLineInvoiceForm";
 import { createInvoiceAction, recordPaymentAction } from "@/app/actions";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDateTime } from "@/lib/utils";
 import type { ServiceItem } from "@/lib/types";
 
 export default async function InvoicesPage({
@@ -45,6 +45,17 @@ export default async function InvoicesPage({
       <PageHeader title={t("title")} />
 
       <div className="surface" style={{ padding: "1.25rem" }}>
+        <h3 style={{ marginTop: 0 }}>{t("howItWorksTitle")}</h3>
+        <div className="stack" style={{ gap: "0.55rem" }}>
+          <p style={{ margin: 0 }}>{t("howNumber")}</p>
+          <p style={{ margin: 0 }}>{t("howName")}</p>
+          <p className="muted" style={{ margin: 0, fontSize: "0.9rem" }}>
+            {t("howStatus")}
+          </p>
+        </div>
+      </div>
+
+      <div className="surface" style={{ padding: "1.25rem" }}>
         <h3 style={{ marginTop: 0 }}>{t("add")}</h3>
         <MultiLineInvoiceForm
           customers={customers || []}
@@ -80,6 +91,7 @@ export default async function InvoicesPage({
                 <th>{t("status")}</th>
                 <th>{t("total")}</th>
                 <th>{t("paid")}</th>
+                <th>{t("createdAt")}</th>
                 <th>{t("actions")}</th>
                 <th>{t("recordPayment")}</th>
               </tr>
@@ -90,7 +102,7 @@ export default async function InvoicesPage({
                   <td>
                     <div>{inv.title || inv.invoice_number}</div>
                     <div className="muted" style={{ fontSize: "0.8rem" }}>
-                      {inv.invoice_number} · {formatDate(inv.issue_date)}
+                      {inv.invoice_number}
                     </div>
                   </td>
                   <td>{inv.customers?.name || "—"}</td>
@@ -99,8 +111,13 @@ export default async function InvoicesPage({
                   </td>
                   <td>{formatCurrency(Number(inv.total))}</td>
                   <td>{formatCurrency(Number(inv.amount_paid))}</td>
+                  <td>{formatDateTime(inv.created_at)}</td>
                   <td>
-                    <Link href={`/invoices/${inv.id}`} className="btn btn-soft" style={{ padding: "0.35rem 0.7rem" }}>
+                    <Link
+                      href={`/invoices/${inv.id}`}
+                      className="btn btn-soft"
+                      style={{ padding: "0.35rem 0.7rem" }}
+                    >
                       {inv.status === "paid" ? t("viewPrint") : t("view")}
                     </Link>
                   </td>
@@ -122,7 +139,11 @@ export default async function InvoicesPage({
                           <option value="transfer">transfer</option>
                           <option value="ewallet">ewallet</option>
                         </select>
-                        <button type="submit" className="btn btn-soft" style={{ padding: "0.45rem 0.8rem" }}>
+                        <button
+                          type="submit"
+                          className="btn btn-soft"
+                          style={{ padding: "0.45rem 0.8rem" }}
+                        >
                           Pay
                         </button>
                       </ActionForm>
@@ -134,7 +155,7 @@ export default async function InvoicesPage({
               ))}
               {!invoices?.length ? (
                 <tr>
-                  <td colSpan={7} className="muted">
+                  <td colSpan={8} className="muted">
                     {t("empty")}
                   </td>
                 </tr>

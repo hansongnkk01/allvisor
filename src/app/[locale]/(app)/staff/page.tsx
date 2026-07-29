@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { ActionForm } from "@/components/ActionForm";
 import { addStaffAction } from "@/app/actions";
+import { formatDateTime } from "@/lib/utils";
 
 export default async function StaffPage({
   params,
@@ -17,19 +18,28 @@ export default async function StaffPage({
   const canManage = ctx.membership.role === "owner" || ctx.membership.role === "admin";
   const supabase = await createClient();
 
-  const { data: members } = await supabase
-    .from("memberships")
-    .select("*, profiles(full_name, email)")
-    .eq("organization_id", ctx.organization.id)
-    .order("created_at");
+  const [{ data: members }, { data: activities }] = await Promise.all([
+    supabase
+      .from("memberships")
+      .select("*, profiles(full_name, email)")
+      .eq("organization_id", ctx.organization.id)
+      .order("created_at"),
+    supabase
+      .from("activity_logs")
+      .select("*")
+      .eq("organization_id", ctx.organization.id)
+      .order("created_at", { ascending: false })
+      .limit(80),
+  ]);
 
   return (
     <div className="stack" style={{ gap: "1.25rem" }}>
-      <PageHeader title={t("title")} />
+      <PageHeader title={t("title")} subtitle={t("subtitle")} />
 
       {canManage ? (
         <div className="surface" style={{ padding: "1.25rem" }}>
           <h3 style={{ marginTop: 0 }}>{t("add")}</h3>
+          <p className="muted">{t("accountHint")}</p>
           <ActionForm action={addStaffAction} className="stack">
             <div
               style={{
@@ -70,6 +80,7 @@ export default async function StaffPage({
       )}
 
       <div className="surface" style={{ padding: "1.25rem" }}>
+        <h3 style={{ marginTop: 0 }}>{t("members")}</h3>
         <div className="table-wrap">
           <table className="data">
             <thead>
@@ -77,6 +88,7 @@ export default async function StaffPage({
                 <th>{t("fullName")}</th>
                 <th>{t("email")}</th>
                 <th>{t("role")}</th>
+                <th>{t("accountType")}</th>
               </tr>
             </thead>
             <tbody>
@@ -87,17 +99,45 @@ export default async function StaffPage({
                   <td>
                     <span className="badge">{m.role}</span>
                   </td>
+                  <td>
+                    <span className="badge">allvisor-staff</span>
+                  </td>
                 </tr>
               ))}
               {!members?.length ? (
                 <tr>
-                  <td colSpan={3} className="muted">
+                  <td colSpan={4} className="muted">
                     {t("empty")}
                   </td>
                 </tr>
               ) : null}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <div className="surface" style={{ padding: "1.25rem" }}>
+        <h3 style={{ marginTop: 0 }}>{t("activity")}</h3>
+        <p className="muted">{t("activityHint")}</p>
+        <div className="stack" style={{ gap: "0.65rem" }}>
+          {(activities || []).map((a) => (
+            <div
+              key={a.id}
+              style={{
+                borderBottom: "1px solid var(--line)",
+                paddingBottom: 8,
+              }}
+            >
+              <div>
+                <strong>{a.actor_name || "Staff"}</strong>
+                <span className="muted"> · {a.summary}</span>
+              </div>
+              <div className="muted" style={{ fontSize: "0.8rem" }}>
+                {formatDateTime(a.created_at)} · {a.action}
+              </div>
+            </div>
+          ))}
+          {!activities?.length ? <p className="muted">{t("noActivity")}</p> : null}
         </div>
       </div>
     </div>

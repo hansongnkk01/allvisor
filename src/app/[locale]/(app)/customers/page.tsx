@@ -28,6 +28,7 @@ export default async function CustomersPage({
     name: t("name"),
     email: t("email"),
     phone: t("phone"),
+    ic: t("ic"),
     notes: t("notes"),
     save: t("save"),
     delete: t("delete"),
@@ -54,6 +55,10 @@ export default async function CustomersPage({
               <input name="name" required className="input" />
             </div>
             <div className="field">
+              <label>{t("ic")}</label>
+              <input name="ic_number" className="input" placeholder="900101-14-5678" />
+            </div>
+            <div className="field">
               <label>{t("email")}</label>
               <input name="email" type="email" className="input" />
             </div>
@@ -78,6 +83,7 @@ export default async function CustomersPage({
             <thead>
               <tr>
                 <th>{t("name")}</th>
+                <th>{t("ic")}</th>
                 <th>{t("phone")}</th>
                 <th>{t("email")}</th>
                 <th />
@@ -89,7 +95,7 @@ export default async function CustomersPage({
               ))}
               {!customers?.length ? (
                 <tr>
-                  <td colSpan={4} className="muted">
+                  <td colSpan={5} className="muted">
                     {t("empty")}
                   </td>
                 </tr>

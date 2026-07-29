@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { ActionForm } from "@/components/ActionForm";
 import { adjustStockAction, upsertProductAction } from "@/app/actions";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatDateTime } from "@/lib/utils";
 
 export default async function InventoryPage({
   params,
@@ -20,11 +20,16 @@ export default async function InventoryPage({
     .from("products")
     .select("*")
     .eq("organization_id", ctx.organization.id)
-    .order("name");
+    .order("created_at", { ascending: false });
+
+  const isClinic = ctx.organization.niche === "clinic";
 
   return (
     <div className="stack" style={{ gap: "1.25rem" }}>
-      <PageHeader title={t("title")} />
+      <PageHeader
+        title={t("title")}
+        subtitle={isClinic ? t("clinicSubtitle") : t("retailSubtitle")}
+      />
 
       <div className="surface" style={{ padding: "1.25rem" }}>
         <h3 style={{ marginTop: 0 }}>{t("add")}</h3>
@@ -38,7 +43,12 @@ export default async function InventoryPage({
           >
             <div className="field">
               <label>{t("name")}</label>
-              <input name="name" required className="input" />
+              <input
+                name="name"
+                required
+                className="input"
+                placeholder={isClinic ? "Paracetamol 500mg" : undefined}
+              />
             </div>
             <div className="field">
               <label>{t("sku")}</label>
@@ -76,6 +86,7 @@ export default async function InventoryPage({
                 <th>{t("sku")}</th>
                 <th>{t("price")}</th>
                 <th>{t("qty")}</th>
+                <th>{t("addedAt")}</th>
                 <th>{t("adjust")}</th>
               </tr>
             </thead>
@@ -91,6 +102,7 @@ export default async function InventoryPage({
                   <td>{p.sku || "—"}</td>
                   <td>{formatCurrency(Number(p.unit_price))}</td>
                   <td>{p.quantity}</td>
+                  <td>{formatDateTime(p.created_at)}</td>
                   <td>
                     <ActionForm action={adjustStockAction} className="row">
                       <input type="hidden" name="product_id" value={p.id} />
@@ -106,7 +118,11 @@ export default async function InventoryPage({
                         className="input"
                         style={{ width: 80 }}
                       />
-                      <button type="submit" className="btn btn-ghost" style={{ padding: "0.45rem 0.8rem" }}>
+                      <button
+                        type="submit"
+                        className="btn btn-ghost"
+                        style={{ padding: "0.45rem 0.8rem" }}
+                      >
                         OK
                       </button>
                     </ActionForm>
@@ -115,7 +131,7 @@ export default async function InventoryPage({
               ))}
               {!products?.length ? (
                 <tr>
-                  <td colSpan={5} className="muted">
+                  <td colSpan={6} className="muted">
                     {t("empty")}
                   </td>
                 </tr>

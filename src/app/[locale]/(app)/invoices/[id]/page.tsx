@@ -20,26 +20,20 @@ export default async function InvoiceDetailPage({
   const ctx = await requireOrg(locale);
   const supabase = await createClient();
 
-  const [{ data: invoice }, { data: lines }, { data: payments }, { data: logs }] =
-    await Promise.all([
-      supabase
-        .from("invoices")
-        .select("*, customers(name, phone, email)")
-        .eq("id", id)
-        .eq("organization_id", ctx.organization.id)
-        .maybeSingle(),
-      supabase.from("invoice_lines").select("*").eq("invoice_id", id).order("id"),
-      supabase
-        .from("payments")
-        .select("*")
-        .eq("invoice_id", id)
-        .order("paid_at", { ascending: false }),
-      supabase
-        .from("invoice_status_logs")
-        .select("*, profiles(full_name, email)")
-        .eq("invoice_id", id)
-        .order("created_at", { ascending: false }),
-    ]);
+  const [{ data: invoice }, { data: lines }, { data: payments }] = await Promise.all([
+    supabase
+      .from("invoices")
+      .select("*, customers(name, phone, email)")
+      .eq("id", id)
+      .eq("organization_id", ctx.organization.id)
+      .maybeSingle(),
+    supabase.from("invoice_lines").select("*").eq("invoice_id", id).order("id"),
+    supabase
+      .from("payments")
+      .select("*")
+      .eq("invoice_id", id)
+      .order("paid_at", { ascending: false }),
+  ]);
 
   if (!invoice) {
     return (
@@ -58,13 +52,15 @@ export default async function InvoiceDetailPage({
     <div className="stack" style={{ gap: "1.25rem" }}>
       <PageHeader
         title={invoice.title || invoice.invoice_number}
-        subtitle={invoice.invoice_number}
+        subtitle={`${invoice.invoice_number} · ${formatDateTime(invoice.created_at)}`}
         actions={
           <div className="row no-print">
             <Link href="/invoices" className="btn btn-ghost">
               {t("back")}
             </Link>
-            {canPrint ? <PrintInvoiceButton label={t("print")} /> : null}
+            {canPrint ? (
+              <PrintInvoiceButton label={t("print")} invoiceId={invoice.id} />
+            ) : null}
           </div>
         }
       />
@@ -84,6 +80,9 @@ export default async function InvoiceDetailPage({
             <div className="badge">{invoice.status}</div>
             <div style={{ marginTop: 8, fontWeight: 700 }}>{invoice.invoice_number}</div>
             <div className="muted">{formatDate(invoice.issue_date)}</div>
+            <div className="muted" style={{ fontSize: "0.85rem" }}>
+              {formatDateTime(invoice.created_at)}
+            </div>
           </div>
         </div>
 
@@ -190,32 +189,6 @@ export default async function InvoiceDetailPage({
           </div>
         ) : (
           <p className="muted">{t("noPayments")}</p>
-        )}
-      </div>
-
-      <div className="surface no-print" style={{ padding: "1.25rem" }}>
-        <h3 style={{ marginTop: 0 }}>{t("statusHistory")}</h3>
-        {(logs || []).length ? (
-          <div className="stack" style={{ gap: "0.65rem" }}>
-            {logs!.map((log) => (
-              <div key={log.id} style={{ borderBottom: "1px solid var(--line)", paddingBottom: 8 }}>
-                <div>
-                  <span className="badge">{log.from_status || "—"}</span>
-                  {" → "}
-                  <span className="badge">{log.to_status}</span>
-                </div>
-                <div className="muted" style={{ fontSize: "0.85rem" }}>
-                  {formatDateTime(log.created_at)}
-                  {log.profiles?.full_name || log.profiles?.email
-                    ? ` · ${log.profiles.full_name || log.profiles.email}`
-                    : ""}
-                </div>
-                {log.note ? <div style={{ fontSize: "0.9rem" }}>{log.note}</div> : null}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="muted">{t("noHistory")}</p>
         )}
       </div>
     </div>

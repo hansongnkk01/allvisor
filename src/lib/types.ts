@@ -44,6 +44,7 @@ export interface Organization {
   subscription_plan: SubscriptionPlan;
   subscription_status: SubscriptionStatus;
   trial_ends_at: string | null;
+  admin_password_hash?: string | null;
   created_at: string;
 }
 
@@ -63,7 +64,21 @@ export interface Customer {
   name: string;
   email: string | null;
   phone: string | null;
+  ic_number: string | null;
   notes: string | null;
+  created_at: string;
+}
+
+export interface ActivityLog {
+  id: string;
+  organization_id: string;
+  actor_id: string | null;
+  actor_name: string | null;
+  action: string;
+  entity_type: string | null;
+  entity_id: string | null;
+  summary: string;
+  meta: Record<string, unknown> | null;
   created_at: string;
 }
 

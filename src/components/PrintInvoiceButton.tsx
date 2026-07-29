@@ -1,8 +1,25 @@
 "use client";
 
-export function PrintInvoiceButton({ label }: { label: string }) {
+import { logInvoicePrintAction } from "@/app/actions";
+
+export function PrintInvoiceButton({
+  label,
+  invoiceId,
+}: {
+  label: string;
+  invoiceId?: string;
+}) {
   return (
-    <button type="button" className="btn btn-primary" onClick={() => window.print()}>
+    <button
+      type="button"
+      className="btn btn-primary"
+      onClick={() => {
+        if (invoiceId) {
+          void logInvoicePrintAction(invoiceId);
+        }
+        window.print();
+      }}
+    >
       {label}
     </button>
   );

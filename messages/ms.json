@@ -65,7 +65,11 @@
     "patients": "Pesakit",
     "recentInvoices": "Invois terkini",
     "upcomingAppointments": "Temujanji akan datang",
-    "quickActions": "Tindakan pantas"
+    "quickActions": "Tindakan pantas",
+    "aiTitle": "Tips prestasi AI",
+    "miniTimetable": "Jadual hari ini",
+    "occupied": "Ditempah",
+    "free": "Kosong"
   },
   "Customers": {
     "title": "Pelanggan",
@@ -74,6 +78,7 @@
     "name": "Nama",
     "email": "Emel",
     "phone": "Telefon",
+    "ic": "No. IC",
     "notes": "Nota",
     "empty": "Belum ada rekod.",
     "save": "Simpan",
@@ -100,11 +105,14 @@
     "today": "Hari ini",
     "prev": "Sebelum",
     "next": "Seterus",
-    "delete": "Padam"
+    "delete": "Padam",
+    "timetable": "Jadual jam",
+    "occupied": "Diambil",
+    "free": "Kosong"
   },
   "Inventory": {
     "title": "Inventori",
-    "add": "Tambah produk",
+    "add": "Tambah item",
     "name": "Nama",
     "sku": "SKU",
     "price": "Harga",
@@ -112,8 +120,11 @@
     "qty": "Kuantiti",
     "lowStock": "Ambang rendah",
     "adjust": "Laraskan stok",
-    "empty": "Tiada produk lagi.",
-    "save": "Simpan"
+    "empty": "Tiada item lagi.",
+    "save": "Simpan",
+    "addedAt": "Ditambah pada",
+    "clinicSubtitle": "Stok klinik: ubat, consumable dan bekalan.",
+    "retailSubtitle": "Stok kedai untuk jualan."
   },
   "POS": {
     "title": "POS / Jualan pantas",
@@ -154,7 +165,12 @@
     "customNumberHint": "Kosongkan untuk auto",
     "view": "Lihat",
     "viewPrint": "Lihat / Cetak",
-    "actions": "Tindakan"
+    "actions": "Tindakan",
+    "createdAt": "Ditambah pada",
+    "howItWorksTitle": "Cara no. invois & nama berfungsi (demo)",
+    "howNumber": "No. invois = ID unik sistem (auto macam INV-2026-00001, atau nombor custom anda). Setiap baris perlu no. unik.",
+    "howName": "Nama invois = label mesra untuk staf/pesakit (cth. \"Konsultasi Ahmad\"). Nama sama boleh muncul lebih dari sekali.",
+    "howStatus": "Bila anda tukar status (Paid / Unpaid), Allvisor tambah baris baru dalam senarai dengan nama invois sama dan status baru — jadi anda nampak kedua-dua Paid dan Unpaid dalam list."
   },
   "InvoiceDetail": {
     "back": "Kembali ke invois",
@@ -169,20 +185,29 @@
     "tax": "Cukai",
     "total": "Jumlah",
     "paid": "Dibayar",
-    "editStatus": "Edit status",
-    "editStatusHint": "Rekod bayaran kekal walaupun status ditukar (cth. paid → unpaid).",
+    "editStatus": "Tukar status (tambah baris senarai)",
+    "editStatusHint": "Pilih status baru akan tambah baris invois lain dalam list dengan nama sama dan status baru (cth. satu Paid + satu Unpaid).",
     "statusNote": "Sebab / nota (pilihan)",
-    "saveStatus": "Kemaskini status",
+    "saveStatus": "Tambah baris status",
     "payments": "Rekod bayaran",
     "noPayments": "Tiada bayaran direkod.",
-    "statusHistory": "Sejarah tukar status",
-    "noHistory": "Belum ada perubahan status.",
     "date": "Tarikh",
     "method": "Kaedah"
   },
   "Admin": {
     "title": "Admin",
-    "subtitle": "Urus kategori dan perkhidmatan/item dengan harga tetap.",
+    "subtitle": "Urus kategori, perkhidmatan/item, pelan dan kata laluan admin.",
+    "lockSubtitle": "Masukkan kata laluan admin untuk teruskan",
+    "lockHint": "Halaman Admin dikunci. Kata laluan default = nama klinik/bisnes (tiada space) + tahun akaun dicipta.",
+    "defaultPasswordHelp": "Kata laluan default",
+    "password": "Kata laluan admin",
+    "unlock": "Buka admin",
+    "securityTitle": "Kata laluan admin",
+    "newPassword": "Kata laluan baru",
+    "changePassword": "Tukar kata laluan",
+    "upgrade": "Naik taraf pelan",
+    "plan": "Pelan",
+    "status": "Status",
     "categoriesTitle": "Kategori",
     "categoriesHint": "Cipta kategori dulu. Penerangan tidak wajib.",
     "categoryName": "Nama kategori",
@@ -201,38 +226,56 @@
     "delete": "Padam"
   },
   "Accounting": {
-    "title": "Perakaunan ringkas",
-    "income": "Pendapatan",
-    "expense": "Perbelanjaan",
+    "title": "Perakaunan klinik",
+    "subtitle": "Jejak semua cash in dan cash out klinik.",
+    "income": "Pendapatan (cash in)",
+    "expense": "Perbelanjaan (cash out)",
     "profit": "Untung / Rugi",
-    "addExpense": "Tambah perbelanjaan",
+    "cashFlow": "Aliran tunai bersih",
+    "addExpense": "Tambah cash out",
+    "addIncome": "Tambah cash in",
     "category": "Kategori",
     "description": "Penerangan",
     "amount": "Jumlah",
     "date": "Tarikh",
     "save": "Simpan",
-    "empty": "Tiada perbelanjaan lagi."
+    "empty": "Tiada perbelanjaan lagi.",
+    "cashFlowLedger": "Ledger aliran tunai penuh",
+    "emptyLedger": "Belum ada entri aliran tunai.",
+    "type": "Jenis",
+    "source": "Sumber",
+    "recordedAt": "Direkod pada",
+    "expenseList": "Rekod perbelanjaan"
   },
   "Lhdn": {
     "title": "e-Invois LHDN",
-    "subtitle": "Hantar invois ke MyInvois (sandbox) dan jejak status.",
+    "subtitle": "Disambung ke API MyInvois (sandbox/production melalui LHDN_CLIENT_ID & LHDN_CLIENT_SECRET).",
     "tin": "TIN syarikat",
     "saveSettings": "Simpan tetapan LHDN",
     "submissions": "Penghantaran",
     "status": "Status",
     "uuid": "UUID",
-    "lockedPlan": "Pelan anda tidak termasuk e-Invois. Naik taraf untuk membuka.",
-    "empty": "Belum ada penghantaran."
+    "lockedPlan": "Pelan anda tidak termasuk e-Invois. Naik taraf di Admin untuk membuka.",
+    "empty": "Belum ada penghantaran.",
+    "liveConnected": "Kredensial MyInvois dikesan — penghantaran pergi ke API LHDN sebenar.",
+    "demoMode": "Mod demo: tetapkan LHDN_CLIENT_ID dan LHDN_CLIENT_SECRET dalam env untuk MyInvois sebenar."
   },
   "Staff": {
-    "title": "Staf & peranan",
+    "title": "Staf & aktiviti",
+    "subtitle": "Setiap staf dapat login Allvisor staff. Semua tindakan dijejaki di sini.",
     "email": "Emel staf",
     "fullName": "Nama",
     "password": "Kata laluan sementara",
     "role": "Peranan",
     "add": "Tambah staf",
     "empty": "Tiada staf selain anda.",
-    "ownerOnly": "Hanya owner/admin boleh urus staf."
+    "ownerOnly": "Hanya owner/admin boleh urus staf.",
+    "accountHint": "Mencipta akaun Allvisor staff sebenar (emel + kata laluan login).",
+    "members": "Ahli pasukan",
+    "accountType": "Akaun",
+    "activity": "Log aktiviti staf",
+    "activityHint": "Siapa daftar pesakit, tambah/buang stok, cetak invois, tukar status, dan lain-lain.",
+    "noActivity": "Belum ada aktiviti."
   },
   "Settings": {
     "title": "Tetapan perniagaan",
@@ -244,7 +287,8 @@
     "plan": "Pelan",
     "status": "Status langganan",
     "save": "Simpan",
-    "upgrade": "Naik taraf pelan"
+    "upgrade": "Naik taraf pelan",
+    "upgradeInAdmin": "Naik taraf pelan hanya ada di Admin (dilindungi kata laluan)."
   },
   "Common": {
     "loading": "Memuatkan…",

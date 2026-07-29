@@ -32,11 +32,19 @@ export default async function LhdnPage({
     <div className="stack" style={{ gap: "1.25rem" }}>
       <PageHeader title={t("title")} subtitle={t("subtitle")} />
 
+      <div className="surface" style={{ padding: "1rem 1.25rem" }}>
+        <p style={{ margin: 0 }}>
+          {process.env.LHDN_CLIENT_ID && process.env.LHDN_CLIENT_SECRET
+            ? t("liveConnected")
+            : t("demoMode")}
+        </p>
+      </div>
+
       {!allowed ? (
         <div className="surface" style={{ padding: "1.25rem" }}>
           <p>{t("lockedPlan")}</p>
-          <Link href="/settings" className="btn btn-primary">
-            Settings
+          <Link href="/admin" className="btn btn-primary">
+            Admin
           </Link>
         </div>
       ) : (

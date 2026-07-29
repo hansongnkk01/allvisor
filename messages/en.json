@@ -65,7 +65,11 @@
     "patients": "Patients",
     "recentInvoices": "Recent invoices",
     "upcomingAppointments": "Upcoming appointments",
-    "quickActions": "Quick actions"
+    "quickActions": "Quick actions",
+    "aiTitle": "AI performance tips",
+    "miniTimetable": "Today timetable",
+    "occupied": "Booked",
+    "free": "Free"
   },
   "Customers": {
     "title": "Customers",
@@ -74,6 +78,7 @@
     "name": "Name",
     "email": "Email",
     "phone": "Phone",
+    "ic": "IC number",
     "notes": "Notes",
     "empty": "No records yet.",
     "save": "Save",
@@ -100,7 +105,10 @@
     "today": "Today",
     "prev": "Prev",
     "next": "Next",
-    "delete": "Delete"
+    "delete": "Delete",
+    "timetable": "Hour timetable",
+    "occupied": "Occupied",
+    "free": "Free"
   },
   "Invoices": {
     "title": "Invoices",
@@ -131,7 +139,12 @@
     "customNumberHint": "Leave blank for auto",
     "view": "View",
     "viewPrint": "View / Print",
-    "actions": "Actions"
+    "actions": "Actions",
+    "createdAt": "Added at",
+    "howItWorksTitle": "How invoice no. & name work (demo)",
+    "howNumber": "Invoice no. = unique system ID (auto like INV-2026-00001, or your custom number). Each row needs a unique number.",
+    "howName": "Invoice name = friendly label for staff/patients (e.g. \"Consultation Ahmad\"). Same name can appear more than once.",
+    "howStatus": "When you change status (Paid / Unpaid), Allvisor adds a new list row with the same invoice name and the new status — so you can see both Paid and Unpaid entries in the list."
   },
   "InvoiceDetail": {
     "back": "Back to invoices",
@@ -146,20 +159,29 @@
     "tax": "Tax",
     "total": "Total",
     "paid": "Paid",
-    "editStatus": "Edit status",
-    "editStatusHint": "Payment records stay even if you change status (e.g. paid → unpaid).",
+    "editStatus": "Change status (adds list row)",
+    "editStatusHint": "Choosing a new status adds another invoice row in the list with the same name and the new status (e.g. one Paid + one Unpaid).",
     "statusNote": "Reason / note (optional)",
-    "saveStatus": "Update status",
+    "saveStatus": "Add status row",
     "payments": "Payment records",
     "noPayments": "No payments recorded.",
-    "statusHistory": "Status change history",
-    "noHistory": "No status changes yet.",
     "date": "Date",
     "method": "Method"
   },
   "Admin": {
     "title": "Admin",
-    "subtitle": "Manage categories and services/items with fixed prices.",
+    "subtitle": "Manage categories, services/items, plans and admin password.",
+    "lockSubtitle": "Enter admin password to continue",
+    "lockHint": "Admin page is locked. Default password = clinic/business name (no spaces) + year the account was created.",
+    "defaultPasswordHelp": "Default password",
+    "password": "Admin password",
+    "unlock": "Unlock admin",
+    "securityTitle": "Admin password",
+    "newPassword": "New password",
+    "changePassword": "Change password",
+    "upgrade": "Upgrade plan",
+    "plan": "Plan",
+    "status": "Status",
     "categoriesTitle": "Categories",
     "categoriesHint": "Create categories first. Description is optional.",
     "categoryName": "Category name",
@@ -179,7 +201,7 @@
   },
   "Inventory": {
     "title": "Inventory",
-    "add": "Add product",
+    "add": "Add item",
     "name": "Name",
     "sku": "SKU",
     "price": "Price",
@@ -187,8 +209,11 @@
     "qty": "Quantity",
     "lowStock": "Low threshold",
     "adjust": "Adjust stock",
-    "empty": "No products yet.",
-    "save": "Save"
+    "empty": "No items yet.",
+    "save": "Save",
+    "addedAt": "Added at",
+    "clinicSubtitle": "Clinic stock: medicines, consumables and supplies.",
+    "retailSubtitle": "Shop stock items for sale."
   },
   "POS": {
     "title": "POS / Quick sale",
@@ -201,38 +226,56 @@
     "total": "Total"
   },
   "Accounting": {
-    "title": "Light accounting",
-    "income": "Income",
-    "expense": "Expenses",
+    "title": "Clinic accounting",
+    "subtitle": "Track all cash in and cash out for the clinic.",
+    "income": "Income (cash in)",
+    "expense": "Expenses (cash out)",
     "profit": "Profit / Loss",
-    "addExpense": "Add expense",
+    "cashFlow": "Net cash flow",
+    "addExpense": "Add cash out",
+    "addIncome": "Add cash in",
     "category": "Category",
     "description": "Description",
     "amount": "Amount",
     "date": "Date",
     "save": "Save",
-    "empty": "No expenses yet."
+    "empty": "No expenses yet.",
+    "cashFlowLedger": "Full cash flow ledger",
+    "emptyLedger": "No cash flow entries yet.",
+    "type": "Type",
+    "source": "Source",
+    "recordedAt": "Recorded at",
+    "expenseList": "Expense records"
   },
   "Lhdn": {
     "title": "LHDN e-Invoice",
-    "subtitle": "Submit invoices to MyInvois (sandbox) and track status.",
+    "subtitle": "Connected to MyInvois API (sandbox/production via LHDN_CLIENT_ID & LHDN_CLIENT_SECRET).",
     "tin": "Company TIN",
     "saveSettings": "Save LHDN settings",
     "submissions": "Submissions",
     "status": "Status",
     "uuid": "UUID",
-    "lockedPlan": "Your plan does not include e-Invoice. Upgrade to unlock.",
-    "empty": "No submissions yet."
+    "lockedPlan": "Your plan does not include e-Invoice. Upgrade in Admin to unlock.",
+    "empty": "No submissions yet.",
+    "liveConnected": "Live MyInvois credentials detected — submissions go to real LHDN API.",
+    "demoMode": "Demo mode: set LHDN_CLIENT_ID and LHDN_CLIENT_SECRET in env to use real MyInvois."
   },
   "Staff": {
-    "title": "Staff & roles",
+    "title": "Staff & activity",
+    "subtitle": "Each staff gets an Allvisor staff login. All actions are tracked here.",
     "email": "Staff email",
     "fullName": "Name",
     "password": "Temporary password",
     "role": "Role",
     "add": "Add staff",
     "empty": "No staff besides you.",
-    "ownerOnly": "Only owner/admin can manage staff."
+    "ownerOnly": "Only owner/admin can manage staff.",
+    "accountHint": "Creates a real Allvisor staff account (login email + password).",
+    "members": "Team members",
+    "accountType": "Account",
+    "activity": "Staff activity log",
+    "activityHint": "Who registered patients, added/removed stock, printed invoices, changed status, and more.",
+    "noActivity": "No activity yet."
   },
   "Settings": {
     "title": "Business settings",
@@ -244,7 +287,8 @@
     "plan": "Plan",
     "status": "Subscription status",
     "save": "Save",
-    "upgrade": "Upgrade plan"
+    "upgrade": "Upgrade plan",
+    "upgradeInAdmin": "Upgrade plan is only available in Admin (password protected)."
   },
   "Common": {
     "loading": "Loading…",

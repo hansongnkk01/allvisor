@@ -14,6 +14,7 @@ import {
   startOfWeek,
 } from "date-fns";
 import { updateAppointmentStatusAction, deleteAppointmentAction } from "@/app/actions";
+import { DayHourTimetable } from "@/components/DayHourTimetable";
 import type { AppointmentStatus } from "@/lib/types";
 
 type Appt = {
@@ -52,6 +53,9 @@ export function AppointmentBoard({
     empty: string;
     prev: string;
     next: string;
+    timetable: string;
+    occupied: string;
+    free: string;
   };
 }) {
   const router = useRouter();
@@ -185,20 +189,37 @@ export function AppointmentBoard({
             })}
           </div>
 
-          <div className="surface" style={{ padding: "1rem" }}>
-            <h3 style={{ marginTop: 0 }}>
-              {format(selectedDay, "EEE, d MMM yyyy")}
-            </h3>
-            <AppointmentList
-              items={dayAppts}
-              labels={labels}
-              onStatus={(id, status) => {
-                refreshAfter(() => updateAppointmentStatusAction(id, status));
-              }}
-              onDelete={(id) => {
-                refreshAfter(() => deleteAppointmentAction(id));
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+              gap: "1rem",
+            }}
+          >
+            <DayHourTimetable
+              date={selectedDay}
+              appointments={dayAppts}
+              labels={{
+                timetable: labels.timetable,
+                occupied: labels.occupied,
+                free: labels.free,
               }}
             />
+            <div className="surface" style={{ padding: "1rem" }}>
+              <h3 style={{ marginTop: 0 }}>
+                {format(selectedDay, "EEE, d MMM yyyy")}
+              </h3>
+              <AppointmentList
+                items={dayAppts}
+                labels={labels}
+                onStatus={(id, status) => {
+                  refreshAfter(() => updateAppointmentStatusAction(id, status));
+                }}
+                onDelete={(id) => {
+                  refreshAfter(() => deleteAppointmentAction(id));
+                }}
+              />
+            </div>
           </div>
         </>
       ) : (

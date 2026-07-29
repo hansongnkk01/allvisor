@@ -1,10 +1,10 @@
 import type { LhdnProvider } from "./types";
 import { MyInvoisSandboxProvider } from "./sandbox";
-import { MyInvoisProductionProvider } from "./production";
+import { MyInvoisLiveProvider } from "./live";
 
 export type { LhdnInvoicePayload, LhdnProvider, LhdnSubmitResult } from "./types";
 export { MyInvoisSandboxProvider } from "./sandbox";
-export { MyInvoisProductionProvider } from "./production";
+export { MyInvoisLiveProvider } from "./live";
 
 export function getLhdnProvider(): LhdnProvider {
   const env = (process.env.LHDN_ENV || "sandbox").toLowerCase();
@@ -12,9 +12,11 @@ export function getLhdnProvider(): LhdnProvider {
     process.env.LHDN_CLIENT_ID && process.env.LHDN_CLIENT_SECRET
   );
 
-  if (env === "production" || (env !== "sandbox" && hasCreds)) {
-    return new MyInvoisProductionProvider();
+  // Real MyInvois API (sandbox or production) when credentials exist
+  if (hasCreds) {
+    return new MyInvoisLiveProvider(env === "production" ? "production" : "sandbox");
   }
 
+  // Local demo only when credentials are not configured
   return new MyInvoisSandboxProvider();
 }
