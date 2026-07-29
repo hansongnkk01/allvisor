@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import { createOrganizationAction } from "@/app/actions";
+import { createClient } from "@/lib/supabase/client";
 import { isNiche } from "@/lib/niches";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
@@ -22,6 +23,26 @@ export default function OnboardingClient() {
   const [niche, setNiche] = useState(initialNiche);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data.user) {
+        router.replace(`/login`);
+        return;
+      }
+      setCheckingAuth(false);
+    });
+  }, [router]);
+
+  if (checkingAuth) {
+    return (
+      <div style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
+        <p className="muted">…</p>
+      </div>
+    );
+  }
 
   return (
     <div

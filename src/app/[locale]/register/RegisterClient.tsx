@@ -56,7 +56,7 @@ export default function RegisterClient() {
                 const fullName = String(form.get("full_name"));
                 const selectedNiche = String(form.get("niche"));
 
-                const { error: authError } = await supabase.auth.signUp({
+                const { data, error: authError } = await supabase.auth.signUp({
                   email,
                   password,
                   options: {
@@ -71,6 +71,21 @@ export default function RegisterClient() {
                   setError(authError.message);
                   return;
                 }
+
+                // If email confirmation is ON, signUp may not create a session.
+                if (!data.session) {
+                  const { error: signInError } = await supabase.auth.signInWithPassword({
+                    email,
+                    password,
+                  });
+                  if (signInError) {
+                    setError(
+                      "Akaun dicipta. Sila confirm email dahulu, atau disable Confirm email di Supabase Auth, kemudian log masuk."
+                    );
+                    return;
+                  }
+                }
+
                 router.push(`/onboarding?niche=${selectedNiche}`);
                 router.refresh();
               } catch {
