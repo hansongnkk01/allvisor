@@ -44,27 +44,13 @@ export async function createOrganizationAction(formData: FormData) {
     return { error: "Organization already exists" };
   }
 
-  const { data: org, error: orgError } = await supabase
-    .from("organizations")
-    .insert({
-      name,
-      niche,
-      locale_default: locale,
-      subscription_plan: "starter",
-      subscription_status: "trialing",
-    })
-    .select("*")
-    .single();
-
-  if (orgError || !org) return { error: orgError?.message || "Failed to create org" };
-
-  const { error: memError } = await supabase.from("memberships").insert({
-    organization_id: org.id,
-    user_id: user.id,
-    role: "owner",
+  const { error: orgError } = await supabase.rpc("create_organization", {
+    org_name: name,
+    org_niche: niche,
+    org_locale: locale,
   });
 
-  if (memError) return { error: memError.message };
+  if (orgError) return { error: orgError.message };
 
   revalidatePath("/");
   return { success: true };
