@@ -14,6 +14,13 @@ type InsightInput = {
   orgHasTin: boolean;
 };
 
+const TIP_COLORS = [
+  { bg: "rgba(15, 118, 110, 0.08)", border: "rgba(15, 118, 110, 0.28)" },
+  { bg: "rgba(180, 83, 9, 0.08)", border: "rgba(180, 83, 9, 0.28)" },
+  { bg: "rgba(37, 99, 235, 0.08)", border: "rgba(37, 99, 235, 0.25)" },
+  { bg: "rgba(124, 58, 237, 0.08)", border: "rgba(124, 58, 237, 0.25)" },
+];
+
 function buildInsights(data: InsightInput) {
   const tips: string[] = [];
   const profit = data.income - data.expense;
@@ -63,7 +70,9 @@ function buildInsights(data: InsightInput) {
   }
 
   if (!tips.length) {
-    tips.push("Operations look stable. Keep logging every payment and stock movement for cleaner monthly reports.");
+    tips.push(
+      "Operations look stable. Keep logging every payment and stock movement for cleaner monthly reports."
+    );
   }
 
   return tips.slice(0, 4);
@@ -100,21 +109,35 @@ export function DashboardAiPanel({
       className="surface"
       style={{
         padding: "1rem 1.1rem",
-        minWidth: 260,
-        maxWidth: 340,
-        alignSelf: "start",
+        minWidth: 0,
+        flex: "1 1 280px",
+        alignSelf: "stretch",
       }}
     >
       <div className="row" style={{ justifyContent: "space-between", marginBottom: 8 }}>
         <strong>{title}</strong>
         <span className="badge">AI</span>
       </div>
-      <div className="stack" style={{ gap: "0.55rem" }}>
-        {tips.map((tip) => (
-          <p key={tip} style={{ margin: 0, fontSize: "0.9rem", lineHeight: 1.45 }}>
-            {tip}
-          </p>
-        ))}
+      <div className="stack" style={{ gap: "0.5rem" }}>
+        {tips.map((tip, i) => {
+          const color = TIP_COLORS[i % TIP_COLORS.length];
+          return (
+            <p
+              key={tip}
+              style={{
+                margin: 0,
+                fontSize: "0.86rem",
+                lineHeight: 1.45,
+                padding: "0.55rem 0.65rem",
+                borderRadius: 10,
+                background: color.bg,
+                borderLeft: `3px solid ${color.border}`,
+              }}
+            >
+              {tip}
+            </p>
+          );
+        })}
       </div>
       <p className="muted" style={{ fontSize: "0.75rem", marginTop: 10, marginBottom: 0 }}>
         Insights refresh every hour.

@@ -54,17 +54,6 @@ export default async function SettingsPage({
           </button>
         </ActionForm>
       </div>
-
-      <div className="surface" style={{ padding: "1.25rem" }}>
-        <h3 style={{ marginTop: 0 }}>{t("plan")}</h3>
-        <p className="muted">
-          {t("plan")}: <strong>{org.subscription_plan}</strong> · {t("status")}:{" "}
-          <strong>{org.subscription_status}</strong>
-        </p>
-        <p className="muted" style={{ fontSize: "0.9rem", marginBottom: 0 }}>
-          {t("upgradeInAdmin")}
-        </p>
-      </div>
     </div>
   );
 }

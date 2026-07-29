@@ -95,9 +95,7 @@ export default async function DashboardPage({
       title: a.title,
       starts_at: a.starts_at,
       ends_at: a.ends_at,
-      customers: Array.isArray(a.customers)
-        ? a.customers[0] || null
-        : a.customers,
+      customers: Array.isArray(a.customers) ? a.customers[0] || null : a.customers,
     }));
   } else {
     const { data: paidToday } = await supabase
@@ -119,21 +117,58 @@ export default async function DashboardPage({
     .filter((e) => e.entry_type === "expense")
     .reduce((s, e) => s + Number(e.amount), 0);
 
+  const kpiCards = (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr",
+        gap: "0.65rem",
+        flex: "1 1 280px",
+        minWidth: 0,
+      }}
+    >
+      {niche === "clinic" ? (
+        <div className="surface kpi" style={{ margin: 0 }}>
+          <div className="kpi-label">{t("appointmentsToday")}</div>
+          <div className="kpi-value">{appointmentsToday}</div>
+        </div>
+      ) : (
+        <div className="surface kpi" style={{ margin: 0 }}>
+          <div className="kpi-label">{t("salesToday")}</div>
+          <div className="kpi-value">{formatCurrency(salesToday)}</div>
+        </div>
+      )}
+      <div className="surface kpi" style={{ margin: 0 }}>
+        <div className="kpi-label">{t("unpaidInvoices")}</div>
+        <div className="kpi-value">{unpaidCount || 0}</div>
+      </div>
+      <div className="surface kpi" style={{ margin: 0 }}>
+        <div className="kpi-label">{niche === "clinic" ? t("patients") : t("customers")}</div>
+        <div className="kpi-value">{customerCount || 0}</div>
+      </div>
+      <div className="surface kpi" style={{ margin: 0 }}>
+        <div className="kpi-label">{t("lowStock")}</div>
+        <div className="kpi-value">{lowStockCount}</div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="stack" style={{ gap: "1.25rem" }}>
+      <PageHeader
+        title={`${t("welcome")}, ${ctx.profile.full_name || ctx.organization.name}`}
+        subtitle={ctx.organization.name}
+      />
+
       <div
-        className="row"
         style={{
-          alignItems: "flex-start",
-          justifyContent: "space-between",
-          gap: "1rem",
+          display: "flex",
           flexWrap: "wrap",
+          gap: "0.85rem",
+          alignItems: "stretch",
         }}
       >
-        <PageHeader
-          title={`${t("welcome")}, ${ctx.profile.full_name || ctx.organization.name}`}
-          subtitle={ctx.organization.name}
-        />
+        {kpiCards}
         <DashboardAiPanel
           title={t("aiTitle")}
           data={{
@@ -148,32 +183,6 @@ export default async function DashboardPage({
             orgHasTin: Boolean(ctx.organization.tin),
           }}
         />
-      </div>
-
-      <div className="grid-kpi">
-        {niche === "clinic" ? (
-          <div className="surface kpi">
-            <div className="kpi-label">{t("appointmentsToday")}</div>
-            <div className="kpi-value">{appointmentsToday}</div>
-          </div>
-        ) : (
-          <div className="surface kpi">
-            <div className="kpi-label">{t("salesToday")}</div>
-            <div className="kpi-value">{formatCurrency(salesToday)}</div>
-          </div>
-        )}
-        <div className="surface kpi">
-          <div className="kpi-label">{t("unpaidInvoices")}</div>
-          <div className="kpi-value">{unpaidCount || 0}</div>
-        </div>
-        <div className="surface kpi">
-          <div className="kpi-label">{niche === "clinic" ? t("patients") : t("customers")}</div>
-          <div className="kpi-value">{customerCount || 0}</div>
-        </div>
-        <div className="surface kpi">
-          <div className="kpi-label">{t("lowStock")}</div>
-          <div className="kpi-value">{lowStockCount}</div>
-        </div>
       </div>
 
       <div className="row">
@@ -199,6 +208,7 @@ export default async function DashboardPage({
         <DayHourTimetable
           date={now}
           appointments={todayAppts}
+          orientation="horizontal"
           labels={{
             timetable: t("miniTimetable"),
             occupied: t("occupied"),

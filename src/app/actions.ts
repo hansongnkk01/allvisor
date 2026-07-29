@@ -13,6 +13,7 @@ import {
   hashAdminPassword,
   verifyAdminPassword,
 } from "@/lib/admin-lock";
+import { canAccessAdmin, canManageStaff } from "@/lib/roles";
 import type {
   AppointmentStatus,
   InvoiceStatus,
@@ -26,6 +27,22 @@ async function requireMember() {
   if (!ctx) throw new Error("No organization");
   const supabase = await createClient();
   return { ...ctx, supabase };
+}
+
+async function requireAdminAccess() {
+  const ctx = await requireMember();
+  if (!canAccessAdmin(ctx.membership.role)) {
+    throw new Error("Admin access required");
+  }
+  return ctx;
+}
+
+async function getServiceAdmin() {
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!serviceKey || !url) return null;
+  const { createClient: createAdminClient } = await import("@supabase/supabase-js");
+  return createAdminClient(url, serviceKey);
 }
 
 function adminCookieName(orgId: string) {
@@ -69,9 +86,9 @@ export async function createOrganizationAction(formData: FormData) {
 }
 
 export async function upsertCustomerAction(formData: FormData) {
-  const { supabase, organization } = await requireMember();
+  const { supabase, organization, profile } = await requireMember();
   const id = String(formData.get("id") || "");
-  const payload = {
+  const payload: Record<string, unknown> = {
     organization_id: organization.id,
     name: String(formData.get("name") || "").trim(),
     email: String(formData.get("email") || "") || null,
@@ -80,6 +97,11 @@ export async function upsertCustomerAction(formData: FormData) {
     notes: String(formData.get("notes") || "") || null,
   };
   if (!payload.name) return { error: "Name required" };
+
+  if (!id) {
+    payload.created_by = profile.id;
+    payload.created_by_name = profile.full_name || profile.email || "Staff";
+  }
 
   const { data, error } = id
     ? await supabase.from("customers").update(payload).eq("id", id).select("id").single()
@@ -96,17 +118,28 @@ export async function upsertCustomerAction(formData: FormData) {
     entityId: data?.id || id || null,
   });
 
-  revalidateApp("/customers", "/dashboard", "/appointments", "/invoices", "/pos", "/staff");
+  revalidateApp("/customers", "/dashboard", "/appointments", "/invoices", "/pos", "/staff", "/admin");
   return { success: true };
 }
 
 export async function deleteCustomerAction(id: string) {
-  const { supabase } = await requireMember();
+  const { supabase, organization, profile } = await requireMember();
   const { data: customer } = await supabase
     .from("customers")
     .select("name")
     .eq("id", id)
     .maybeSingle();
+
+  if (customer) {
+    await supabase.from("customer_deletions").insert({
+      organization_id: organization.id,
+      customer_id: id,
+      customer_name: customer.name,
+      deleted_by: profile.id,
+      deleted_by_name: profile.full_name || profile.email || "Staff",
+    });
+  }
+
   const { error } = await supabase.from("customers").delete().eq("id", id);
   if (error) return { error: error.message };
 
@@ -117,7 +150,7 @@ export async function deleteCustomerAction(id: string) {
     entityId: id,
   });
 
-  revalidateApp("/customers", "/dashboard", "/appointments", "/invoices", "/staff");
+  revalidateApp("/customers", "/dashboard", "/appointments", "/invoices", "/staff", "/admin");
   return { success: true };
 }
 
@@ -210,6 +243,12 @@ export async function createInvoiceAction(formData: FormData) {
   const taxAmount = Number(formData.get("tax_amount") || 0);
   const customNumber = String(formData.get("invoice_number") || "").trim();
   const title = String(formData.get("title") || "").trim() || null;
+  const medicineDescription =
+    String(formData.get("medicine_description") || "").trim() || null;
+  const medicineAmount = Number(formData.get("medicine_amount") || 0);
+  const additionalDescription =
+    String(formData.get("additional_description") || "").trim() || null;
+  const additionalAmount = Number(formData.get("additional_amount") || 0);
 
   let lines: Array<{
     description: string;
@@ -245,10 +284,10 @@ export async function createInvoiceAction(formData: FormData) {
 
   if (!lines.length) return { error: "Add at least one invoice line" };
 
-  const subtotal = lines.reduce(
-    (sum, line) => sum + line.quantity * line.unit_price,
-    0
-  );
+  const subtotal =
+    lines.reduce((sum, line) => sum + line.quantity * line.unit_price, 0) +
+    (medicineAmount > 0 ? medicineAmount : 0) +
+    (additionalAmount > 0 ? additionalAmount : 0);
   const total = subtotal + taxAmount;
 
   const { count } = await supabase
@@ -272,6 +311,10 @@ export async function createInvoiceAction(formData: FormData) {
       tax_amount: taxAmount,
       total,
       amount_paid: 0,
+      medicine_description: medicineDescription,
+      medicine_amount: medicineAmount > 0 ? medicineAmount : 0,
+      additional_description: additionalDescription,
+      additional_amount: additionalAmount > 0 ? additionalAmount : 0,
     })
     .select("*")
     .single();
@@ -688,60 +731,415 @@ export async function upgradePlanAction(plan: SubscriptionPlan) {
 }
 
 export async function addStaffAction(formData: FormData) {
-  const { supabase, organization, membership } = await requireMember();
-  if (membership.role === "staff") return { error: "Forbidden" };
+  const { supabase, organization, membership, profile } = await requireMember();
+  if (!canManageStaff(membership.role)) return { error: "Only admin can add staff" };
 
-  const email = String(formData.get("email") || "").trim();
+  const email = String(formData.get("email") || "").trim().toLowerCase();
   const fullName = String(formData.get("full_name") || "").trim();
   const password = String(formData.get("password") || "");
   const role = String(formData.get("role") || "staff") as MembershipRole;
+  const jobTitle = String(formData.get("job_title") || "").trim() || null;
 
-  if (!email || !password || password.length < 6) {
-    return { error: "Email and password (min 6) required" };
-  }
+  const allowedRoles: MembershipRole[] = ["admin", "supervisor", "manager", "staff"];
+  if (!allowedRoles.includes(role)) return { error: "Invalid role" };
+  if (!email) return { error: "Email required" };
 
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!serviceKey || !url) {
+  const admin = await getServiceAdmin();
+  if (!admin) {
     return {
       error:
         "Staff invite requires SUPABASE_SERVICE_ROLE_KEY. Ask owner to configure env.",
     };
   }
 
-  const { createClient: createAdminClient } = await import("@supabase/supabase-js");
-  const admin = createAdminClient(url, serviceKey);
-  const { data: created, error: createError } = await admin.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-    user_metadata: {
-      full_name: fullName,
-      locale: organization.locale_default,
-      account_type: "allvisor-staff",
-    },
-  });
+  let userId: string | null = null;
 
-  if (createError || !created.user) {
-    return { error: createError?.message || "Failed to create staff user" };
+  const { data: existingProfile } = await admin
+    .from("profiles")
+    .select("id, email")
+    .ilike("email", email)
+    .maybeSingle();
+
+  if (existingProfile?.id) {
+    userId = existingProfile.id;
+  } else {
+    if (!password || password.length < 6) {
+      return { error: "Password (min 6) required for new staff accounts" };
+    }
+    const { data: created, error: createError } = await admin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: {
+        full_name: fullName,
+        locale: organization.locale_default,
+        account_type: "allvisor-staff",
+      },
+    });
+
+    if (createError || !created.user) {
+      // Email may exist in auth but not profiles yet — try list
+      const { data: listed } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
+      const found = listed?.users?.find(
+        (u) => (u.email || "").toLowerCase() === email
+      );
+      if (!found) {
+        return { error: createError?.message || "Failed to create staff user" };
+      }
+      userId = found.id;
+      await admin.from("profiles").upsert({
+        id: found.id,
+        email,
+        full_name: fullName || found.user_metadata?.full_name || null,
+      });
+    } else {
+      userId = created.user.id;
+    }
+  }
+
+  if (!userId) return { error: "Could not resolve staff user" };
+
+  const { data: existingMembership } = await supabase
+    .from("memberships")
+    .select("id")
+    .eq("organization_id", organization.id)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (existingMembership) {
+    return { error: "This user is already a member of this clinic" };
   }
 
   const { error } = await supabase.from("memberships").insert({
     organization_id: organization.id,
-    user_id: created.user.id,
-    role: role === "owner" ? "admin" : role,
+    user_id: userId,
+    role,
+    job_title: jobTitle,
   });
 
   if (error) return { error: error.message };
 
   await logActivity({
     action: "staff.add",
-    summary: `Added Allvisor staff account: ${fullName || email} (${role})`,
+    summary: `Added staff ${fullName || email} as ${jobTitle || role} (by ${profile.full_name || profile.email})`,
     entityType: "membership",
-    entityId: created.user.id,
+    entityId: userId,
   });
 
-  revalidateApp("/staff");
+  revalidateApp("/staff", "/admin");
+  return { success: true };
+}
+
+export async function kickStaffAction(formData: FormData) {
+  const { supabase, organization, membership, profile } = await requireMember();
+  if (!canManageStaff(membership.role)) return { error: "Only admin can kick staff" };
+
+  const membershipId = String(formData.get("membership_id") || "");
+  if (!membershipId) return { error: "Missing member" };
+
+  const { data: target } = await supabase
+    .from("memberships")
+    .select("*, profiles(full_name, email)")
+    .eq("id", membershipId)
+    .eq("organization_id", organization.id)
+    .maybeSingle();
+
+  if (!target) return { error: "Member not found" };
+  if (target.role === "owner") return { error: "Cannot kick owner" };
+  if (target.user_id === profile.id) return { error: "Cannot kick yourself" };
+
+  const { error } = await supabase.from("memberships").delete().eq("id", membershipId);
+  if (error) return { error: error.message };
+
+  await logActivity({
+    action: "staff.kick",
+    summary: `Removed staff ${target.profiles?.full_name || target.profiles?.email || target.user_id}`,
+    entityType: "membership",
+    entityId: target.user_id,
+  });
+
+  revalidateApp("/staff", "/admin");
+  return { success: true };
+}
+
+export async function requestBranchLinkAction(formData: FormData) {
+  const { supabase, organization, membership, profile } = await requireMember();
+  if (!canManageStaff(membership.role)) return { error: "Only admin can link branches" };
+
+  const branchName = String(formData.get("branch_name") || "").trim();
+  if (!branchName) return { error: "Branch name required" };
+  if (branchName.toLowerCase() === organization.name.toLowerCase()) {
+    return { error: "Cannot link to the same clinic" };
+  }
+
+  const admin = await getServiceAdmin();
+  if (!admin) return { error: "Service role required to find other clinics" };
+
+  const { data: target } = await admin
+    .from("organizations")
+    .select("id, name")
+    .ilike("name", branchName)
+    .maybeSingle();
+
+  if (!target) {
+    return { error: `No Allvisor clinic found with name "${branchName}"` };
+  }
+
+  const { data: already } = await supabase
+    .from("branch_links")
+    .select("id")
+    .eq("organization_id", organization.id)
+    .eq("linked_organization_id", target.id)
+    .maybeSingle();
+  if (already) return { error: "Already linked" };
+
+  const { error } = await supabase.from("branch_link_requests").upsert(
+    {
+      from_organization_id: organization.id,
+      to_organization_id: target.id,
+      requested_by: profile.id,
+      status: "pending",
+    },
+    { onConflict: "from_organization_id,to_organization_id" }
+  );
+
+  if (error) return { error: error.message };
+
+  await logActivity({
+    action: "branch.request",
+    summary: `Requested link to branch "${target.name}"`,
+    entityType: "organization",
+    entityId: target.id,
+  });
+
+  revalidateApp("/admin");
+  return { success: true };
+}
+
+export async function respondBranchLinkAction(formData: FormData) {
+  const { supabase, organization, membership, profile } = await requireMember();
+  if (!canManageStaff(membership.role)) return { error: "Only admin can approve links" };
+
+  const requestId = String(formData.get("request_id") || "");
+  const decision = String(formData.get("decision") || "") as "approved" | "rejected";
+  if (!requestId || !["approved", "rejected"].includes(decision)) {
+    return { error: "Invalid decision" };
+  }
+
+  const { data: req } = await supabase
+    .from("branch_link_requests")
+    .select("*")
+    .eq("id", requestId)
+    .eq("to_organization_id", organization.id)
+    .eq("status", "pending")
+    .maybeSingle();
+
+  if (!req) return { error: "Request not found" };
+
+  const { error: updError } = await supabase
+    .from("branch_link_requests")
+    .update({ status: decision })
+    .eq("id", requestId);
+  if (updError) return { error: updError.message };
+
+  if (decision === "approved") {
+    await supabase.from("branch_links").upsert([
+      {
+        organization_id: req.from_organization_id,
+        linked_organization_id: req.to_organization_id,
+      },
+      {
+        organization_id: req.to_organization_id,
+        linked_organization_id: req.from_organization_id,
+      },
+    ]);
+  }
+
+  await logActivity({
+    action: decision === "approved" ? "branch.approve" : "branch.reject",
+    summary: `${decision} branch link request (${profile.full_name || profile.email})`,
+    entityType: "organization",
+    entityId: req.from_organization_id,
+  });
+
+  revalidateApp("/admin");
+  return { success: true };
+}
+
+export async function upsertBranchServiceCategoryAction(formData: FormData) {
+  const { membership } = await requireAdminAccess();
+  if (!canManageStaff(membership.role) && membership.role !== "supervisor") {
+    return { error: "Forbidden" };
+  }
+  const targetOrgId = String(formData.get("target_org_id") || "");
+  const admin = await getServiceAdmin();
+  if (!admin || !targetOrgId) return { error: "Invalid branch target" };
+
+  // verify link or own org
+  const ctx = await requireMember();
+  const allowed =
+    targetOrgId === ctx.organization.id ||
+    (
+      await ctx.supabase
+        .from("branch_links")
+        .select("id")
+        .eq("organization_id", ctx.organization.id)
+        .eq("linked_organization_id", targetOrgId)
+        .maybeSingle()
+    ).data;
+  if (!allowed) return { error: "Branch not linked" };
+
+  const name = String(formData.get("name") || "").trim();
+  if (!name) return { error: "Category name required" };
+  const { error } = await admin.from("service_categories").insert({
+    organization_id: targetOrgId,
+    name,
+    description: String(formData.get("description") || "").trim() || null,
+  });
+  if (error) return { error: error.message };
+  revalidateApp("/admin", "/invoices");
+  return { success: true };
+}
+
+export async function upsertBranchServiceItemAction(formData: FormData) {
+  await requireAdminAccess();
+  const targetOrgId = String(formData.get("target_org_id") || "");
+  const categoryId = String(formData.get("category_id") || "");
+  const admin = await getServiceAdmin();
+  if (!admin || !targetOrgId || !categoryId) return { error: "Invalid input" };
+
+  const ctx = await requireMember();
+  const allowed =
+    targetOrgId === ctx.organization.id ||
+    (
+      await ctx.supabase
+        .from("branch_links")
+        .select("id")
+        .eq("organization_id", ctx.organization.id)
+        .eq("linked_organization_id", targetOrgId)
+        .maybeSingle()
+    ).data;
+  if (!allowed) return { error: "Branch not linked" };
+
+  const { data: category } = await admin
+    .from("service_categories")
+    .select("name")
+    .eq("id", categoryId)
+    .maybeSingle();
+
+  const { error } = await admin.from("service_items").insert({
+    organization_id: targetOrgId,
+    name: String(formData.get("name") || "").trim(),
+    category_id: categoryId,
+    category: category?.name || "General",
+    unit_price: Number(formData.get("unit_price") || 0),
+    description: String(formData.get("description") || "") || null,
+    is_active: true,
+  });
+  if (error) return { error: error.message };
+  revalidateApp("/admin", "/invoices");
+  return { success: true };
+}
+
+export async function addBranchStaffAction(formData: FormData) {
+  const { membership } = await requireMember();
+  if (!canManageStaff(membership.role)) return { error: "Only admin" };
+  // reuse same org targeting via target_org_id by temporarily switching insert org
+  const targetOrgId = String(formData.get("target_org_id") || "");
+  if (!targetOrgId) return { error: "Missing branch" };
+
+  // Force organization_id in form by cloning into addStaff with service role membership insert
+  const email = String(formData.get("email") || "").trim().toLowerCase();
+  const fullName = String(formData.get("full_name") || "").trim();
+  const password = String(formData.get("password") || "");
+  const role = String(formData.get("role") || "staff") as MembershipRole;
+  const jobTitle = String(formData.get("job_title") || "").trim() || null;
+
+  const ctx = await requireMember();
+  const linked =
+    targetOrgId === ctx.organization.id ||
+    (
+      await ctx.supabase
+        .from("branch_links")
+        .select("id")
+        .eq("organization_id", ctx.organization.id)
+        .eq("linked_organization_id", targetOrgId)
+        .maybeSingle()
+    ).data;
+  if (!linked) return { error: "Branch not linked" };
+
+  const admin = await getServiceAdmin();
+  if (!admin) return { error: "Service role required" };
+
+  let userId: string | null = null;
+  const { data: existingProfile } = await admin
+    .from("profiles")
+    .select("id")
+    .ilike("email", email)
+    .maybeSingle();
+  if (existingProfile?.id) {
+    userId = existingProfile.id;
+  } else {
+    if (!password || password.length < 6) return { error: "Password required for new user" };
+    const { data: created, error: createError } = await admin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { full_name: fullName, account_type: "allvisor-staff" },
+    });
+    if (createError || !created.user) {
+      const { data: listed } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
+      const found = listed?.users?.find((u) => (u.email || "").toLowerCase() === email);
+      if (!found) return { error: createError?.message || "Create failed" };
+      userId = found.id;
+    } else {
+      userId = created.user.id;
+    }
+  }
+
+  const { error } = await admin.from("memberships").insert({
+    organization_id: targetOrgId,
+    user_id: userId,
+    role: role === "owner" ? "admin" : role,
+    job_title: jobTitle,
+  });
+  if (error) return { error: error.message };
+  revalidateApp("/admin");
+  return { success: true };
+}
+
+export async function kickBranchStaffAction(formData: FormData) {
+  const { membership } = await requireMember();
+  if (!canManageStaff(membership.role)) return { error: "Only admin" };
+  const membershipId = String(formData.get("membership_id") || "");
+  const targetOrgId = String(formData.get("target_org_id") || "");
+  const admin = await getServiceAdmin();
+  if (!admin) return { error: "Service role required" };
+
+  const ctx = await requireMember();
+  const linked =
+    targetOrgId === ctx.organization.id ||
+    (
+      await ctx.supabase
+        .from("branch_links")
+        .select("id")
+        .eq("organization_id", ctx.organization.id)
+        .eq("linked_organization_id", targetOrgId)
+        .maybeSingle()
+    ).data;
+  if (!linked) return { error: "Branch not linked" };
+
+  const { data: target } = await admin
+    .from("memberships")
+    .select("role, user_id")
+    .eq("id", membershipId)
+    .eq("organization_id", targetOrgId)
+    .maybeSingle();
+  if (!target || target.role === "owner") return { error: "Cannot remove" };
+
+  const { error } = await admin.from("memberships").delete().eq("id", membershipId);
+  if (error) return { error: error.message };
+  revalidateApp("/admin");
   return { success: true };
 }
 

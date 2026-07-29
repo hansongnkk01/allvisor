@@ -7,6 +7,7 @@ import { ActionForm } from "@/components/ActionForm";
 import { MultiLineInvoiceForm } from "@/components/MultiLineInvoiceForm";
 import { createInvoiceAction, recordPaymentAction } from "@/app/actions";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
+import { canEditInvoiceIdentity } from "@/lib/roles";
 import type { ServiceItem } from "@/lib/types";
 
 export default async function InvoicesPage({
@@ -44,6 +45,7 @@ export default async function InvoicesPage({
     <div className="stack" style={{ gap: "1.25rem" }}>
       <PageHeader title={t("title")} />
 
+      {canEditInvoiceIdentity(ctx.membership.role) ? (
       <div className="surface" style={{ padding: "1.25rem" }}>
         <h3 style={{ marginTop: 0 }}>{t("howItWorksTitle")}</h3>
         <div className="stack" style={{ gap: "0.55rem" }}>
@@ -54,6 +56,7 @@ export default async function InvoicesPage({
           </p>
         </div>
       </div>
+      ) : null}
 
       <div className="surface" style={{ padding: "1.25rem" }}>
         <h3 style={{ marginTop: 0 }}>{t("add")}</h3>
@@ -61,6 +64,7 @@ export default async function InvoicesPage({
           customers={customers || []}
           services={(services || []) as ServiceItem[]}
           action={createInvoiceAction}
+          showCustomIdentity={canEditInvoiceIdentity(ctx.membership.role)}
           labels={{
             customer: t("customer"),
             invoiceNumber: t("invoiceNumber"),
@@ -77,6 +81,13 @@ export default async function InvoicesPage({
             subtotal: t("subtotal"),
             total: t("total"),
             customNumberHint: t("customNumberHint"),
+            medicine: t("medicine"),
+            medicineDesc: t("medicineDesc"),
+            medicineAmount: t("medicineAmount"),
+            additional: t("additional"),
+            additionalDesc: t("additionalDesc"),
+            additionalAmount: t("additionalAmount"),
+            optional: t("optional"),
           }}
         />
       </div>

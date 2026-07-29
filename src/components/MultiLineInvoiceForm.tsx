@@ -18,6 +18,7 @@ export function MultiLineInvoiceForm({
   services,
   labels,
   action,
+  showCustomIdentity = false,
 }: {
   customers: CustomerOption[];
   services: ServiceItem[];
@@ -37,18 +38,31 @@ export function MultiLineInvoiceForm({
     subtotal: string;
     total: string;
     customNumberHint: string;
+    medicine: string;
+    medicineDesc: string;
+    medicineAmount: string;
+    additional: string;
+    additionalDesc: string;
+    additionalAmount: string;
+    optional: string;
   };
   action: (formData: FormData) => Promise<{ error?: string; success?: boolean } | void>;
+  showCustomIdentity?: boolean;
 }) {
   const [lines, setLines] = useState<Line[]>([
     { description: "", quantity: 1, unit_price: 0, service_item_id: null },
   ]);
   const [tax, setTax] = useState(0);
+  const [medicineDesc, setMedicineDesc] = useState("");
+  const [medicineAmount, setMedicineAmount] = useState(0);
+  const [additionalDesc, setAdditionalDesc] = useState("");
+  const [additionalAmount, setAdditionalAmount] = useState(0);
 
-  const subtotal = useMemo(
+  const linesSubtotal = useMemo(
     () => lines.reduce((sum, line) => sum + line.quantity * line.unit_price, 0),
     [lines]
   );
+  const subtotal = linesSubtotal + medicineAmount + additionalAmount;
   const total = subtotal + tax;
 
   function applyService(index: number, serviceId: string) {
@@ -86,10 +100,18 @@ export function MultiLineInvoiceForm({
       onSuccess={() => {
         setLines([{ description: "", quantity: 1, unit_price: 0, service_item_id: null }]);
         setTax(0);
+        setMedicineDesc("");
+        setMedicineAmount(0);
+        setAdditionalDesc("");
+        setAdditionalAmount(0);
       }}
     >
       <input type="hidden" name="lines_json" value={JSON.stringify(linesForSubmit)} />
       <input type="hidden" name="tax_amount" value={tax} />
+      <input type="hidden" name="medicine_description" value={medicineDesc} />
+      <input type="hidden" name="medicine_amount" value={medicineAmount} />
+      <input type="hidden" name="additional_description" value={additionalDesc} />
+      <input type="hidden" name="additional_amount" value={additionalAmount} />
 
       <div
         style={{
@@ -109,18 +131,22 @@ export function MultiLineInvoiceForm({
             ))}
           </select>
         </div>
-        <div className="field">
-          <label>{labels.invoiceNumber}</label>
-          <input
-            name="invoice_number"
-            className="input"
-            placeholder={labels.customNumberHint}
-          />
-        </div>
-        <div className="field">
-          <label>{labels.invoiceTitle}</label>
-          <input name="title" className="input" placeholder="Consultation invoice" />
-        </div>
+        {showCustomIdentity ? (
+          <>
+            <div className="field">
+              <label>{labels.invoiceNumber}</label>
+              <input
+                name="invoice_number"
+                className="input"
+                placeholder={labels.customNumberHint}
+              />
+            </div>
+            <div className="field">
+              <label>{labels.invoiceTitle}</label>
+              <input name="title" className="input" placeholder="Consultation invoice" />
+            </div>
+          </>
+        ) : null}
       </div>
 
       <div>
@@ -238,11 +264,81 @@ export function MultiLineInvoiceForm({
             </div>
           ))}
         </div>
-        {!services.length ? (
-          <p className="muted" style={{ marginTop: 8, fontSize: "0.85rem" }}>
-            Add categories and services in Admin first.
-          </p>
-        ) : null}
+      </div>
+
+      <div className="surface" style={{ padding: "0.9rem 1rem", boxShadow: "none" }}>
+        <strong>
+          {labels.medicine}{" "}
+          <span className="muted" style={{ fontWeight: 400 }}>
+            ({labels.optional})
+          </span>
+        </strong>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+            gap: "0.65rem",
+            marginTop: 8,
+          }}
+        >
+          <div className="field">
+            <label>{labels.medicineDesc}</label>
+            <input
+              className="input"
+              value={medicineDesc}
+              onChange={(e) => setMedicineDesc(e.target.value)}
+              placeholder="Paracetamol / antibiotics…"
+            />
+          </div>
+          <div className="field">
+            <label>{labels.medicineAmount}</label>
+            <input
+              className="input"
+              type="number"
+              step="0.01"
+              min={0}
+              value={medicineAmount}
+              onChange={(e) => setMedicineAmount(Number(e.target.value) || 0)}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="surface" style={{ padding: "0.9rem 1rem", boxShadow: "none" }}>
+        <strong>
+          {labels.additional}{" "}
+          <span className="muted" style={{ fontWeight: 400 }}>
+            ({labels.optional})
+          </span>
+        </strong>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+            gap: "0.65rem",
+            marginTop: 8,
+          }}
+        >
+          <div className="field">
+            <label>{labels.additionalDesc}</label>
+            <input
+              className="input"
+              value={additionalDesc}
+              onChange={(e) => setAdditionalDesc(e.target.value)}
+            />
+          </div>
+          <div className="field">
+            <label>{labels.additionalAmount}</label>
+            <input
+              className="input"
+              type="number"
+              step="0.01"
+              min={0}
+              value={additionalAmount}
+              onChange={(e) => setAdditionalAmount(Number(e.target.value) || 0)}
+            />
+          </div>
+        </div>
       </div>
 
       <div

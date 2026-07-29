@@ -84,7 +84,12 @@
     "save": "Save",
     "delete": "Delete",
     "edit": "Edit",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "addedBy": "Added by",
+    "deletedTitle": "Deleted patients",
+    "deletedHint": "Audit of who deleted patient records.",
+    "deletedBy": "Deleted by",
+    "deletedAt": "Deleted at"
   },
   "Appointments": {
     "title": "Appointments",
@@ -144,7 +149,14 @@
     "howItWorksTitle": "How invoice no. & name work (demo)",
     "howNumber": "Invoice no. = unique system ID (auto like INV-2026-00001, or your custom number). Each row needs a unique number.",
     "howName": "Invoice name = friendly label for staff/patients (e.g. \"Consultation Ahmad\"). Same name can appear more than once.",
-    "howStatus": "When you change status (Paid / Unpaid), Allvisor adds a new list row with the same invoice name and the new status — so you can see both Paid and Unpaid entries in the list."
+    "howStatus": "When you change status (Paid / Unpaid), Allvisor adds a new list row with the same invoice name and the new status — so you can see both Paid and Unpaid entries in the list.",
+    "medicine": "Medicine",
+    "medicineDesc": "Medicine description",
+    "medicineAmount": "Medicine amount",
+    "additional": "Additional charge",
+    "additionalDesc": "Additional description",
+    "additionalAmount": "Additional amount",
+    "optional": "optional"
   },
   "InvoiceDetail": {
     "back": "Back to invoices",
@@ -170,7 +182,9 @@
   },
   "Admin": {
     "title": "Admin",
-    "subtitle": "Manage categories, services/items, plans and admin password.",
+    "superTitle": "Superadmin · multi-branch",
+    "subtitle": "Manage categories, services, staff, plans and branches.",
+    "superSubtitle": "Monitor and manage every linked branch in expandable groups.",
     "lockSubtitle": "Enter admin password to continue",
     "lockHint": "Admin page is locked. Default password = clinic/business name (no spaces) + year the account was created.",
     "defaultPasswordHelp": "Default password",
@@ -197,7 +211,27 @@
     "addService": "Add service",
     "needCategoryFirst": "Add at least one category before creating services.",
     "emptyServices": "No services yet.",
-    "delete": "Delete"
+    "delete": "Delete",
+    "staffTitle": "Team members",
+    "staffName": "Name",
+    "staffEmail": "Staff email",
+    "staffPassword": "Password (new users only)",
+    "staffRole": "Role",
+    "jobTitle": "Title / pangkat",
+    "addStaff": "Add staff",
+    "kickStaff": "Kick",
+    "kick": "Kick",
+    "addBranch": "Add branch",
+    "addBranchHint": "Enter the exact Allvisor clinic name of another branch. Their admin must approve the link.",
+    "requestLink": "Request link",
+    "outgoingPending": "Outgoing pending requests",
+    "pendingLinks": "Branch link requests to approve",
+    "linkFrom": "From",
+    "approveLink": "Approve linking",
+    "rejectLink": "Reject",
+    "thisClinic": "this clinic",
+    "activity": "Admin & supervisor activity log",
+    "activityHint": "Tracks staff actions visible to admins and supervisors."
   },
   "Inventory": {
     "title": "Inventory",
@@ -261,8 +295,9 @@
     "demoMode": "Demo mode: set LHDN_CLIENT_ID and LHDN_CLIENT_SECRET in env to use real MyInvois."
   },
   "Staff": {
-    "title": "Staff & activity",
-    "subtitle": "Each staff gets an Allvisor staff login. All actions are tracked here.",
+    "title": "Staff activity",
+    "readOnlySubtitle": "Activity feed for this clinic. Add/kick staff is in Admin.",
+    "manageInAdmin": "Manage team members in",
     "email": "Staff email",
     "fullName": "Name",
     "password": "Temporary password",
@@ -270,11 +305,7 @@
     "add": "Add staff",
     "empty": "No staff besides you.",
     "ownerOnly": "Only owner/admin can manage staff.",
-    "accountHint": "Creates a real Allvisor staff account (login email + password).",
-    "members": "Team members",
-    "accountType": "Account",
     "activity": "Staff activity log",
-    "activityHint": "Who registered patients, added/removed stock, printed invoices, changed status, and more.",
     "noActivity": "No activity yet."
   },
   "Settings": {

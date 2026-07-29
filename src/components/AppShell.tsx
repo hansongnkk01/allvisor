@@ -97,16 +97,21 @@ function NavItem({
 export function AppShell({
   niche,
   orgName,
+  role,
   children,
 }: {
   niche: Niche;
   orgName: string;
+  role?: string;
   children: React.ReactNode;
 }) {
   const t = useTranslations("Nav");
   const tBrand = useTranslations("Brand");
   const pathname = usePathname();
-  const keys = nicheNavKeys[niche];
+  const keys = nicheNavKeys[niche].filter((key) => {
+    if (key !== "admin") return true;
+    return role === "owner" || role === "admin" || role === "supervisor";
+  });
 
   useEffect(() => {
     const maxAge = 60 * 60 * 24 * 30;

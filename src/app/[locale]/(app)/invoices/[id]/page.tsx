@@ -120,6 +120,18 @@ export default async function InvoiceDetailPage({
         </div>
 
         <div style={{ marginTop: "1rem", textAlign: "right" }}>
+          {Number(invoice.medicine_amount) > 0 || invoice.medicine_description ? (
+            <div>
+              Medicine{invoice.medicine_description ? ` (${invoice.medicine_description})` : ""}:{" "}
+              <strong>{formatCurrency(Number(invoice.medicine_amount || 0))}</strong>
+            </div>
+          ) : null}
+          {Number(invoice.additional_amount) > 0 || invoice.additional_description ? (
+            <div>
+              Additional{invoice.additional_description ? ` (${invoice.additional_description})` : ""}:{" "}
+              <strong>{formatCurrency(Number(invoice.additional_amount || 0))}</strong>
+            </div>
+          ) : null}
           <div>
             {t("subtotal")}: <strong>{formatCurrency(Number(invoice.subtotal))}</strong>
           </div>

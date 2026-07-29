@@ -16,7 +16,11 @@ export default async function AppLayout({
 
   return (
     <OrgProvider organization={ctx.organization} role={ctx.membership.role}>
-      <AppShell niche={ctx.organization.niche} orgName={ctx.organization.name}>
+      <AppShell
+        niche={ctx.organization.niche}
+        orgName={ctx.organization.name}
+        role={ctx.membership.role}
+      >
         {children}
       </AppShell>
     </OrgProvider>

@@ -84,7 +84,12 @@
     "save": "Simpan",
     "delete": "Padam",
     "edit": "Edit",
-    "cancel": "Batal"
+    "cancel": "Batal",
+    "addedBy": "Ditambah oleh",
+    "deletedTitle": "Pesakit dipadam",
+    "deletedHint": "Audit siapa yang padam rekod pesakit.",
+    "deletedBy": "Dipadam oleh",
+    "deletedAt": "Dipadam pada"
   },
   "Appointments": {
     "title": "Temujanji",
@@ -170,7 +175,14 @@
     "howItWorksTitle": "Cara no. invois & nama berfungsi (demo)",
     "howNumber": "No. invois = ID unik sistem (auto macam INV-2026-00001, atau nombor custom anda). Setiap baris perlu no. unik.",
     "howName": "Nama invois = label mesra untuk staf/pesakit (cth. \"Konsultasi Ahmad\"). Nama sama boleh muncul lebih dari sekali.",
-    "howStatus": "Bila anda tukar status (Paid / Unpaid), Allvisor tambah baris baru dalam senarai dengan nama invois sama dan status baru — jadi anda nampak kedua-dua Paid dan Unpaid dalam list."
+    "howStatus": "Bila anda tukar status (Paid / Unpaid), Allvisor tambah baris baru dalam senarai dengan nama invois sama dan status baru — jadi anda nampak kedua-dua Paid dan Unpaid dalam list.",
+    "medicine": "Ubat",
+    "medicineDesc": "Penerangan ubat",
+    "medicineAmount": "Jumlah ubat",
+    "additional": "Caj tambahan",
+    "additionalDesc": "Penerangan tambahan",
+    "additionalAmount": "Jumlah tambahan",
+    "optional": "tidak wajib"
   },
   "InvoiceDetail": {
     "back": "Kembali ke invois",
@@ -196,7 +208,9 @@
   },
   "Admin": {
     "title": "Admin",
-    "subtitle": "Urus kategori, perkhidmatan/item, pelan dan kata laluan admin.",
+    "superTitle": "Superadmin · multi-cawangan",
+    "subtitle": "Urus kategori, perkhidmatan, staf, pelan dan cawangan.",
+    "superSubtitle": "Monitor dan urus setiap cawangan yang dilink dalam kumpulan boleh expand.",
     "lockSubtitle": "Masukkan kata laluan admin untuk teruskan",
     "lockHint": "Halaman Admin dikunci. Kata laluan default = nama klinik/bisnes (tiada space) + tahun akaun dicipta.",
     "defaultPasswordHelp": "Kata laluan default",
@@ -223,7 +237,27 @@
     "addService": "Tambah perkhidmatan",
     "needCategoryFirst": "Tambah sekurang-kurangnya satu kategori sebelum cipta perkhidmatan.",
     "emptyServices": "Belum ada perkhidmatan.",
-    "delete": "Padam"
+    "delete": "Padam",
+    "staffTitle": "Ahli pasukan",
+    "staffName": "Nama",
+    "staffEmail": "Emel staf",
+    "staffPassword": "Kata laluan (pengguna baru sahaja)",
+    "staffRole": "Peranan",
+    "jobTitle": "Pangkat / title",
+    "addStaff": "Tambah staf",
+    "kickStaff": "Kick",
+    "kick": "Kick",
+    "addBranch": "Tambah cawangan",
+    "addBranchHint": "Masukkan nama klinik Allvisor cawangan lain yang tepat. Admin mereka mesti approve link.",
+    "requestLink": "Minta link",
+    "outgoingPending": "Permintaan keluar yang pending",
+    "pendingLinks": "Permintaan link cawangan untuk diluluskan",
+    "linkFrom": "Dari",
+    "approveLink": "Approve linking",
+    "rejectLink": "Tolak",
+    "thisClinic": "klinik ini",
+    "activity": "Log aktiviti admin & supervisor",
+    "activityHint": "Jejak tindakan staf yang boleh dilihat admin dan supervisor."
   },
   "Accounting": {
     "title": "Perakaunan klinik",
@@ -261,8 +295,9 @@
     "demoMode": "Mod demo: tetapkan LHDN_CLIENT_ID dan LHDN_CLIENT_SECRET dalam env untuk MyInvois sebenar."
   },
   "Staff": {
-    "title": "Staf & aktiviti",
-    "subtitle": "Setiap staf dapat login Allvisor staff. Semua tindakan dijejaki di sini.",
+    "title": "Aktiviti staf",
+    "readOnlySubtitle": "Feed aktiviti klinik ini. Tambah/kick staf ada di Admin.",
+    "manageInAdmin": "Urus ahli pasukan di",
     "email": "Emel staf",
     "fullName": "Nama",
     "password": "Kata laluan sementara",
@@ -270,11 +305,7 @@
     "add": "Tambah staf",
     "empty": "Tiada staf selain anda.",
     "ownerOnly": "Hanya owner/admin boleh urus staf.",
-    "accountHint": "Mencipta akaun Allvisor staff sebenar (emel + kata laluan login).",
-    "members": "Ahli pasukan",
-    "accountType": "Akaun",
     "activity": "Log aktiviti staf",
-    "activityHint": "Siapa daftar pesakit, tambah/buang stok, cetak invois, tukar status, dan lain-lain.",
     "noActivity": "Belum ada aktiviti."
   },
   "Settings": {

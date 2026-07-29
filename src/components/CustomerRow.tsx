@@ -15,6 +15,7 @@ type Labels = {
   delete: string;
   edit: string;
   cancel: string;
+  addedBy: string;
 };
 
 export function CustomerRow({
@@ -29,7 +30,7 @@ export function CustomerRow({
   if (editing) {
     return (
       <tr>
-        <td colSpan={5}>
+      <td colSpan={6}>
           <ActionForm
             action={upsertCustomerAction}
             onSuccess={() => setEditing(false)}
@@ -105,6 +106,12 @@ export function CustomerRow({
       <td>{customer.ic_number || "—"}</td>
       <td>{customer.phone || "—"}</td>
       <td>{customer.email || "—"}</td>
+      <td>
+        <div>{customer.created_by_name || "—"}</div>
+        <div className="muted" style={{ fontSize: "0.75rem" }}>
+          {labels.addedBy}
+        </div>
+      </td>
       <td>
         <div className="row" style={{ justifyContent: "flex-end" }}>
           <button

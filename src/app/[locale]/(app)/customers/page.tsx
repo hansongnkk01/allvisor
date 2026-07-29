@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { ActionForm } from "@/components/ActionForm";
 import { CustomerRow } from "@/components/CustomerRow";
 import { upsertCustomerAction } from "@/app/actions";
+import { formatDateTime } from "@/lib/utils";
 import type { Customer } from "@/lib/types";
 
 export default async function CustomersPage({
@@ -17,11 +18,20 @@ export default async function CustomersPage({
   const t = await getTranslations("Customers");
   const ctx = await requireOrg(locale);
   const supabase = await createClient();
-  const { data: customers } = await supabase
-    .from("customers")
-    .select("*")
-    .eq("organization_id", ctx.organization.id)
-    .order("created_at", { ascending: false });
+
+  const [{ data: customers }, { data: deletions }] = await Promise.all([
+    supabase
+      .from("customers")
+      .select("*")
+      .eq("organization_id", ctx.organization.id)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("customer_deletions")
+      .select("*")
+      .eq("organization_id", ctx.organization.id)
+      .order("created_at", { ascending: false })
+      .limit(30),
+  ]);
 
   const title = ctx.organization.niche === "clinic" ? t("titleClinic") : t("title");
   const rowLabels = {
@@ -34,6 +44,7 @@ export default async function CustomersPage({
     delete: t("delete"),
     edit: t("edit"),
     cancel: t("cancel"),
+    addedBy: t("addedBy"),
   };
 
   return (
@@ -86,6 +97,7 @@ export default async function CustomersPage({
                 <th>{t("ic")}</th>
                 <th>{t("phone")}</th>
                 <th>{t("email")}</th>
+                <th>{t("addedBy")}</th>
                 <th />
               </tr>
             </thead>
@@ -95,8 +107,40 @@ export default async function CustomersPage({
               ))}
               {!customers?.length ? (
                 <tr>
-                  <td colSpan={5} className="muted">
+                  <td colSpan={6} className="muted">
                     {t("empty")}
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="surface" style={{ padding: "1.25rem" }}>
+        <h3 style={{ marginTop: 0 }}>{t("deletedTitle")}</h3>
+        <p className="muted">{t("deletedHint")}</p>
+        <div className="table-wrap">
+          <table className="data">
+            <thead>
+              <tr>
+                <th>{t("name")}</th>
+                <th>{t("deletedBy")}</th>
+                <th>{t("deletedAt")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(deletions || []).map((d) => (
+                <tr key={d.id}>
+                  <td>{d.customer_name}</td>
+                  <td>{d.deleted_by_name || "—"}</td>
+                  <td>{formatDateTime(d.created_at)}</td>
+                </tr>
+              ))}
+              {!deletions?.length ? (
+                <tr>
+                  <td colSpan={3} className="muted">
+                    —
                   </td>
                 </tr>
               ) : null}

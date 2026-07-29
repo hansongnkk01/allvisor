@@ -1,6 +1,6 @@
 export type Niche = "clinic" | "retail";
 
-export type MembershipRole = "owner" | "admin" | "staff";
+export type MembershipRole = "owner" | "admin" | "supervisor" | "manager" | "staff";
 
 export type SubscriptionPlan = "free" | "starter" | "growth" | "pro";
 export type SubscriptionStatus = "trialing" | "active" | "past_due" | "canceled";
@@ -53,6 +53,7 @@ export interface Membership {
   organization_id: string;
   user_id: string;
   role: MembershipRole;
+  job_title: string | null;
   created_at: string;
   organizations?: Organization;
   profiles?: Profile;
@@ -66,6 +67,8 @@ export interface Customer {
   phone: string | null;
   ic_number: string | null;
   notes: string | null;
+  created_by: string | null;
+  created_by_name: string | null;
   created_at: string;
 }
 
@@ -121,9 +124,32 @@ export interface Invoice {
   total: number;
   amount_paid: number;
   notes: string | null;
+  medicine_description: string | null;
+  medicine_amount: number;
+  additional_description: string | null;
+  additional_amount: number;
   lhdn_status: LhdnStatus;
   created_at: string;
   customers?: Customer | null;
+}
+
+export interface BranchLinkRequest {
+  id: string;
+  from_organization_id: string;
+  to_organization_id: string;
+  requested_by: string | null;
+  status: "pending" | "approved" | "rejected";
+  created_at: string;
+  from_org?: Organization | null;
+  to_org?: Organization | null;
+}
+
+export interface BranchLink {
+  id: string;
+  organization_id: string;
+  linked_organization_id: string;
+  created_at: string;
+  linked_org?: Organization | null;
 }
 
 export interface InvoiceLine {

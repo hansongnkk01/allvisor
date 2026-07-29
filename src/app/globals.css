@@ -287,6 +287,10 @@ table.data th {
   .app-main {
     padding: 1rem !important;
   }
+
+  .appointments-layout {
+    grid-template-columns: 1fr !important;
+  }
 }
 
 @media print {

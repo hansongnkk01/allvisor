@@ -46,16 +46,18 @@ export default async function AppointmentsPage({
     <div className="stack" style={{ gap: "1.25rem" }}>
       <PageHeader title={t("title")} />
 
-      <div className="surface" style={{ padding: "1.25rem" }}>
-        <h3 style={{ marginTop: 0 }}>{t("add")}</h3>
-        <ActionForm action={createAppointmentAction} className="stack">
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-              gap: "0.75rem",
-            }}
-          >
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "minmax(260px, 340px) minmax(0, 1fr)",
+          gap: "1rem",
+          alignItems: "start",
+        }}
+        className="appointments-layout"
+      >
+        <div className="surface" style={{ padding: "1.25rem" }}>
+          <h3 style={{ marginTop: 0 }}>{t("add")}</h3>
+          <ActionForm action={createAppointmentAction} className="stack">
             <div className="field">
               <label>{t("patient")}</label>
               <select name="customer_id" required className="select">
@@ -98,55 +100,55 @@ export default async function AppointmentsPage({
                 <option value="no_show">no_show</option>
               </select>
             </div>
-          </div>
-          <div className="field">
-            <label>{t("notes")}</label>
-            <textarea name="notes" className="textarea" />
-          </div>
-          <label className="row" style={{ gap: "0.5rem" }}>
-            <input type="checkbox" name="reminder_sent" />
-            <span>{t("reminder")}</span>
-          </label>
-          <button type="submit" className="btn btn-primary" disabled={!categories?.length}>
-            {t("save")}
-          </button>
-        </ActionForm>
-        {!categories?.length ? (
-          <p className="muted" style={{ marginTop: 8 }}>
-            {t("needCategory")}
-          </p>
-        ) : null}
-      </div>
+            <div className="field">
+              <label>{t("notes")}</label>
+              <textarea name="notes" className="textarea" />
+            </div>
+            <label className="row" style={{ gap: "0.5rem" }}>
+              <input type="checkbox" name="reminder_sent" />
+              <span>{t("reminder")}</span>
+            </label>
+            <button type="submit" className="btn btn-primary" disabled={!categories?.length}>
+              {t("save")}
+            </button>
+          </ActionForm>
+          {!categories?.length ? (
+            <p className="muted" style={{ marginTop: 8 }}>
+              {t("needCategory")}
+            </p>
+          ) : null}
+        </div>
 
-      <div className="surface" style={{ padding: "1.25rem" }}>
-        <AppointmentBoard
-          appointments={(appointments || []).map((a) => ({
-            id: a.id,
-            title: a.title,
-            starts_at: a.starts_at,
-            ends_at: a.ends_at,
-            status: a.status as AppointmentStatus,
-            notes: a.notes,
-            reminder_sent: a.reminder_sent,
-            customers: a.customers,
-          }))}
-          labels={{
-            calendar: t("calendar"),
-            list: t("list"),
-            today: t("today"),
-            patient: t("patient"),
-            status: t("status"),
-            notes: t("notes"),
-            reminder: t("reminder"),
-            delete: t("delete"),
-            empty: t("empty"),
-            prev: t("prev"),
-            next: t("next"),
-            timetable: t("timetable"),
-            occupied: t("occupied"),
-            free: t("free"),
-          }}
-        />
+        <div className="surface" style={{ padding: "1.25rem" }}>
+          <AppointmentBoard
+            appointments={(appointments || []).map((a) => ({
+              id: a.id,
+              title: a.title,
+              starts_at: a.starts_at,
+              ends_at: a.ends_at,
+              status: a.status as AppointmentStatus,
+              notes: a.notes,
+              reminder_sent: a.reminder_sent,
+              customers: a.customers,
+            }))}
+            labels={{
+              calendar: t("calendar"),
+              list: t("list"),
+              today: t("today"),
+              patient: t("patient"),
+              status: t("status"),
+              notes: t("notes"),
+              reminder: t("reminder"),
+              delete: t("delete"),
+              empty: t("empty"),
+              prev: t("prev"),
+              next: t("next"),
+              timetable: t("timetable"),
+              occupied: t("occupied"),
+              free: t("free"),
+            }}
+          />
+        </div>
       </div>
     </div>
   );
