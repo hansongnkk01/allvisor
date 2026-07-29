@@ -97,6 +97,7 @@ export interface Invoice {
   organization_id: string;
   customer_id: string | null;
   invoice_number: string;
+  title: string | null;
   status: InvoiceStatus;
   issue_date: string;
   due_date: string | null;
@@ -119,6 +120,40 @@ export interface InvoiceLine {
   quantity: number;
   unit_price: number;
   line_total: number;
+  price_list_item_id?: string | null;
+}
+
+export interface ServiceItem {
+  id: string;
+  organization_id: string;
+  name: string;
+  category: string;
+  description: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface PriceListItem {
+  id: string;
+  organization_id: string;
+  service_item_id: string | null;
+  name: string;
+  unit_price: number;
+  is_active: boolean;
+  created_at: string;
+  service_items?: ServiceItem | null;
+}
+
+export interface InvoiceStatusLog {
+  id: string;
+  organization_id: string;
+  invoice_id: string;
+  from_status: InvoiceStatus | null;
+  to_status: InvoiceStatus;
+  changed_by: string | null;
+  note: string | null;
+  created_at: string;
+  profiles?: Profile | null;
 }
 
 export interface Payment {

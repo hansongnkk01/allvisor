@@ -15,6 +15,7 @@ import {
   Settings,
   ShoppingCart,
   LogOut,
+  Shield,
 } from "lucide-react";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { nicheNavKeys } from "@/lib/niches";
@@ -34,6 +35,7 @@ const icons: Record<string, ReactNode> = {
   lhdn: <Stamp size={18} />,
   staff: <UserCog size={18} />,
   settings: <Settings size={18} />,
+  admin: <Shield size={18} />,
   pos: <ShoppingCart size={18} />,
 };
 
@@ -47,6 +49,7 @@ const hrefMap: Record<string, string> = {
   lhdn: "/lhdn",
   staff: "/staff",
   settings: "/settings",
+  admin: "/admin",
   pos: "/pos",
 };
 

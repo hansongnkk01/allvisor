@@ -1,15 +1,13 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { Link } from "@/i18n/navigation";
 import { requireOrg } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { ActionForm } from "@/components/ActionForm";
 import { MultiLineInvoiceForm } from "@/components/MultiLineInvoiceForm";
-import {
-  createInvoiceAction,
-  recordPaymentAction,
-  submitInvoiceToLhdnAction,
-} from "@/app/actions";
+import { createInvoiceAction, recordPaymentAction } from "@/app/actions";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import type { PriceListItem } from "@/lib/types";
 
 export default async function InvoicesPage({
   params,
@@ -22,18 +20,25 @@ export default async function InvoicesPage({
   const ctx = await requireOrg(locale);
   const supabase = await createClient();
 
-  const [{ data: invoices }, { data: customers }] = await Promise.all([
-    supabase
-      .from("invoices")
-      .select("*, customers(name)")
-      .eq("organization_id", ctx.organization.id)
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("customers")
-      .select("id, name")
-      .eq("organization_id", ctx.organization.id)
-      .order("name"),
-  ]);
+  const [{ data: invoices }, { data: customers }, { data: priceList }] =
+    await Promise.all([
+      supabase
+        .from("invoices")
+        .select("*, customers(name)")
+        .eq("organization_id", ctx.organization.id)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("customers")
+        .select("id, name")
+        .eq("organization_id", ctx.organization.id)
+        .order("name"),
+      supabase
+        .from("price_list_items")
+        .select("*")
+        .eq("organization_id", ctx.organization.id)
+        .eq("is_active", true)
+        .order("name"),
+    ]);
 
   return (
     <div className="stack" style={{ gap: "1.25rem" }}>
@@ -43,19 +48,24 @@ export default async function InvoicesPage({
         <h3 style={{ marginTop: 0 }}>{t("add")}</h3>
         <MultiLineInvoiceForm
           customers={customers || []}
+          priceList={(priceList || []) as PriceListItem[]}
           action={createInvoiceAction}
           labels={{
             customer: t("customer"),
+            invoiceNumber: t("invoiceNumber"),
+            invoiceTitle: t("invoiceTitle"),
             lines: t("lines"),
             description: t("description"),
             qty: t("qty"),
-            unitPrice: t("unitPrice"),
+            price: t("price"),
+            selectPrice: t("selectPrice"),
             tax: t("tax"),
             save: t("save"),
             addLine: t("addLine"),
             removeLine: t("removeLine"),
             subtotal: t("subtotal"),
             total: t("total"),
+            customNumberHint: t("customNumberHint"),
           }}
         />
       </div>
@@ -70,7 +80,7 @@ export default async function InvoicesPage({
                 <th>{t("status")}</th>
                 <th>{t("total")}</th>
                 <th>{t("paid")}</th>
-                <th>LHDN</th>
+                <th>{t("actions")}</th>
                 <th>{t("recordPayment")}</th>
               </tr>
             </thead>
@@ -78,9 +88,9 @@ export default async function InvoicesPage({
               {(invoices || []).map((inv) => (
                 <tr key={inv.id}>
                   <td>
-                    <div>{inv.invoice_number}</div>
+                    <div>{inv.title || inv.invoice_number}</div>
                     <div className="muted" style={{ fontSize: "0.8rem" }}>
-                      {formatDate(inv.issue_date)}
+                      {inv.invoice_number} · {formatDate(inv.issue_date)}
                     </div>
                   </td>
                   <td>{inv.customers?.name || "—"}</td>
@@ -90,25 +100,9 @@ export default async function InvoicesPage({
                   <td>{formatCurrency(Number(inv.total))}</td>
                   <td>{formatCurrency(Number(inv.amount_paid))}</td>
                   <td>
-                    <div className="stack" style={{ gap: 6 }}>
-                      <span className="badge">{inv.lhdn_status}</span>
-                      {inv.lhdn_status === "not_submitted" || inv.lhdn_status === "rejected" ? (
-                        <form
-                          action={async () => {
-                            "use server";
-                            await submitInvoiceToLhdnAction(inv.id);
-                          }}
-                        >
-                          <button
-                            type="submit"
-                            className="btn btn-ghost"
-                            style={{ padding: "0.3rem 0.6rem", fontSize: "0.75rem" }}
-                          >
-                            {t("submitLhdn")}
-                          </button>
-                        </form>
-                      ) : null}
-                    </div>
+                    <Link href={`/invoices/${inv.id}`} className="btn btn-soft" style={{ padding: "0.35rem 0.7rem" }}>
+                      {inv.status === "paid" ? t("viewPrint") : t("view")}
+                    </Link>
                   </td>
                   <td>
                     {inv.status !== "paid" && inv.status !== "void" ? (

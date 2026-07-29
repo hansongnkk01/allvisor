@@ -288,3 +288,33 @@ table.data th {
     padding: 1rem !important;
   }
 }
+
+@media print {
+  .app-grid {
+    display: block !important;
+  }
+
+  .app-grid > aside,
+  .no-print,
+  .NavigationProgress,
+  .btn,
+  nav,
+  form {
+    display: none !important;
+  }
+
+  .app-main {
+    padding: 0 !important;
+  }
+
+  .invoice-sheet,
+  .surface {
+    box-shadow: none !important;
+    border: none !important;
+    background: white !important;
+  }
+
+  body {
+    background: white !important;
+  }
+}

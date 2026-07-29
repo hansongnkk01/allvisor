@@ -152,15 +152,18 @@ export async function adjustStockAction(formData: FormData) {
 }
 
 export async function createInvoiceAction(formData: FormData) {
-  const { supabase, organization } = await requireMember();
+  const { supabase, organization, profile } = await requireMember();
   const customerId = String(formData.get("customer_id") || "") || null;
   const taxAmount = Number(formData.get("tax_amount") || 0);
+  const customNumber = String(formData.get("invoice_number") || "").trim();
+  const title = String(formData.get("title") || "").trim() || null;
 
   let lines: Array<{
     description: string;
     quantity: number;
     unit_price: number;
     product_id?: string | null;
+    price_list_item_id?: string | null;
   }> = [];
 
   const linesJson = String(formData.get("lines_json") || "");
@@ -171,6 +174,7 @@ export async function createInvoiceAction(formData: FormData) {
         quantity?: number;
         unit_price?: number;
         product_id?: string | null;
+        price_list_item_id?: string | null;
       }>;
       lines = parsed
         .map((line) => ({
@@ -178,25 +182,11 @@ export async function createInvoiceAction(formData: FormData) {
           quantity: Number(line.quantity || 0),
           unit_price: Number(line.unit_price || 0),
           product_id: line.product_id || null,
+          price_list_item_id: line.price_list_item_id || null,
         }))
         .filter((line) => line.description && line.quantity > 0);
     } catch {
       return { error: "Invalid invoice lines" };
-    }
-  } else {
-    const description = String(formData.get("description") || "Service").trim();
-    const quantity = Number(formData.get("quantity") || 1);
-    const unitPrice = Number(formData.get("unit_price") || 0);
-    const productId = String(formData.get("product_id") || "") || null;
-    if (description) {
-      lines = [
-        {
-          description,
-          quantity,
-          unit_price: unitPrice,
-          product_id: productId,
-        },
-      ];
     }
   }
 
@@ -213,7 +203,9 @@ export async function createInvoiceAction(formData: FormData) {
     .select("*", { count: "exact", head: true })
     .eq("organization_id", organization.id);
 
-  const invoiceNumber = `INV-${new Date().getFullYear()}-${String((count || 0) + 1).padStart(5, "0")}`;
+  const invoiceNumber =
+    customNumber ||
+    `INV-${new Date().getFullYear()}-${String((count || 0) + 1).padStart(5, "0")}`;
 
   const { data: invoice, error } = await supabase
     .from("invoices")
@@ -221,6 +213,7 @@ export async function createInvoiceAction(formData: FormData) {
       organization_id: organization.id,
       customer_id: customerId,
       invoice_number: invoiceNumber,
+      title,
       status: "unpaid" as InvoiceStatus,
       subtotal,
       tax_amount: taxAmount,
@@ -237,6 +230,7 @@ export async function createInvoiceAction(formData: FormData) {
       invoice_id: invoice.id,
       organization_id: organization.id,
       product_id: line.product_id || null,
+      price_list_item_id: line.price_list_item_id || null,
       description: line.description,
       quantity: line.quantity,
       unit_price: line.unit_price,
@@ -246,12 +240,21 @@ export async function createInvoiceAction(formData: FormData) {
 
   if (linesError) return { error: linesError.message };
 
+  await supabase.from("invoice_status_logs").insert({
+    organization_id: organization.id,
+    invoice_id: invoice.id,
+    from_status: null,
+    to_status: "unpaid",
+    changed_by: profile.id,
+    note: "Invoice created",
+  });
+
   revalidateApp("/invoices", "/dashboard", "/accounting", "/lhdn");
   return { success: true, invoiceId: invoice.id };
 }
 
 export async function recordPaymentAction(formData: FormData) {
-  const { supabase, organization } = await requireMember();
+  const { supabase, organization, profile } = await requireMember();
   const invoiceId = String(formData.get("invoice_id") || "");
   const amount = Number(formData.get("amount") || 0);
   const method = String(formData.get("method") || "cash") as PaymentMethod;
@@ -282,6 +285,17 @@ export async function recordPaymentAction(formData: FormData) {
     .from("invoices")
     .update({ amount_paid: amountPaid, status })
     .eq("id", invoiceId);
+
+  if (invoice.status !== status) {
+    await supabase.from("invoice_status_logs").insert({
+      organization_id: organization.id,
+      invoice_id: invoiceId,
+      from_status: invoice.status,
+      to_status: status,
+      changed_by: profile.id,
+      note: `Payment recorded (${method}) RM ${amount.toFixed(2)}`,
+    });
+  }
 
   if (status === "paid" || status === "partial") {
     await supabase.from("ledger_entries").insert({
@@ -608,6 +622,102 @@ export async function submitInvoiceToLhdnAction(invoiceId: string) {
   return result.success
     ? { success: true, uuid: result.uuid }
     : { error: result.error || "LHDN submission failed" };
+}
+
+export async function updateInvoiceStatusAction(formData: FormData) {
+  const { supabase, organization, profile } = await requireMember();
+  const invoiceId = String(formData.get("invoice_id") || "");
+  const toStatus = String(formData.get("status") || "") as InvoiceStatus;
+  const note = String(formData.get("note") || "").trim() || null;
+
+  const allowed: InvoiceStatus[] = ["draft", "unpaid", "partial", "paid", "void"];
+  if (!invoiceId || !allowed.includes(toStatus)) {
+    return { error: "Invalid status update" };
+  }
+
+  const { data: invoice } = await supabase
+    .from("invoices")
+    .select("*")
+    .eq("id", invoiceId)
+    .single();
+  if (!invoice) return { error: "Invoice not found" };
+  if (invoice.status === toStatus) return { success: true };
+
+  const { error } = await supabase
+    .from("invoices")
+    .update({ status: toStatus })
+    .eq("id", invoiceId);
+  if (error) return { error: error.message };
+
+  await supabase.from("invoice_status_logs").insert({
+    organization_id: organization.id,
+    invoice_id: invoiceId,
+    from_status: invoice.status,
+    to_status: toStatus,
+    changed_by: profile.id,
+    note: note || `Status changed from ${invoice.status} to ${toStatus}`,
+  });
+
+  revalidateApp("/invoices", "/dashboard", "/accounting");
+  return { success: true };
+}
+
+export async function upsertServiceItemAction(formData: FormData) {
+  const { supabase, organization } = await requireMember();
+  const id = String(formData.get("id") || "");
+  const payload = {
+    organization_id: organization.id,
+    name: String(formData.get("name") || "").trim(),
+    category: String(formData.get("category") || "General").trim() || "General",
+    description: String(formData.get("description") || "") || null,
+    is_active: formData.get("is_active") !== "off",
+  };
+  if (!payload.name) return { error: "Name required" };
+
+  const { error } = id
+    ? await supabase.from("service_items").update(payload).eq("id", id)
+    : await supabase.from("service_items").insert(payload);
+  if (error) return { error: error.message };
+
+  revalidateApp("/admin", "/invoices");
+  return { success: true };
+}
+
+export async function deleteServiceItemAction(id: string) {
+  const { supabase } = await requireMember();
+  const { error } = await supabase.from("service_items").delete().eq("id", id);
+  if (error) return { error: error.message };
+  revalidateApp("/admin", "/invoices");
+  return { success: true };
+}
+
+export async function upsertPriceListItemAction(formData: FormData) {
+  const { supabase, organization } = await requireMember();
+  const id = String(formData.get("id") || "");
+  const payload = {
+    organization_id: organization.id,
+    service_item_id: String(formData.get("service_item_id") || "") || null,
+    name: String(formData.get("name") || "").trim(),
+    unit_price: Number(formData.get("unit_price") || 0),
+    is_active: formData.get("is_active") !== "off",
+  };
+  if (!payload.name) return { error: "Name required" };
+
+  const { error } = id
+    ? await supabase.from("price_list_items").update(payload).eq("id", id)
+    : await supabase.from("price_list_items").insert(payload);
+  if (error) return { error: error.message };
+
+  revalidateApp("/admin", "/invoices");
+  return { success: true };
+}
+
+export async function deletePriceListItemAction(id: string) {
+  const { supabase } = await requireMember();
+  const { error } = await supabase.from("price_list_items").delete().eq("id", id);
+  if (error) return { error: error.message };
+  revalidateApp("/admin", "/invoices");
+  return { success: true };
 }
 
 export async function signOutAction() {

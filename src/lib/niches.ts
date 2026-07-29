@@ -17,6 +17,7 @@ export const nicheNavKeys = {
     "lhdn",
     "staff",
     "settings",
+    "admin",
   ],
   retail: [
     "dashboard",
@@ -28,6 +29,7 @@ export const nicheNavKeys = {
     "lhdn",
     "staff",
     "settings",
+    "admin",
   ],
 } as const;
 
