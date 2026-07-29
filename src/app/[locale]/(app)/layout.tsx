@@ -1,8 +1,7 @@
 import { requireOrg } from "@/lib/org";
 import { AppShell } from "@/components/AppShell";
+import { OrgProvider } from "@/components/OrgProvider";
 import { setRequestLocale } from "next-intl/server";
-
-export const dynamic = "force-dynamic";
 
 export default async function AppLayout({
   children,
@@ -16,8 +15,10 @@ export default async function AppLayout({
   const ctx = await requireOrg(locale);
 
   return (
-    <AppShell niche={ctx.organization.niche} orgName={ctx.organization.name}>
-      {children}
-    </AppShell>
+    <OrgProvider organization={ctx.organization} role={ctx.membership.role}>
+      <AppShell niche={ctx.organization.niche} orgName={ctx.organization.name}>
+        {children}
+      </AppShell>
+    </OrgProvider>
   );
 }

@@ -1,11 +1,11 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getOrgContext } from "@/lib/org";
 import { isNiche } from "@/lib/niches";
 import { getLhdnProvider } from "@/lib/lhdn/sandbox";
 import { canUseLhdn } from "@/lib/subscription";
+import { revalidateApp, revalidateAppLayout } from "@/lib/revalidate";
 import type {
   AppointmentStatus,
   InvoiceStatus,
@@ -52,7 +52,7 @@ export async function createOrganizationAction(formData: FormData) {
 
   if (orgError) return { error: orgError.message };
 
-  revalidatePath("/");
+  revalidateApp("/dashboard"); revalidateAppLayout();
   return { success: true };
 }
 
@@ -73,7 +73,7 @@ export async function upsertCustomerAction(formData: FormData) {
     : await supabase.from("customers").insert(payload);
 
   if (error) return { error: error.message };
-  revalidatePath("/");
+  revalidateApp("/customers", "/dashboard", "/appointments", "/invoices", "/pos");
   return { success: true };
 }
 
@@ -81,7 +81,7 @@ export async function deleteCustomerAction(id: string) {
   const { supabase } = await requireMember();
   const { error } = await supabase.from("customers").delete().eq("id", id);
   if (error) return { error: error.message };
-  revalidatePath("/");
+  revalidateApp("/customers", "/dashboard", "/appointments", "/invoices");
   return { success: true };
 }
 
@@ -106,7 +106,7 @@ export async function upsertProductAction(formData: FormData) {
     : await supabase.from("products").insert(payload);
 
   if (error) return { error: error.message };
-  revalidatePath("/");
+  revalidateApp("/inventory", "/pos", "/dashboard");
   return { success: true };
 }
 
@@ -147,7 +147,7 @@ export async function adjustStockAction(formData: FormData) {
     .eq("id", productId);
   if (error) return { error: error.message };
 
-  revalidatePath("/");
+  revalidateApp("/inventory", "/pos", "/dashboard");
   return { success: true };
 }
 
@@ -197,7 +197,7 @@ export async function createInvoiceAction(formData: FormData) {
     line_total: lineTotal,
   });
 
-  revalidatePath("/");
+  revalidateApp("/invoices", "/dashboard", "/accounting", "/lhdn");
   return { success: true, invoiceId: invoice.id };
 }
 
@@ -246,7 +246,7 @@ export async function recordPaymentAction(formData: FormData) {
     });
   }
 
-  revalidatePath("/");
+  revalidateApp("/invoices", "/dashboard", "/accounting");
   return { success: true };
 }
 
@@ -269,7 +269,7 @@ export async function createAppointmentAction(formData: FormData) {
 
   const { error } = await supabase.from("appointments").insert(payload);
   if (error) return { error: error.message };
-  revalidatePath("/");
+  revalidateApp("/appointments", "/dashboard");
   return { success: true };
 }
 
@@ -277,7 +277,7 @@ export async function updateAppointmentStatusAction(id: string, status: Appointm
   const { supabase } = await requireMember();
   const { error } = await supabase.from("appointments").update({ status }).eq("id", id);
   if (error) return { error: error.message };
-  revalidatePath("/");
+  revalidateApp("/appointments", "/dashboard");
   return { success: true };
 }
 
@@ -362,7 +362,7 @@ export async function posCheckoutAction(formData: FormData) {
     description: `POS sale ${invoiceNumber}`,
   });
 
-  revalidatePath("/");
+  revalidateApp("/pos", "/inventory", "/invoices", "/dashboard", "/accounting");
   return { success: true, invoiceId: invoice.id };
 }
 
@@ -399,7 +399,7 @@ export async function createExpenseAction(formData: FormData) {
     description: description || category,
   });
 
-  revalidatePath("/");
+  revalidateApp("/accounting", "/dashboard");
   return { success: true };
 }
 
@@ -419,7 +419,7 @@ export async function updateOrgSettingsAction(formData: FormData) {
     .eq("id", organization.id);
 
   if (error) return { error: error.message };
-  revalidatePath("/");
+  revalidateApp("/settings", "/lhdn"); revalidateAppLayout();
   return { success: true };
 }
 
@@ -436,7 +436,7 @@ export async function upgradePlanAction(plan: SubscriptionPlan) {
     .eq("id", organization.id);
 
   if (error) return { error: error.message };
-  revalidatePath("/");
+  revalidateApp("/settings", "/lhdn"); revalidateAppLayout();
   return { success: true };
 }
 
@@ -482,7 +482,7 @@ export async function addStaffAction(formData: FormData) {
   });
 
   if (error) return { error: error.message };
-  revalidatePath("/");
+  revalidateApp("/staff");
   return { success: true };
 }
 
@@ -547,7 +547,7 @@ export async function submitInvoiceToLhdnAction(invoiceId: string) {
     .update({ lhdn_status: status })
     .eq("id", invoiceId);
 
-  revalidatePath("/");
+  revalidateApp("/lhdn", "/invoices");
   return result.success
     ? { success: true, uuid: result.uuid }
     : { error: result.error || "LHDN submission failed" };
@@ -556,5 +556,5 @@ export async function submitInvoiceToLhdnAction(invoiceId: string) {
 export async function signOutAction() {
   const supabase = await createClient();
   await supabase.auth.signOut();
-  revalidatePath("/");
+  revalidateApp("/dashboard", "/login");
 }

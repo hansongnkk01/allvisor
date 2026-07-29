@@ -21,7 +21,12 @@ export function ActionForm({
   return (
     <form
       className={className}
-      style={style}
+      style={{
+        ...style,
+        opacity: pending ? 0.72 : 1,
+        transition: "opacity 120ms ease",
+        pointerEvents: pending ? "none" : undefined,
+      }}
       action={(formData) => {
         setError(null);
         startTransition(async () => {
@@ -42,7 +47,7 @@ export function ActionForm({
       ) : null}
       {pending ? (
         <p className="muted" style={{ margin: "0.5rem 0 0", fontSize: "0.85rem" }}>
-          …
+          Saving…
         </p>
       ) : null}
     </form>

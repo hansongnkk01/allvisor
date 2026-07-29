@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useEffect, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import {
   LayoutDashboard,
@@ -15,10 +16,11 @@ import {
   ShoppingCart,
   LogOut,
 } from "lucide-react";
-import { Link, usePathname } from "@/i18n/navigation";
+import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { nicheNavKeys } from "@/lib/niches";
 import type { Niche } from "@/lib/types";
 import { LanguageSwitcher } from "./LanguageSwitcher";
+import { NavigationProgress } from "./NavigationProgress";
 import { signOutAction } from "@/app/actions";
 import { cn } from "@/lib/utils";
 
@@ -48,6 +50,47 @@ const hrefMap: Record<string, string> = {
   pos: "/pos",
 };
 
+function NavItem({
+  href,
+  active,
+  label,
+  icon,
+}: {
+  href: string;
+  active: boolean;
+  label: string;
+  icon: ReactNode;
+}) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+
+  return (
+    <Link
+      href={href}
+      prefetch
+      onClick={(e) => {
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        e.preventDefault();
+        startTransition(() => {
+          router.push(href);
+        });
+      }}
+      className={cn("row", pending && "nav-link-pending")}
+      style={{
+        padding: "0.7rem 0.85rem",
+        borderRadius: 12,
+        background: active ? "var(--accent-soft)" : "transparent",
+        color: active ? "var(--accent-ink)" : "var(--ink)",
+        fontWeight: active ? 600 : 500,
+        transition: "background 120ms ease, opacity 120ms ease",
+      }}
+    >
+      {icon}
+      <span>{label}</span>
+    </Link>
+  );
+}
+
 export function AppShell({
   niche,
   orgName,
@@ -62,8 +105,16 @@ export function AppShell({
   const pathname = usePathname();
   const keys = nicheNavKeys[niche];
 
+  useEffect(() => {
+    const maxAge = 60 * 60 * 24 * 30;
+    document.cookie = `allvisor_niche=${niche}; path=/; max-age=${maxAge}; SameSite=Lax`;
+    document.cookie = `allvisor_org=${encodeURIComponent(orgName)}; path=/; max-age=${maxAge}; SameSite=Lax`;
+    document.documentElement.dataset.niche = niche;
+  }, [niche, orgName]);
+
   return (
     <div data-niche={niche} className="min-h-screen">
+      <NavigationProgress />
       <div className="app-grid">
         <aside
           className="surface"
@@ -96,21 +147,13 @@ export function AppShell({
                   ? t("patients")
                   : t(key as "dashboard");
               return (
-                <Link
+                <NavItem
                   key={key}
                   href={href}
-                  className={cn("row")}
-                  style={{
-                    padding: "0.7rem 0.85rem",
-                    borderRadius: 12,
-                    background: active ? "var(--accent-soft)" : "transparent",
-                    color: active ? "var(--accent-ink)" : "var(--ink)",
-                    fontWeight: active ? 600 : 500,
-                  }}
-                >
-                  {icons[key]}
-                  <span>{label}</span>
-                </Link>
+                  active={active}
+                  label={label}
+                  icon={icons[key]}
+                />
               );
             })}
           </nav>

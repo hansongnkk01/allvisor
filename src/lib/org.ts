@@ -1,14 +1,16 @@
+import { cache } from "react";
 import { redirect } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { Membership, Organization, OrgContext, Profile } from "@/lib/types";
 
-export async function getSessionUser() {
+/** Dedupes auth lookup within a single server request. */
+export const getSessionUser = cache(async () => {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   return { supabase, user };
-}
+});
 
 export async function requireUser(locale: string) {
   const { supabase, user } = await getSessionUser();
@@ -18,13 +20,16 @@ export async function requireUser(locale: string) {
   return { supabase, user: user! };
 }
 
-export async function getOrgContext(): Promise<OrgContext | null> {
+/** Dedupes org membership lookup within a single server request (layout + page share one query). */
+export const getOrgContext = cache(async (): Promise<OrgContext | null> => {
   const { supabase, user } = await getSessionUser();
   if (!user) return null;
 
   const { data: membership } = await supabase
     .from("memberships")
-    .select("*, organizations(*), profiles(*)")
+    .select(
+      "id, organization_id, user_id, role, created_at, organizations(*), profiles(id, full_name, email, locale, created_at)"
+    )
     .eq("user_id", user.id)
     .order("created_at", { ascending: true })
     .limit(1)
@@ -33,7 +38,7 @@ export async function getOrgContext(): Promise<OrgContext | null> {
   if (!membership?.organizations) return null;
 
   return {
-    membership: membership as Membership,
+    membership: membership as unknown as Membership,
     organization: membership.organizations as unknown as Organization,
     profile: (membership.profiles as unknown as Profile) || {
       id: user.id,
@@ -43,15 +48,13 @@ export async function getOrgContext(): Promise<OrgContext | null> {
       created_at: new Date().toISOString(),
     },
   };
-}
+});
 
 export async function requireOrg(locale: string): Promise<OrgContext> {
-  const { user } = await requireUser(locale);
+  await requireUser(locale);
   const ctx = await getOrgContext();
   if (!ctx) {
     redirect({ href: "/onboarding", locale });
   }
-  // silence unused if redirect throws
-  void user;
   return ctx!;
 }
