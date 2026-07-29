@@ -665,10 +665,21 @@ export async function updateInvoiceStatusAction(formData: FormData) {
 export async function upsertServiceItemAction(formData: FormData) {
   const { supabase, organization } = await requireMember();
   const id = String(formData.get("id") || "");
+  const categoryId = String(formData.get("category_id") || "") || null;
+  if (!categoryId) return { error: "Category required" };
+
+  const { data: category } = await supabase
+    .from("service_categories")
+    .select("name")
+    .eq("id", categoryId)
+    .maybeSingle();
+
   const payload = {
     organization_id: organization.id,
     name: String(formData.get("name") || "").trim(),
-    category: String(formData.get("category") || "General").trim() || "General",
+    category_id: categoryId,
+    category: category?.name || "General",
+    unit_price: Number(formData.get("unit_price") || 0),
     description: String(formData.get("description") || "") || null,
     is_active: formData.get("is_active") !== "off",
   };
@@ -691,33 +702,42 @@ export async function deleteServiceItemAction(id: string) {
   return { success: true };
 }
 
-export async function upsertPriceListItemAction(formData: FormData) {
+export async function upsertServiceCategoryAction(formData: FormData) {
   const { supabase, organization } = await requireMember();
   const id = String(formData.get("id") || "");
   const payload = {
     organization_id: organization.id,
-    service_item_id: String(formData.get("service_item_id") || "") || null,
     name: String(formData.get("name") || "").trim(),
-    unit_price: Number(formData.get("unit_price") || 0),
-    is_active: formData.get("is_active") !== "off",
+    description: String(formData.get("description") || "").trim() || null,
   };
-  if (!payload.name) return { error: "Name required" };
+  if (!payload.name) return { error: "Category name required" };
 
   const { error } = id
-    ? await supabase.from("price_list_items").update(payload).eq("id", id)
-    : await supabase.from("price_list_items").insert(payload);
+    ? await supabase.from("service_categories").update(payload).eq("id", id)
+    : await supabase.from("service_categories").insert(payload);
   if (error) return { error: error.message };
 
   revalidateApp("/admin", "/invoices");
   return { success: true };
 }
 
-export async function deletePriceListItemAction(id: string) {
+export async function deleteServiceCategoryAction(id: string) {
   const { supabase } = await requireMember();
-  const { error } = await supabase.from("price_list_items").delete().eq("id", id);
+  const { error } = await supabase.from("service_categories").delete().eq("id", id);
   if (error) return { error: error.message };
   revalidateApp("/admin", "/invoices");
   return { success: true };
+}
+
+export async function upsertPriceListItemAction(formData: FormData) {
+  // Legacy no-op kept for compatibility — prices now live on service_items
+  void formData;
+  return { error: "Use Admin → Items/Services to set prices" };
+}
+
+export async function deletePriceListItemAction(id: string) {
+  void id;
+  return { error: "Use Admin → Items/Services to manage prices" };
 }
 
 export async function signOutAction() {

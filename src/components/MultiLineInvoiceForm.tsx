@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { ActionForm } from "@/components/ActionForm";
-import type { PriceListItem } from "@/lib/types";
+import type { ServiceItem } from "@/lib/types";
 
 type CustomerOption = { id: string; name: string };
 
@@ -10,17 +10,17 @@ type Line = {
   description: string;
   quantity: number;
   unit_price: number;
-  price_list_item_id: string | null;
+  service_item_id: string | null;
 };
 
 export function MultiLineInvoiceForm({
   customers,
-  priceList,
+  services,
   labels,
   action,
 }: {
   customers: CustomerOption[];
-  priceList: PriceListItem[];
+  services: ServiceItem[];
   labels: {
     customer: string;
     invoiceNumber: string;
@@ -41,7 +41,7 @@ export function MultiLineInvoiceForm({
   action: (formData: FormData) => Promise<{ error?: string; success?: boolean } | void>;
 }) {
   const [lines, setLines] = useState<Line[]>([
-    { description: "", quantity: 1, unit_price: 0, price_list_item_id: null },
+    { description: "", quantity: 1, unit_price: 0, service_item_id: null },
   ]);
   const [tax, setTax] = useState(0);
 
@@ -51,34 +51,44 @@ export function MultiLineInvoiceForm({
   );
   const total = subtotal + tax;
 
-  function applyPrice(index: number, priceId: string) {
-    const item = priceList.find((p) => p.id === priceId);
+  function applyService(index: number, serviceId: string) {
+    const item = services.find((s) => s.id === serviceId);
     setLines((prev) =>
       prev.map((line, i) => {
         if (i !== index) return line;
         if (!item) {
-          return { ...line, price_list_item_id: null };
+          return { ...line, service_item_id: null };
         }
+        const categoryName = item.service_categories?.name || item.category;
         return {
           ...line,
-          price_list_item_id: item.id,
-          description: line.description || item.name,
-          unit_price: Number(item.unit_price),
+          service_item_id: item.id,
+          description: item.name + (categoryName ? ` (${categoryName})` : ""),
+          unit_price: Number(item.unit_price || 0),
         };
       })
     );
   }
+
+  const linesForSubmit = lines.map((line) => ({
+    description: line.description,
+    quantity: line.quantity,
+    unit_price: line.unit_price,
+    product_id: null,
+    price_list_item_id: null,
+    service_item_id: line.service_item_id,
+  }));
 
   return (
     <ActionForm
       action={action}
       className="stack"
       onSuccess={() => {
-        setLines([{ description: "", quantity: 1, unit_price: 0, price_list_item_id: null }]);
+        setLines([{ description: "", quantity: 1, unit_price: 0, service_item_id: null }]);
         setTax(0);
       }}
     >
-      <input type="hidden" name="lines_json" value={JSON.stringify(lines)} />
+      <input type="hidden" name="lines_json" value={JSON.stringify(linesForSubmit)} />
       <input type="hidden" name="tax_amount" value={tax} />
 
       <div
@@ -123,7 +133,7 @@ export function MultiLineInvoiceForm({
             onClick={() =>
               setLines((prev) => [
                 ...prev,
-                { description: "", quantity: 1, unit_price: 0, price_list_item_id: null },
+                { description: "", quantity: 1, unit_price: 0, service_item_id: null },
               ])
             }
           >
@@ -137,7 +147,7 @@ export function MultiLineInvoiceForm({
               key={index}
               style={{
                 display: "grid",
-                gridTemplateColumns: "1.4fr 1.6fr 0.6fr 0.8fr auto",
+                gridTemplateColumns: "1.5fr 1.5fr 0.6fr 0.8fr auto",
                 gap: "0.5rem",
                 alignItems: "end",
               }}
@@ -146,15 +156,19 @@ export function MultiLineInvoiceForm({
                 <label>{labels.price}</label>
                 <select
                   className="select"
-                  value={line.price_list_item_id || ""}
-                  onChange={(e) => applyPrice(index, e.target.value)}
+                  value={line.service_item_id || ""}
+                  onChange={(e) => applyService(index, e.target.value)}
                 >
                   <option value="">{labels.selectPrice}</option>
-                  {priceList.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} — RM {Number(p.unit_price).toFixed(2)}
-                    </option>
-                  ))}
+                  {services.map((s) => {
+                    const cat = s.service_categories?.name || s.category;
+                    return (
+                      <option key={s.id} value={s.id}>
+                        {cat ? `${cat} · ` : ""}
+                        {s.name} — RM {Number(s.unit_price || 0).toFixed(2)}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
               <div className="field">
@@ -199,13 +213,13 @@ export function MultiLineInvoiceForm({
                   step="0.01"
                   min={0}
                   value={line.unit_price}
-                  readOnly={Boolean(line.price_list_item_id)}
+                  readOnly={Boolean(line.service_item_id)}
                   onChange={(e) => {
                     const value = Number(e.target.value);
                     setLines((prev) =>
                       prev.map((item, i) =>
                         i === index
-                          ? { ...item, unit_price: value, price_list_item_id: null }
+                          ? { ...item, unit_price: value, service_item_id: null }
                           : item
                       )
                     );
@@ -224,9 +238,9 @@ export function MultiLineInvoiceForm({
             </div>
           ))}
         </div>
-        {!priceList.length ? (
+        {!services.length ? (
           <p className="muted" style={{ marginTop: 8, fontSize: "0.85rem" }}>
-            Add prices in Admin → Price list first for dropdown options.
+            Add categories and services in Admin first.
           </p>
         ) : null}
       </div>

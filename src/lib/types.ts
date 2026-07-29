@@ -123,14 +123,25 @@ export interface InvoiceLine {
   price_list_item_id?: string | null;
 }
 
+export interface ServiceCategory {
+  id: string;
+  organization_id: string;
+  name: string;
+  description: string | null;
+  created_at: string;
+}
+
 export interface ServiceItem {
   id: string;
   organization_id: string;
   name: string;
   category: string;
+  category_id: string | null;
+  unit_price: number;
   description: string | null;
   is_active: boolean;
   created_at: string;
+  service_categories?: ServiceCategory | null;
 }
 
 export interface PriceListItem {

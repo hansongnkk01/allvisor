@@ -7,7 +7,7 @@ import { ActionForm } from "@/components/ActionForm";
 import { MultiLineInvoiceForm } from "@/components/MultiLineInvoiceForm";
 import { createInvoiceAction, recordPaymentAction } from "@/app/actions";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import type { PriceListItem } from "@/lib/types";
+import type { ServiceItem } from "@/lib/types";
 
 export default async function InvoicesPage({
   params,
@@ -20,7 +20,7 @@ export default async function InvoicesPage({
   const ctx = await requireOrg(locale);
   const supabase = await createClient();
 
-  const [{ data: invoices }, { data: customers }, { data: priceList }] =
+  const [{ data: invoices }, { data: customers }, { data: services }] =
     await Promise.all([
       supabase
         .from("invoices")
@@ -33,8 +33,8 @@ export default async function InvoicesPage({
         .eq("organization_id", ctx.organization.id)
         .order("name"),
       supabase
-        .from("price_list_items")
-        .select("*")
+        .from("service_items")
+        .select("*, service_categories(name)")
         .eq("organization_id", ctx.organization.id)
         .eq("is_active", true)
         .order("name"),
@@ -48,7 +48,7 @@ export default async function InvoicesPage({
         <h3 style={{ marginTop: 0 }}>{t("add")}</h3>
         <MultiLineInvoiceForm
           customers={customers || []}
-          priceList={(priceList || []) as PriceListItem[]}
+          services={(services || []) as ServiceItem[]}
           action={createInvoiceAction}
           labels={{
             customer: t("customer"),
