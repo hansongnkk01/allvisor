@@ -315,10 +315,24 @@ export async function recordPaymentAction(formData: FormData) {
 
 export async function createAppointmentAction(formData: FormData) {
   const { supabase, organization } = await requireMember();
+  const categoryId = String(formData.get("category_id") || "").trim();
+  let title = String(formData.get("title") || "").trim();
+
+  if (categoryId) {
+    const { data: category } = await supabase
+      .from("service_categories")
+      .select("name")
+      .eq("id", categoryId)
+      .eq("organization_id", organization.id)
+      .maybeSingle();
+    if (!category?.name) return { error: "Category not found" };
+    title = category.name;
+  }
+
   const payload = {
     organization_id: organization.id,
     customer_id: String(formData.get("customer_id") || ""),
-    title: String(formData.get("title") || "").trim(),
+    title,
     starts_at: String(formData.get("starts_at") || ""),
     ends_at: String(formData.get("ends_at") || ""),
     status: (String(formData.get("status") || "scheduled") as AppointmentStatus),

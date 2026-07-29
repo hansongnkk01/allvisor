@@ -86,6 +86,8 @@
     "add": "Tempah temujanji",
     "patient": "Pesakit",
     "titleLabel": "Tajuk",
+    "category": "Kategori",
+    "needCategory": "Tambah kategori di Admin dahulu.",
     "startsAt": "Mula",
     "endsAt": "Tamat",
     "status": "Status",

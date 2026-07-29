@@ -23,18 +23,24 @@ export default async function AppointmentsPage({
   }
 
   const supabase = await createClient();
-  const [{ data: appointments }, { data: customers }] = await Promise.all([
-    supabase
-      .from("appointments")
-      .select("*, customers(name)")
-      .eq("organization_id", ctx.organization.id)
-      .order("starts_at", { ascending: true }),
-    supabase
-      .from("customers")
-      .select("id, name")
-      .eq("organization_id", ctx.organization.id)
-      .order("name"),
-  ]);
+  const [{ data: appointments }, { data: customers }, { data: categories }] =
+    await Promise.all([
+      supabase
+        .from("appointments")
+        .select("*, customers(name)")
+        .eq("organization_id", ctx.organization.id)
+        .order("starts_at", { ascending: true }),
+      supabase
+        .from("customers")
+        .select("id, name")
+        .eq("organization_id", ctx.organization.id)
+        .order("name"),
+      supabase
+        .from("service_categories")
+        .select("id, name")
+        .eq("organization_id", ctx.organization.id)
+        .order("name"),
+    ]);
 
   return (
     <div className="stack" style={{ gap: "1.25rem" }}>
@@ -62,8 +68,17 @@ export default async function AppointmentsPage({
               </select>
             </div>
             <div className="field">
-              <label>{t("titleLabel")}</label>
-              <input name="title" required className="input" placeholder="Consultation" />
+              <label>{t("category")}</label>
+              <select name="category_id" required className="select" defaultValue="">
+                <option value="" disabled>
+                  —
+                </option>
+                {(categories || []).map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="field">
               <label>{t("startsAt")}</label>
@@ -92,10 +107,15 @@ export default async function AppointmentsPage({
             <input type="checkbox" name="reminder_sent" />
             <span>{t("reminder")}</span>
           </label>
-          <button type="submit" className="btn btn-primary">
+          <button type="submit" className="btn btn-primary" disabled={!categories?.length}>
             {t("save")}
           </button>
         </ActionForm>
+        {!categories?.length ? (
+          <p className="muted" style={{ marginTop: 8 }}>
+            {t("needCategory")}
+          </p>
+        ) : null}
       </div>
 
       <div className="surface" style={{ padding: "1.25rem" }}>

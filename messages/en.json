@@ -86,6 +86,8 @@
     "add": "Book appointment",
     "patient": "Patient",
     "titleLabel": "Title",
+    "category": "Category",
+    "needCategory": "Add categories in Admin first.",
     "startsAt": "Starts",
     "endsAt": "Ends",
     "status": "Status",
