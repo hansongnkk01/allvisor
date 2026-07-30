@@ -2,7 +2,6 @@
 
 import { useMemo } from "react";
 import { format } from "date-fns";
-import { PatientName } from "@/components/PatientName";
 import { getMyHolidayOn, holidayLabel } from "@/lib/my-holidays";
 
 type SlotAppt = {
@@ -15,24 +14,96 @@ type SlotAppt = {
 
 export type TimetableHours = {
   openHour?: number; // inclusive 0-23
-  closeHour?: number; // inclusive last displayed hour 0-23
+  closeHour?: number; // inclusive last open hour 0-23
   closedWeekdays?: number[]; // 0=Sun .. 6=Sat (JS getDay)
   locale?: string;
 };
 
-function buildHours(openHour: number, closeHour: number) {
+type HalfStatus = "free" | "booked";
+type HourStatus = "closed" | "free" | "booked" | "half";
+
+const COLOR = {
+  free: "#22c55e",
+  booked: "#ef4444",
+  closed: "#9ca3af",
+};
+
+function isHourOpen(hour: number, openHour: number, closeHour: number, dayClosed: boolean) {
+  if (dayClosed) return false;
   const open = Math.min(23, Math.max(0, openHour));
   const close = Math.min(23, Math.max(0, closeHour));
   if (close < open) {
-    // overnight shift: open..23 then 0..close
-    const hours: number[] = [];
-    for (let h = open; h <= 23; h++) hours.push(h);
-    for (let h = 0; h <= close; h++) hours.push(h);
-    return hours;
+    return hour >= open || hour <= close;
   }
-  const hours: number[] = [];
-  for (let h = open; h <= close; h++) hours.push(h);
-  return hours;
+  return hour >= open && hour <= close;
+}
+
+/** Overlap of [start,end) with a half-hour window, in minutes (0–30). */
+function overlapMinutes(startMs: number, endMs: number, winStart: number, winEnd: number) {
+  const a = Math.max(startMs, winStart);
+  const b = Math.min(endMs, winEnd);
+  if (b <= a) return 0;
+  return (b - a) / 60000;
+}
+
+function halfBooked(appointments: SlotAppt[], day: Date, hour: number, half: 0 | 1): boolean {
+  const winStart = new Date(day);
+  winStart.setHours(hour, half * 30, 0, 0);
+  const winEnd = new Date(day);
+  winEnd.setHours(hour, half * 30 + 30, 0, 0);
+  const ws = winStart.getTime();
+  const we = winEnd.getTime();
+
+  let booked = 0;
+  for (const a of appointments) {
+    booked += overlapMinutes(new Date(a.starts_at).getTime(), new Date(a.ends_at).getTime(), ws, we);
+    if (booked >= 10) return true; // treat ≥10 min as that half booked
+  }
+  return false;
+}
+
+function hourStatus(
+  appointments: SlotAppt[],
+  day: Date,
+  hour: number,
+  open: boolean
+): { status: HourStatus; top: HalfStatus; bottom: HalfStatus; tip: string } {
+  if (!open) {
+    return { status: "closed", top: "free", bottom: "free", tip: "closed" };
+  }
+  const topBooked = halfBooked(appointments, day, hour, 0);
+  const bottomBooked = halfBooked(appointments, day, hour, 1);
+  const top: HalfStatus = topBooked ? "booked" : "free";
+  const bottom: HalfStatus = bottomBooked ? "booked" : "free";
+
+  const covering = appointments.filter((a) => {
+    const s = new Date(a.starts_at);
+    const e = new Date(a.ends_at);
+    const hourStart = new Date(day);
+    hourStart.setHours(hour, 0, 0, 0);
+    const hourEnd = new Date(day);
+    hourEnd.setHours(hour + 1, 0, 0, 0);
+    return s < hourEnd && e > hourStart;
+  });
+  const tip =
+    covering.length > 0
+      ? covering
+          .map((a) => `${a.title}${a.customers?.name ? ` · ${a.customers.name}` : ""}`)
+          .join(" | ")
+      : "free";
+
+  if (topBooked && bottomBooked) return { status: "booked", top, bottom, tip };
+  if (!topBooked && !bottomBooked) return { status: "free", top, bottom, tip };
+  return { status: "half", top, bottom, tip };
+}
+
+function cellBackground(top: HalfStatus, bottom: HalfStatus, status: HourStatus) {
+  if (status === "closed") return COLOR.closed;
+  if (status === "free") return COLOR.free;
+  if (status === "booked") return COLOR.booked;
+  const topC = top === "booked" ? COLOR.booked : COLOR.free;
+  const botC = bottom === "booked" ? COLOR.booked : COLOR.free;
+  return `linear-gradient(to bottom, ${topC} 50%, ${botC} 50%)`;
 }
 
 export function DayHourTimetable({
@@ -59,28 +130,33 @@ export function DayHourTimetable({
   const closedWeekdays = hoursConfig?.closedWeekdays || [];
   const locale = hoursConfig?.locale || "ms";
 
-  const hours = useMemo(() => buildHours(openHour, closeHour), [openHour, closeHour]);
-
   const weekdayClosed = closedWeekdays.includes(date.getDay());
   const holiday = getMyHolidayOn(date, locale);
   const dayClosed = weekdayClosed;
 
-  const byHour = useMemo(() => {
-    const map = new Map<number, SlotAppt[]>();
-    for (const a of appointments) {
-      const h = new Date(a.starts_at).getHours();
-      const list = map.get(h) || [];
-      list.push(a);
-      map.set(h, list);
-    }
-    return map;
-  }, [appointments]);
+  const hours = useMemo(() => Array.from({ length: 24 }, (_, h) => h), []);
+
+  const slots = useMemo(() => {
+    return hours.map((hour) => {
+      const open = isHourOpen(hour, openHour, closeHour, dayClosed);
+      const info = hourStatus(appointments, date, hour, open);
+      const tipLabel =
+        info.status === "closed"
+          ? labels.closed || "Clinic closed"
+          : info.status === "free"
+            ? labels.free
+            : info.status === "booked"
+              ? `${labels.occupied}: ${info.tip}`
+              : `${labels.occupied} / ${labels.free}: ${info.tip}`;
+      return { hour, ...info, tipLabel };
+    });
+  }, [hours, openHour, closeHour, dayClosed, appointments, date, labels]);
 
   return (
     <div
       className="surface"
       style={{
-        padding: "1rem",
+        padding: orientation === "horizontal" ? "0.85rem 1rem" : "1rem",
         boxShadow: orientation === "horizontal" ? undefined : "none",
         background: holiday
           ? "rgba(220, 38, 38, 0.06)"
@@ -89,10 +165,18 @@ export function DayHourTimetable({
             : undefined,
       }}
     >
-      <div className="row" style={{ justifyContent: "space-between", marginBottom: 8, gap: 8 }}>
-        <strong>
+      <div className="row" style={{ justifyContent: "space-between", marginBottom: 10, gap: 8 }}>
+        <span
+          style={{
+            fontSize: "0.72rem",
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: "var(--muted)",
+            fontWeight: 600,
+          }}
+        >
           {labels.timetable} · {format(date, "EEE d MMM")}
-        </strong>
+        </span>
         <div className="row" style={{ gap: 6 }}>
           {holiday ? (
             <span className="badge" style={{ background: "rgba(220,38,38,0.15)" }}>
@@ -107,115 +191,56 @@ export function DayHourTimetable({
         </div>
       </div>
 
-      {dayClosed && !appointments.length ? (
-        <p className="muted" style={{ margin: 0 }}>
-          {labels.closed || "Clinic closed today (weekly off)."}
-        </p>
-      ) : null}
-
-      {orientation === "horizontal" ? (
-        <div
-          style={{
-            display: "flex",
-            gap: 8,
-            overflowX: "auto",
-            paddingBottom: 4,
-            opacity: dayClosed ? 0.55 : 1,
-          }}
-        >
-          {hours.map((hour) => {
-            const items = byHour.get(hour) || [];
-            const occupied = items.length > 0;
-            return (
-              <div
-                key={`${hour}-${items.length}`}
-                style={{
-                  minWidth: 88,
-                  flex: "0 0 auto",
-                  padding: "0.55rem 0.5rem",
-                  borderRadius: 10,
-                  border: "1px solid var(--line)",
-                  background: occupied ? "var(--accent-soft)" : "rgba(255,255,255,0.65)",
-                  textAlign: "center",
-                }}
-                title={
-                  occupied
-                    ? items
-                        .map(
-                          (a) =>
-                            `${a.title}${a.customers?.name ? ` · ${a.customers.name}` : ""}`
-                        )
-                        .join(" | ")
-                    : labels.free
-                }
-              >
-                <div style={{ fontWeight: 700, fontSize: "0.9rem" }}>
-                  {String(hour).padStart(2, "0")}:00
-                </div>
-                <div className="badge" style={{ marginTop: 6 }}>
-                  {occupied ? labels.occupied : labels.free}
-                </div>
-                {occupied ? (
-                  <div
-                    className="muted"
-                    style={{
-                      fontSize: "0.7rem",
-                      marginTop: 6,
-                      lineHeight: 1.3,
-                      maxHeight: 36,
-                      overflow: "hidden",
-                    }}
-                  >
-                    {items[0]?.customers?.name ? (
-                      <PatientName
-                        name={items[0].customers.name}
-                        risk={items[0].customers.risk_level}
-                      />
-                    ) : (
-                      items[0]?.title
-                    )}
-                  </div>
-                ) : null}
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="stack" style={{ gap: 6, opacity: dayClosed ? 0.55 : 1 }}>
-          {hours.map((hour) => {
-            const items = byHour.get(hour) || [];
-            const occupied = items.length > 0;
-            return (
-              <div
-                key={hour}
-                className="row"
-                style={{
-                  justifyContent: "space-between",
-                  padding: "0.45rem 0.6rem",
-                  borderRadius: 10,
-                  background: occupied ? "var(--accent-soft)" : "rgba(255,255,255,0.65)",
-                  border: "1px solid var(--line)",
-                }}
-              >
-                <span style={{ fontWeight: 600, width: 64 }}>
-                  {String(hour).padStart(2, "0")}:00
-                </span>
-                <span style={{ flex: 1, fontSize: "0.88rem" }}>
-                  {occupied
-                    ? items
-                        .map(
-                          (a) =>
-                            `${a.title}${a.customers?.name ? ` · ${a.customers.name}` : ""}`
-                        )
-                        .join(" | ")
-                    : labels.free}
-                </span>
-                <span className="badge">{occupied ? labels.occupied : labels.free}</span>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      <div style={{ overflowX: "auto", width: "100%" }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(24, minmax(18px, 1fr))",
+          gap: 3,
+          width: "100%",
+          minWidth: 480,
+          minHeight: orientation === "horizontal" ? 36 : 48,
+        }}
+        role="img"
+        aria-label={labels.timetable}
+      >
+        {slots.map(({ hour, status, top, bottom, tipLabel }) => (
+          <div
+            key={hour}
+            title={`${String(hour).padStart(2, "0")}:00 — ${tipLabel}`}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "stretch",
+              gap: 4,
+              minWidth: 0,
+            }}
+          >
+            <div
+              style={{
+                flex: 1,
+                minHeight: orientation === "horizontal" ? 28 : 40,
+                border: "1.5px solid #1f2937",
+                borderRadius: 2,
+                background: cellBackground(top, bottom, status),
+              }}
+            />
+            <span
+              style={{
+                fontSize: "0.62rem",
+                lineHeight: 1,
+                textAlign: "center",
+                color: "rgba(107, 101, 96, 0.55)",
+                fontWeight: 500,
+                fontVariantNumeric: "tabular-nums",
+              }}
+            >
+              {String(hour).padStart(2, "0")}
+            </span>
+          </div>
+        ))}
+      </div>
+      </div>
     </div>
   );
 }
