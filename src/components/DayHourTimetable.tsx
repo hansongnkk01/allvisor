@@ -194,7 +194,10 @@ export function DayHourTimetable({
     const selected = tickSelected(minutes);
     const hovered = hoverMin === minutes;
     const h = opts.tall ? opts.trackH : opts.halfH;
-    const w = opts.tall ? (selected || hovered ? 4 : 3) : selected || hovered ? 3 : 2;
+    const lineW = opts.tall ? (selected || hovered ? 4 : 3) : selected || hovered ? 3 : 2;
+    // Invisible hit pad so users don't need to aim the thin line exactly
+    const hitW = opts.tall ? 28 : 24;
+    const hitH = opts.trackH + 12;
 
     const tickColor = selected
       ? COLOR.tickSelected
@@ -224,25 +227,44 @@ export function DayHourTimetable({
           if (clickable) onSlotSelect?.(minutes);
         }}
         style={{
-          width: w,
-          height: h,
+          width: hitW,
+          height: hitH,
           padding: 0,
           margin: 0,
           border: "none",
-          borderRadius: 999,
-          background: tickColor,
+          borderRadius: 8,
+          background: "transparent",
           cursor: clickable ? "pointer" : selectable ? "not-allowed" : "default",
           appearance: "none",
-          transform: hovered && clickable ? "scaleY(1.08)" : undefined,
-          boxShadow: selected
-            ? `0 0 0 3px ${COLOR.tickSelected}33`
-            : hovered && clickable
-              ? `0 0 0 3px ${COLOR.tickFree}22`
-              : "none",
-          transition: "transform 120ms ease, box-shadow 120ms ease, width 120ms ease",
-          opacity: kind === "closed" ? 0.7 : 1,
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          position: "relative",
+          zIndex: hovered || selected ? 4 : 2,
         }}
-      />
+      >
+        <span
+          aria-hidden
+          style={{
+            width: lineW,
+            height: h,
+            borderRadius: 999,
+            background: tickColor,
+            display: "block",
+            transform: hovered && clickable ? "scaleY(1.08)" : undefined,
+            boxShadow: selected
+              ? `0 0 0 3px ${COLOR.tickSelected}33`
+              : hovered && clickable
+                ? `0 0 0 3px ${COLOR.tickFree}22`
+                : "none",
+            transition: "transform 120ms ease, box-shadow 120ms ease, width 120ms ease",
+            opacity: kind === "closed" ? 0.7 : 1,
+            // Soft highlight on the hit pad when hovering a free line
+            outline: hovered && clickable ? `1px solid ${COLOR.tickFree}33` : undefined,
+            outlineOffset: 6,
+          }}
+        />
+      </button>
     );
   }
 
