@@ -1,5 +1,5 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { redirect } from "@/i18n/navigation";
+import { Link, redirect } from "@/i18n/navigation";
 import { requireOrg } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
@@ -10,6 +10,11 @@ import { canAccessSensitive } from "@/lib/roles";
 import { SectionLockGate } from "@/components/SectionLockGate";
 import { SectionActivityLog } from "@/components/SectionActivityLog";
 import { fetchSectionLogs } from "@/lib/section-logs";
+import {
+  accountingPeriodRange,
+  formatDayKeyMY,
+  type AccountingPeriod,
+} from "@/lib/datetime-my";
 
 const CLINIC_EXPENSE_CATS = [
   "Rent",
@@ -29,12 +34,28 @@ const CLINIC_INCOME_CATS = [
   "Other income",
 ];
 
+const PERIODS: AccountingPeriod[] = [
+  "today",
+  "this_week",
+  "this_month",
+  "prev_3_months",
+  "prev_6_months",
+  "this_year",
+];
+
+function isPeriod(v: string | undefined): v is AccountingPeriod {
+  return !!v && (PERIODS as string[]).includes(v);
+}
+
 export default async function AccountingPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ period?: string }>;
 }) {
   const { locale } = await params;
+  const sp = await searchParams;
   setRequestLocale(locale);
   const t = await getTranslations("Accounting");
   const ctx = await requireOrg(locale);
@@ -54,6 +75,13 @@ export default async function AccountingPage({
     );
   }
 
+  const period: AccountingPeriod = isPeriod(sp.period) ? sp.period : "this_month";
+  const { start, end } = accountingPeriodRange(period);
+  const startIso = start.toISOString();
+  const endIso = end.toISOString();
+  const startDay = formatDayKeyMY(start);
+  const endDay = formatDayKeyMY(end);
+
   const supabase = await createClient();
   const isClinic = ctx.organization.niche === "clinic";
 
@@ -62,15 +90,22 @@ export default async function AccountingPage({
       .from("expenses")
       .select("*")
       .eq("organization_id", ctx.organization.id)
+      .gte("expense_date", startDay)
+      .lte("expense_date", endDay)
       .order("expense_date", { ascending: false }),
     supabase
       .from("ledger_entries")
       .select("*")
       .eq("organization_id", ctx.organization.id)
+      .gte("entry_date", startDay)
+      .lte("entry_date", endDay)
       .order("entry_date", { ascending: false })
       .order("created_at", { ascending: false }),
     fetchSectionLogs(ctx.organization.id, ["accounting"]),
   ]);
+
+  void startIso;
+  void endIso;
 
   const income = (ledger || [])
     .filter((e) => e.entry_type === "income")
@@ -80,9 +115,36 @@ export default async function AccountingPage({
     .reduce((s, e) => s + Number(e.amount), 0);
   const profit = income - expenseTotal;
 
+  const periodLabels: Record<AccountingPeriod, string> = {
+    today: t("filterToday"),
+    this_week: t("filterThisWeek"),
+    this_month: t("filterThisMonth"),
+    prev_3_months: t("filterPrev3"),
+    prev_6_months: t("filterPrev6"),
+    this_year: t("filterThisYear"),
+  };
+
   return (
     <div className="stack" style={{ gap: "1.25rem" }}>
       <PageHeader title={t("title")} subtitle={t("subtitle")} />
+
+      <div className="surface" style={{ padding: "0.9rem 1.1rem" }}>
+        <div className="row" style={{ flexWrap: "wrap", gap: "0.5rem", alignItems: "center" }}>
+          <span className="muted" style={{ fontSize: "0.85rem" }}>
+            {t("filter")}:
+          </span>
+          {PERIODS.map((p) => (
+            <Link
+              key={p}
+              href={`/accounting?period=${p}`}
+              className={period === p ? "btn btn-primary" : "btn btn-ghost"}
+              style={{ padding: "0.4rem 0.75rem", fontSize: "0.85rem" }}
+            >
+              {periodLabels[p]}
+            </Link>
+          ))}
+        </div>
+      </div>
 
       <div className="fluid-grid-kpi">
         <div className="surface kpi">

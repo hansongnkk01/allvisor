@@ -42,6 +42,7 @@ export default async function CustomersPage({
     email: t("email"),
     phone: t("phone"),
     ic: t("ic"),
+    address: t("address"),
     notes: t("notes"),
     save: t("save"),
     delete: t("delete"),
@@ -92,6 +93,10 @@ export default async function CustomersPage({
             </div>
           </div>
           <div className="field">
+            <label>{t("address")}</label>
+            <input name="address" required className="input" placeholder="No., street, city, postcode" />
+          </div>
+          <div className="field">
             <label>{t("notes")}</label>
             <textarea name="notes" className="textarea" />
           </div>
@@ -109,6 +114,7 @@ export default async function CustomersPage({
                 <th>{t("name")}</th>
                 <th>{t("risk")}</th>
                 <th>{t("ic")}</th>
+                <th>{t("address")}</th>
                 <th>{t("phone")}</th>
                 <th>{t("email")}</th>
                 <th>{t("addedBy")}</th>
@@ -121,7 +127,7 @@ export default async function CustomersPage({
               ))}
               {!customers?.length ? (
                 <tr>
-                  <td colSpan={7} className="muted">
+                  <td colSpan={8} className="muted">
                     {t("empty")}
                   </td>
                 </tr>

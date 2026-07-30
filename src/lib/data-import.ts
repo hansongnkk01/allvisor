@@ -21,6 +21,7 @@ const ALIASES: Record<ImportKind, Record<string, string[]>> = {
     ic_number: ["ic_number", "ic", "nric", "mykad", "no_ic", "ic_no"],
     phone: ["phone", "tel", "mobile", "hp", "telefon", "no_telefon"],
     email: ["email", "e_mail", "emel"],
+    address: ["address", "alamat", "home_address", "addr"],
     notes: ["notes", "note", "remark", "remarks", "catatan"],
     risk_level: ["risk_level", "risk", "risiko"],
   },
@@ -61,10 +62,26 @@ export const IMPORT_TEMPLATES: Record<
 > = {
   patients: {
     filename: "allvisor-patients-template.csv",
-    headers: ["name", "ic_number", "phone", "email", "notes", "risk_level"],
+    headers: ["name", "ic_number", "phone", "email", "address", "notes", "risk_level"],
     sample: [
-      ["Ahmad bin Ali", "900101145678", "0123456789", "ahmad@email.com", "Regular patient", "low"],
-      ["Siti Aminah", "880202085432", "0198765432", "", "Allergy: penicillin", "medium"],
+      [
+        "Ahmad bin Ali",
+        "900101145678",
+        "0123456789",
+        "ahmad@email.com",
+        "12 Jalan Melati, Kajang",
+        "Regular patient",
+        "low",
+      ],
+      [
+        "Siti Aminah",
+        "880202085432",
+        "0198765432",
+        "",
+        "45 Taman Sri Putra, Puchong",
+        "Allergy: penicillin",
+        "medium",
+      ],
     ],
   },
   products: {

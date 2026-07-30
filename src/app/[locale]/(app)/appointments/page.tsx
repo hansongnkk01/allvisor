@@ -104,6 +104,10 @@ export default async function AppointmentsPage({
             category: t("category"),
             needCategory: t("needCategory"),
             resetBooking: t("resetBooking"),
+            searchPatient: t("searchPatient"),
+            searchCategory: t("searchCategory"),
+            completeConfirm1: t("completeConfirm1"),
+            completeConfirm2: t("completeConfirm2"),
           }}
         />
       </div>

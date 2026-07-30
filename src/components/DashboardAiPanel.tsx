@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "@/i18n/navigation";
 
 type InsightInput = {
   niche: "clinic" | "retail";
@@ -85,24 +86,30 @@ export function DashboardAiPanel({
   data: InsightInput;
   title: string;
 }) {
-  const tips = useMemo(() => {
-    const key = "allvisor_ai_tips";
-    const hourKey = "allvisor_ai_hour";
-    const hour = new Date().getHours();
-    try {
-      const storedHour = Number(sessionStorage.getItem(hourKey));
-      if (storedHour === hour) {
-        const cached = sessionStorage.getItem(key);
-        if (cached) return JSON.parse(cached) as string[];
-      }
-      const next = buildInsights(data);
-      sessionStorage.setItem(key, JSON.stringify(next));
-      sessionStorage.setItem(hourKey, String(hour));
-      return next;
-    } catch {
-      return buildInsights(data);
-    }
+  const router = useRouter();
+  const [tips, setTips] = useState(() => buildInsights(data));
+  const [updatedAt, setUpdatedAt] = useState(() => new Date());
+
+  useEffect(() => {
+    setTips(buildInsights(data));
+    setUpdatedAt(new Date());
   }, [data]);
+
+  // Soft realtime: refresh dashboard data while the tab is visible
+  useEffect(() => {
+    const tick = () => {
+      if (document.visibilityState === "visible") router.refresh();
+    };
+    const id = window.setInterval(tick, 20_000);
+    const onFocus = () => tick();
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+    return () => {
+      window.clearInterval(id);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+    };
+  }, [router]);
 
   return (
     <aside
@@ -123,7 +130,7 @@ export function DashboardAiPanel({
           const color = TIP_COLORS[i % TIP_COLORS.length];
           return (
             <p
-              key={tip}
+              key={`${tip}-${i}`}
               style={{
                 margin: 0,
                 fontSize: "0.86rem",
@@ -140,7 +147,7 @@ export function DashboardAiPanel({
         })}
       </div>
       <p className="muted" style={{ fontSize: "0.75rem", marginTop: 10, marginBottom: 0 }}>
-        Insights refresh every hour.
+        Live review · updated {updatedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
       </p>
     </aside>
   );

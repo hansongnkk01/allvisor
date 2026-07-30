@@ -18,8 +18,10 @@ import {
   updateAppointmentStatusAction,
   updateAppointmentAction,
   deleteAppointmentAction,
+  completeAppointmentWithInvoiceAction,
 } from "@/app/actions";
 import { DayHourTimetable, slotLabel, type TimetableHours } from "@/components/DayHourTimetable";
+import { SearchableSelect } from "@/components/SearchableSelect";
 import { PatientName } from "@/components/PatientName";
 import type { AppointmentStatus } from "@/lib/types";
 import { createPortal } from "react-dom";
@@ -138,6 +140,10 @@ export function AppointmentBoard({
     category: string;
     needCategory: string;
     resetBooking: string;
+    searchPatient: string;
+    searchCategory: string;
+    completeConfirm1: string;
+    completeConfirm2: string;
   };
   hoursConfig?: TimetableHours;
 }) {
@@ -276,12 +282,43 @@ export function AppointmentBoard({
 
   const listHandlers = {
     onStatus: (id: string, status: AppointmentStatus) => {
+      if (status === "completed") {
+        if (!window.confirm(labels.completeConfirm1)) return;
+        if (!window.confirm(labels.completeConfirm2)) return;
+        startTransition(async () => {
+          const result = await completeAppointmentWithInvoiceAction(id);
+          if (result?.error) {
+            window.alert(result.error);
+            return;
+          }
+          if (result?.invoiceId) {
+            router.push(`/invoices/${result.invoiceId}`);
+            return;
+          }
+          router.refresh();
+        });
+        return;
+      }
       refreshAfter(() => updateAppointmentStatusAction(id, status));
     },
     onDelete: (id: string) => {
       refreshAfter(() => deleteAppointmentAction(id));
     },
     onSave: async (formData: FormData) => {
+      const nextStatus = String(formData.get("status") || "") as AppointmentStatus;
+      const apptId = String(formData.get("id") || "");
+      if (nextStatus === "completed" && apptId) {
+        if (!window.confirm(labels.completeConfirm1)) return { error: "Cancelled" };
+        if (!window.confirm(labels.completeConfirm2)) return { error: "Cancelled" };
+        const result = await completeAppointmentWithInvoiceAction(apptId);
+        if (result?.error) return result;
+        if (result?.invoiceId) {
+          router.push(`/invoices/${result.invoiceId}`);
+          return result;
+        }
+        router.refresh();
+        return result;
+      }
       const result = await updateAppointmentAction(formData);
       if (result?.error) return result;
       router.refresh();
@@ -496,35 +533,25 @@ export function AppointmentBoard({
                 <div className="stack" style={{ gap: 8, marginTop: 10 }}>
                   <div className="field">
                     <label>{labels.patient}</label>
-                    <select
-                      className="select"
+                    <SearchableSelect
+                      name="customer_id"
                       value={patientId}
-                      onChange={(e) => setPatientId(e.target.value)}
+                      onChange={setPatientId}
+                      placeholder={labels.searchPatient}
                       required
-                    >
-                      <option value="">—</option>
-                      {patients.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name}
-                        </option>
-                      ))}
-                    </select>
+                      options={patients.map((p) => ({ value: p.id, label: p.name }))}
+                    />
                   </div>
                   <div className="field">
                     <label>{labels.category}</label>
-                    <select
-                      className="select"
+                    <SearchableSelect
+                      name="category_id"
                       value={categoryId}
-                      onChange={(e) => setCategoryId(e.target.value)}
+                      onChange={setCategoryId}
+                      placeholder={labels.searchCategory}
                       required
-                    >
-                      <option value="">—</option>
-                      {categories.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
+                      options={categories.map((c) => ({ value: c.id, label: c.name }))}
+                    />
                   </div>
                   <div className="field">
                     <label>{labels.notes}</label>

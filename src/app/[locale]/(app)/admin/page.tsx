@@ -125,6 +125,31 @@ export default async function AdminPage({
       .order("created_at"),
   ]);
 
+  // Fill profile names via service role when RLS embed returns null (teammates)
+  let membersResolved = members || [];
+  if (process.env.SUPABASE_SERVICE_ROLE_KEY && membersResolved.length) {
+    const { createClient: createAdminClient } = await import("@supabase/supabase-js");
+    const admin = createAdminClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+    const userIds = membersResolved.map((m) => m.user_id);
+    const { data: profiles } = await admin
+      .from("profiles")
+      .select("id, full_name, email")
+      .in("id", userIds);
+    const byId = Object.fromEntries((profiles || []).map((p) => [p.id, p]));
+    membersResolved = membersResolved.map((m) => ({
+      ...m,
+      profiles: byId[m.user_id]
+        ? {
+            full_name: byId[m.user_id].full_name,
+            email: byId[m.user_id].email,
+          }
+        : m.profiles,
+    }));
+  }
+
   // Resolve linked org names via service-visible query through request/response orgs
   // Use linked ids; fetch names with a second query if possible via memberships only —
   // for names we store from requests or use admin client through action. Fallback: show id slice.
@@ -141,7 +166,7 @@ export default async function AdminPage({
       name: ctx.organization.name,
       categories: categories || [],
       services: services || [],
-      members: members || [],
+      members: membersResolved,
     },
   ];
 

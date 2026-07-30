@@ -71,6 +71,7 @@ export interface Customer {
   email: string | null;
   phone: string | null;
   ic_number: string | null;
+  address: string | null;
   notes: string | null;
   created_by: string | null;
   created_by_name: string | null;

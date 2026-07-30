@@ -102,12 +102,14 @@ export async function upsertCustomerAction(formData: FormData) {
     email: String(formData.get("email") || "") || null,
     phone: String(formData.get("phone") || "") || null,
     ic_number: String(formData.get("ic_number") || "").trim() || null,
+    address: String(formData.get("address") || "").trim() || null,
     notes: String(formData.get("notes") || "") || null,
     risk_level: (["high", "medium", "low"].includes(String(formData.get("risk_level") || ""))
       ? String(formData.get("risk_level"))
       : null) as "high" | "medium" | "low" | null,
   };
   if (!payload.name) return { error: "Name required" };
+  if (!payload.address) return { error: "Address required" };
 
   if (!id) {
     payload.created_by = profile.id;
@@ -245,6 +247,27 @@ export async function adjustStockAction(formData: FormData) {
   });
 
   revalidateApp("/inventory", "/pos", "/dashboard", "/staff");
+  return { success: true };
+}
+
+export async function bulkAdjustStockAction(formData: FormData) {
+  const productIds = formData.getAll("product_ids").map(String).filter(Boolean);
+  const type = String(formData.get("type") || "in") as "in" | "out" | "adjust";
+  const quantity = Number(formData.get("quantity") || 0);
+  const note = String(formData.get("note") || "") || null;
+
+  if (!productIds.length || !quantity) return { error: "Select at least one item and a quantity" };
+
+  for (const productId of productIds) {
+    const fd = new FormData();
+    fd.set("product_id", productId);
+    fd.set("type", type);
+    fd.set("quantity", String(quantity));
+    if (note) fd.set("note", note);
+    const result = await adjustStockAction(fd);
+    if (result.error) return result;
+  }
+
   return { success: true };
 }
 
@@ -504,6 +527,200 @@ export async function updateAppointmentStatusAction(id: string, status: Appointm
   });
 
   revalidateApp("/appointments", "/dashboard", "/staff");
+  return { success: true };
+}
+
+/** Mark appointment completed and create a pending (unpaid) invoice for follow-up. */
+export async function completeAppointmentWithInvoiceAction(appointmentId: string): Promise<{
+  error?: string;
+  success?: boolean;
+  invoiceId?: string;
+}> {
+  const { supabase, organization } = await requireMember();
+
+  const { data: appt, error: apptErr } = await supabase
+    .from("appointments")
+    .select("id, title, customer_id, notes, customers(name)")
+    .eq("id", appointmentId)
+    .eq("organization_id", organization.id)
+    .maybeSingle();
+
+  if (apptErr || !appt) return { error: apptErr?.message || "Appointment not found" };
+
+  const { error: statusErr } = await supabase
+    .from("appointments")
+    .update({ status: "completed" })
+    .eq("id", appointmentId);
+  if (statusErr) return { error: statusErr.message };
+
+  // Avoid duplicate pending invoice for same appointment note tag
+  const marker = `appt:${appointmentId}`;
+  const { data: existingByNote } = await supabase
+    .from("invoices")
+    .select("id")
+    .eq("organization_id", organization.id)
+    .ilike("notes", `%${marker}%`)
+    .maybeSingle();
+
+  if (existingByNote?.id) {
+    await logActivity({
+      action: "appointment.complete",
+      summary: `Completed appointment (invoice already exists)`,
+      entityType: "appointment",
+      entityId: appointmentId,
+    });
+    revalidateApp("/appointments", "/dashboard", "/invoices", "/staff");
+    return { success: true, invoiceId: existingByNote.id };
+  }
+
+  const year = new Date().getFullYear();
+  const { count } = await supabase
+    .from("invoices")
+    .select("*", { count: "exact", head: true })
+    .eq("organization_id", organization.id);
+  const invoiceNumber = `INV-${year}-${String((count || 0) + 1).padStart(5, "0")}`;
+
+  const unitPrice = 0;
+  const lineTotal = 0;
+  const title = appt.title || "Consultation";
+
+  const { data: invoice, error: invErr } = await supabase
+    .from("invoices")
+    .insert({
+      organization_id: organization.id,
+      customer_id: appt.customer_id,
+      invoice_number: invoiceNumber,
+      title: `${title} · pending`,
+      status: "unpaid",
+      issue_date: new Date().toISOString().slice(0, 10),
+      subtotal: lineTotal,
+      tax_amount: 0,
+      total: lineTotal,
+      amount_paid: 0,
+      notes: `${marker}${appt.notes ? ` · ${appt.notes}` : ""}`,
+      medicine_description: null,
+      medicine_amount: 0,
+      additional_description: null,
+      additional_amount: 0,
+      lhdn_status: "not_submitted",
+    })
+    .select("id")
+    .single();
+
+  if (invErr || !invoice) return { error: invErr?.message || "Failed to create invoice" };
+
+  // Prefer first active service under matching category name, else service named like title
+  let price = 0;
+  const { data: cat } = await supabase
+    .from("service_categories")
+    .select("id")
+    .eq("organization_id", organization.id)
+    .ilike("name", title)
+    .maybeSingle();
+  if (cat?.id) {
+    const { data: catItem } = await supabase
+      .from("service_items")
+      .select("unit_price")
+      .eq("organization_id", organization.id)
+      .eq("category_id", cat.id)
+      .eq("is_active", true)
+      .order("unit_price", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    price = Number(catItem?.unit_price || 0);
+  }
+  if (!price) {
+    const { data: service } = await supabase
+      .from("service_items")
+      .select("unit_price")
+      .eq("organization_id", organization.id)
+      .ilike("name", title)
+      .maybeSingle();
+    price = Number(service?.unit_price || 0);
+  }
+
+  const finalPrice = price > 0 ? price : unitPrice;
+  await supabase.from("invoice_lines").insert({
+    invoice_id: invoice.id,
+    description: title,
+    quantity: 1,
+    unit_price: finalPrice,
+    line_total: finalPrice,
+  });
+  if (finalPrice > 0) {
+    await supabase
+      .from("invoices")
+      .update({ subtotal: finalPrice, total: finalPrice })
+      .eq("id", invoice.id);
+  }
+
+  await logActivity({
+    action: "appointment.complete_invoice",
+    summary: `Completed appointment → pending invoice ${invoiceNumber}`,
+    entityType: "invoice",
+    entityId: invoice.id,
+  });
+
+  revalidateApp("/appointments", "/dashboard", "/invoices", "/accounting", "/staff");
+  return { success: true, invoiceId: invoice.id };
+}
+
+/** Add/update medicine & additional charges on a pending invoice (recalculates totals). */
+export async function updateInvoiceExtrasAction(formData: FormData) {
+  const { supabase, organization } = await requireMember();
+  const invoiceId = String(formData.get("invoice_id") || "");
+  if (!invoiceId) return { error: "Missing invoice" };
+
+  const medicineDescription =
+    String(formData.get("medicine_description") || "").trim() || null;
+  const medicineAmount = Number(formData.get("medicine_amount") || 0);
+  const additionalDescription =
+    String(formData.get("additional_description") || "").trim() || null;
+  const additionalAmount = Number(formData.get("additional_amount") || 0);
+
+  const { data: invoice } = await supabase
+    .from("invoices")
+    .select("id, tax_amount, status")
+    .eq("id", invoiceId)
+    .eq("organization_id", organization.id)
+    .maybeSingle();
+  if (!invoice) return { error: "Invoice not found" };
+  if (invoice.status === "paid" || invoice.status === "void") {
+    return { error: "Cannot edit a paid/void invoice" };
+  }
+
+  const { data: lines } = await supabase
+    .from("invoice_lines")
+    .select("line_total")
+    .eq("invoice_id", invoiceId);
+  const linesTotal = (lines || []).reduce((s, l) => s + Number(l.line_total || 0), 0);
+  const med = medicineAmount > 0 ? medicineAmount : 0;
+  const add = additionalAmount > 0 ? additionalAmount : 0;
+  const subtotal = linesTotal + med + add;
+  const tax = Number(invoice.tax_amount || 0);
+  const total = subtotal + tax;
+
+  const { error } = await supabase
+    .from("invoices")
+    .update({
+      medicine_description: medicineDescription,
+      medicine_amount: med,
+      additional_description: additionalDescription,
+      additional_amount: add,
+      subtotal,
+      total,
+    })
+    .eq("id", invoiceId);
+  if (error) return { error: error.message };
+
+  await logActivity({
+    action: "invoice.extras",
+    summary: `Updated medicine/additional on invoice`,
+    entityType: "invoice",
+    entityId: invoiceId,
+  });
+
+  revalidateApp("/invoices", "/accounting", "/dashboard");
   return { success: true };
 }
 
@@ -822,6 +1039,9 @@ export async function addStaffAction(formData: FormData) {
 
   if (existingProfile?.id) {
     userId = existingProfile.id;
+    if (fullName) {
+      await admin.from("profiles").update({ full_name: fullName, email }).eq("id", userId);
+    }
   } else {
     if (!password || password.length < 6) {
       return { error: "Password (min 6) required for new staff accounts" };
@@ -854,6 +1074,11 @@ export async function addStaffAction(formData: FormData) {
       });
     } else {
       userId = created.user.id;
+      await admin.from("profiles").upsert({
+        id: created.user.id,
+        email,
+        full_name: fullName || null,
+      });
     }
   }
 
@@ -1672,6 +1897,7 @@ export async function importMigrationDataAction(
         ic_number: String(r.ic_number || "").trim() || null,
         phone: String(r.phone || "").trim() || null,
         email: String(r.email || "").trim() || null,
+        address: String(r.address || "").trim() || null,
         notes: String(r.notes || "").trim() || null,
         risk_level: (["high", "medium", "low"].includes(risk)
           ? risk

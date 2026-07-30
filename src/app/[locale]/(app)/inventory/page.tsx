@@ -3,8 +3,8 @@ import { requireOrg } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { ActionForm } from "@/components/ActionForm";
-import { adjustStockAction, upsertProductAction } from "@/app/actions";
-import { formatCurrency, formatDateTime } from "@/lib/utils";
+import { upsertProductAction } from "@/app/actions";
+import { InventoryStockTable } from "@/components/InventoryStockTable";
 import { SectionActivityLog } from "@/components/SectionActivityLog";
 import { fetchSectionLogs } from "@/lib/section-logs";
 
@@ -83,67 +83,29 @@ export default async function InventoryPage({
       </div>
 
       <div className="surface" style={{ padding: "1.25rem" }}>
-        <div className="table-wrap">
-          <table className="data">
-            <thead>
-              <tr>
-                <th>{t("name")}</th>
-                <th>{t("sku")}</th>
-                <th>{t("price")}</th>
-                <th>{t("qty")}</th>
-                <th>{t("addedAt")}</th>
-                <th>{t("adjust")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(products || []).map((p) => (
-                <tr key={p.id}>
-                  <td>
-                    {p.name}{" "}
-                    {p.quantity <= p.low_stock_threshold ? (
-                      <span className="badge">low</span>
-                    ) : null}
-                  </td>
-                  <td>{p.sku || "—"}</td>
-                  <td>{formatCurrency(Number(p.unit_price))}</td>
-                  <td>{p.quantity}</td>
-                  <td>{formatDateTime(p.created_at)}</td>
-                  <td>
-                    <ActionForm action={adjustStockAction} className="row">
-                      <input type="hidden" name="product_id" value={p.id} />
-                      <select name="type" className="select" style={{ width: 100 }}>
-                        <option value="in">in</option>
-                        <option value="out">out</option>
-                      </select>
-                      <input
-                        name="quantity"
-                        type="number"
-                        min={1}
-                        defaultValue={1}
-                        className="input"
-                        style={{ width: 80 }}
-                      />
-                      <button
-                        type="submit"
-                        className="btn btn-ghost"
-                        style={{ padding: "0.45rem 0.8rem" }}
-                      >
-                        OK
-                      </button>
-                    </ActionForm>
-                  </td>
-                </tr>
-              ))}
-              {!products?.length ? (
-                <tr>
-                  <td colSpan={6} className="muted">
-                    {t("empty")}
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
+        <InventoryStockTable
+          products={(products || []).map((p) => ({
+            id: p.id,
+            name: p.name,
+            sku: p.sku,
+            unit_price: Number(p.unit_price),
+            quantity: p.quantity,
+            low_stock_threshold: p.low_stock_threshold,
+            created_at: p.created_at,
+          }))}
+          labels={{
+            name: t("name"),
+            sku: t("sku"),
+            price: t("price"),
+            qty: t("qty"),
+            addedAt: t("addedAt"),
+            adjust: t("adjust"),
+            empty: t("empty"),
+            selectAll: t("selectAll"),
+            selectItem: t("selectItem"),
+            okSelected: t("okSelected"),
+          }}
+        />
       </div>
 
       <SectionActivityLog title={t("activity")} logs={logs} />

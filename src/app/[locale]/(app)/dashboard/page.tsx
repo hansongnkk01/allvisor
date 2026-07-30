@@ -4,10 +4,10 @@ import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { Link } from "@/i18n/navigation";
-import { startOfDay, endOfDay } from "date-fns";
 import { DayHourTimetable } from "@/components/DayHourTimetable";
 import { DashboardAiPanel } from "@/components/DashboardAiPanel";
 import { PatientName } from "@/components/PatientName";
+import { dayBoundsMY } from "@/lib/datetime-my";
 
 export default async function DashboardPage({
   params,
@@ -22,6 +22,7 @@ export default async function DashboardPage({
   const orgId = ctx.organization.id;
   const niche = ctx.organization.niche;
   const now = new Date();
+  const { start: todayStart, end: todayEnd } = dayBoundsMY(now);
 
   const [
     { count: customerCount },
@@ -62,6 +63,7 @@ export default async function DashboardPage({
     title: string;
     starts_at: string;
     ends_at: string;
+    status?: string;
     customers?: { name: string; risk_level?: "high" | "medium" | "low" | null } | null;
   }> = [];
   let todayAppts: typeof upcoming = [];
@@ -71,8 +73,8 @@ export default async function DashboardPage({
       .from("appointments")
       .select("*", { count: "exact", head: true })
       .eq("organization_id", orgId)
-      .gte("starts_at", startOfDay(now).toISOString())
-      .lte("starts_at", endOfDay(now).toISOString());
+      .gte("starts_at", todayStart.toISOString())
+      .lte("starts_at", todayEnd.toISOString());
     appointmentsToday = count || 0;
 
     const { data } = await supabase
@@ -89,16 +91,17 @@ export default async function DashboardPage({
 
     const { data: todayData } = await supabase
       .from("appointments")
-      .select("id, title, starts_at, ends_at, customers(name, risk_level)")
+      .select("id, title, starts_at, ends_at, status, customers(name, risk_level)")
       .eq("organization_id", orgId)
-      .gte("starts_at", startOfDay(now).toISOString())
-      .lte("starts_at", endOfDay(now).toISOString())
+      .gte("starts_at", todayStart.toISOString())
+      .lte("starts_at", todayEnd.toISOString())
       .order("starts_at", { ascending: true });
     todayAppts = (todayData || []).map((a) => ({
       id: a.id,
       title: a.title,
       starts_at: a.starts_at,
       ends_at: a.ends_at,
+      status: a.status,
       customers: Array.isArray(a.customers) ? a.customers[0] || null : a.customers,
     }));
   } else {
@@ -106,8 +109,8 @@ export default async function DashboardPage({
       .from("payments")
       .select("amount")
       .eq("organization_id", orgId)
-      .gte("paid_at", startOfDay(now).toISOString())
-      .lte("paid_at", endOfDay(now).toISOString());
+      .gte("paid_at", todayStart.toISOString())
+      .lte("paid_at", todayEnd.toISOString());
     salesToday = (paidToday || []).reduce((sum, p) => sum + Number(p.amount), 0);
   }
 

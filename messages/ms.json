@@ -81,6 +81,7 @@
     "email": "Emel",
     "phone": "Telefon",
     "ic": "No. IC",
+    "address": "Alamat",
     "notes": "Nota",
     "empty": "Belum ada rekod.",
     "save": "Simpan",
@@ -131,7 +132,11 @@
     "pickEnd": "Tekan line tamat (tebal = jam, kecil = :30)",
     "pickPatient": "Pilih pesakit & kategori, kemudian book",
     "bookNow": "Book temujanji",
-    "resetBooking": "Reset"
+    "resetBooking": "Reset",
+    "searchPatient": "Taip untuk cari pesakit…",
+    "searchCategory": "Taip untuk cari kategori…",
+    "completeConfirm1": "Tukar status temujanji kepada completed? Invois pending akan dicipta.",
+    "completeConfirm2": "Sahkan sekali lagi: cipta invois pending dan buka untuk tambah ubat/caj tambahan?"
   },
   "Inventory": {
     "title": "Inventori",
@@ -148,7 +153,10 @@
     "addedAt": "Ditambah pada",
     "clinicSubtitle": "Stok klinik: ubat, consumable dan bekalan.",
     "retailSubtitle": "Stok kedai untuk jualan.",
-    "activity": "Aktiviti inventori"
+    "activity": "Aktiviti inventori",
+    "selectItem": "Pilih",
+    "selectAll": "Pilih semua item",
+    "okSelected": "OK untuk item dipilih"
   },
   "POS": {
     "title": "POS / Jualan pantas",
@@ -224,7 +232,20 @@
     "payments": "Rekod bayaran",
     "noPayments": "Tiada bayaran direkod.",
     "date": "Tarikh",
-    "method": "Kaedah"
+    "method": "Kaedah",
+    "extrasTitle": "Ubat & caj tambahan",
+    "extrasHint": "Tambah ubat dan caj tambahan (jika ada), kemudian cetak dan rekod bayaran.",
+    "medicine": "Ubat",
+    "medicineDesc": "Penerangan ubat",
+    "medicineAmount": "Jumlah ubat",
+    "additional": "Caj tambahan",
+    "additionalDesc": "Penerangan tambahan",
+    "additionalAmount": "Jumlah tambahan",
+    "saveExtras": "Simpan kos",
+    "recordPayment": "Rekod bayaran",
+    "pay": "Paid",
+    "exit": "Keluar invois",
+    "balanceDue": "Baki perlu bayar"
   },
   "Admin": {
     "title": "Admin",
@@ -333,7 +354,14 @@
     "recordedAt": "Direkod pada",
     "expenseList": "Rekod perbelanjaan",
     "activity": "Aktiviti perakaunan",
-    "lockSubtitle": "Masukkan kata laluan untuk buka perakaunan"
+    "lockSubtitle": "Masukkan kata laluan untuk buka perakaunan",
+    "filter": "Tempoh",
+    "filterToday": "Hari ini",
+    "filterThisWeek": "Minggu ini",
+    "filterThisMonth": "Bulan ini",
+    "filterPrev3": "3 bulan lepas",
+    "filterPrev6": "6 bulan lepas",
+    "filterThisYear": "Tahun ini"
   },
   "Lhdn": {
     "title": "e-Invois LHDN",

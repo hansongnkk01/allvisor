@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type MouseEvent } from "react";
+import { createPortal } from "react-dom";
 import { format, isSameDay } from "date-fns";
 import { getMyHolidayOn, holidayLabel } from "@/lib/my-holidays";
 
@@ -9,6 +10,7 @@ type SlotAppt = {
   title: string;
   starts_at: string;
   ends_at: string;
+  status?: string;
   customers?: { name: string; risk_level?: "high" | "medium" | "low" | null } | null;
 };
 
@@ -139,6 +141,42 @@ export function DayHourTimetable({
   const closedWeekdays = hoursConfig?.closedWeekdays || [];
   const locale = hoursConfig?.locale || "ms";
   const [hoverMin, setHoverMin] = useState<number | null>(null);
+  const [hoverTip, setHoverTip] = useState<{
+    x: number;
+    y: number;
+    items: SlotAppt[];
+  } | null>(null);
+
+  function appointmentsInSlot(minutes: number) {
+    const hour = Math.floor(minutes / 60);
+    const half = minutes % 60 === 0 ? 0 : 1;
+    const winStart = new Date(date);
+    winStart.setHours(hour, half * 30, 0, 0);
+    const winEnd = new Date(date);
+    winEnd.setHours(hour, half * 30 + 30, 0, 0);
+    const ws = winStart.getTime();
+    const we = winEnd.getTime();
+    return appointments.filter((a) => {
+      const start = new Date(a.starts_at).getTime();
+      const endRaw = new Date(a.ends_at).getTime();
+      const end = endRaw > start ? endRaw : start + 30 * 60000;
+      return overlapMinutes(start, end, ws, we) > 0;
+    });
+  }
+
+  function showBookedTip(e: MouseEvent, minutes: number) {
+    const kind = kindsByMinutes.get(minutes) || "free";
+    if (kind !== "booked") {
+      setHoverTip(null);
+      return;
+    }
+    const items = appointmentsInSlot(minutes);
+    if (!items.length) {
+      setHoverTip(null);
+      return;
+    }
+    setHoverTip({ x: e.clientX, y: e.clientY, items });
+  }
 
   const weekdayClosed = closedWeekdays.includes(date.getDay());
   const holiday = getMyHolidayOn(date, locale);
@@ -388,6 +426,8 @@ export function DayHourTimetable({
                 >
                   <div style={{ position: "relative", height: trackH, width: "100%" }}>
                     <div
+                      onMouseMove={(e) => showBookedTip(e, hourMin)}
+                      onMouseLeave={() => setHoverTip(null)}
                       style={{
                         position: "absolute",
                         left: 0,
@@ -395,9 +435,16 @@ export function DayHourTimetable({
                         bottom: railBottom,
                         width: "50%",
                         background: segColor(hourMin),
+                        cursor:
+                          (kindsByMinutes.get(hourMin) || "free") === "booked"
+                            ? "help"
+                            : undefined,
+                        zIndex: 1,
                       }}
                     />
                     <div
+                      onMouseMove={(e) => showBookedTip(e, halfMin)}
+                      onMouseLeave={() => setHoverTip(null)}
                       style={{
                         position: "absolute",
                         left: "50%",
@@ -405,6 +452,11 @@ export function DayHourTimetable({
                         bottom: railBottom,
                         width: "50%",
                         background: segColor(halfMin),
+                        cursor:
+                          (kindsByMinutes.get(halfMin) || "free") === "booked"
+                            ? "help"
+                            : undefined,
+                        zIndex: 1,
                       }}
                     />
 
@@ -461,6 +513,70 @@ export function DayHourTimetable({
           </div>
         </div>
       </div>
+
+      {hoverTip && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              role="tooltip"
+              style={{
+                position: "fixed",
+                left: Math.min(hoverTip.x + 14, window.innerWidth - 280),
+                top: Math.min(hoverTip.y + 14, window.innerHeight - 140),
+                zIndex: 80,
+                width: 260,
+                padding: "0.7rem 0.85rem",
+                borderRadius: 12,
+                background: "#fff",
+                border: "1px solid var(--line)",
+                boxShadow: "0 12px 32px rgba(28,27,25,0.18)",
+                pointerEvents: "none",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: "0.7rem",
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                  color: "var(--muted)",
+                  marginBottom: 6,
+                  fontWeight: 650,
+                }}
+              >
+                {labels.occupied}
+              </div>
+              <div className="stack" style={{ gap: 8 }}>
+                {hoverTip.items.map((a) => {
+                  const start = new Date(a.starts_at);
+                  const endRaw = new Date(a.ends_at);
+                  const end =
+                    endRaw.getTime() > start.getTime()
+                      ? endRaw
+                      : new Date(start.getTime() + 30 * 60000);
+                  return (
+                    <div key={a.id}>
+                      <strong style={{ fontSize: "0.9rem" }}>{a.title}</strong>
+                      <div className="muted" style={{ fontSize: "0.82rem" }}>
+                        {a.customers?.name || "—"}
+                      </div>
+                      <div style={{ fontSize: "0.82rem", marginTop: 2 }}>
+                        {start.toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}{" "}
+                        –{" "}
+                        {end.toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
     </div>
   );
 }

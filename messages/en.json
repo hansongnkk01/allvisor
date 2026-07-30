@@ -81,6 +81,7 @@
     "email": "Email",
     "phone": "Phone",
     "ic": "IC number",
+    "address": "Address",
     "notes": "Notes",
     "empty": "No records yet.",
     "save": "Save",
@@ -131,7 +132,11 @@
     "pickEnd": "Tap a free end line (thick = hour, thin = :30)",
     "pickPatient": "Choose patient & category, then book",
     "bookNow": "Book appointment",
-    "resetBooking": "Reset"
+    "resetBooking": "Reset",
+    "searchPatient": "Type to search patient…",
+    "searchCategory": "Type to search category…",
+    "completeConfirm1": "Mark this appointment as completed? A pending invoice will be created.",
+    "completeConfirm2": "Confirm again: create pending invoice and open it for medicine/additional costs?"
   },
   "Invoices": {
     "title": "Invoices",
@@ -197,7 +202,20 @@
     "payments": "Payment records",
     "noPayments": "No payments recorded.",
     "date": "Date",
-    "method": "Method"
+    "method": "Method",
+    "extrasTitle": "Medicine & additional costs",
+    "extrasHint": "Add optional medicine and additional charges, then print and record payment.",
+    "medicine": "Medicine",
+    "medicineDesc": "Medicine description",
+    "medicineAmount": "Medicine amount",
+    "additional": "Additional",
+    "additionalDesc": "Additional description",
+    "additionalAmount": "Additional amount",
+    "saveExtras": "Save costs",
+    "recordPayment": "Record payment",
+    "pay": "Paid",
+    "exit": "Exit invoice",
+    "balanceDue": "Balance due"
   },
   "Admin": {
     "title": "Admin",
@@ -299,7 +317,10 @@
     "addedAt": "Added at",
     "clinicSubtitle": "Clinic stock: medicines, consumables and supplies.",
     "retailSubtitle": "Shop stock items for sale.",
-    "activity": "Inventory activity"
+    "activity": "Inventory activity",
+    "selectItem": "Select",
+    "selectAll": "Select all items",
+    "okSelected": "OK for selected items"
   },
   "POS": {
     "title": "POS / Quick sale",
@@ -333,7 +354,14 @@
     "recordedAt": "Recorded at",
     "expenseList": "Expense records",
     "activity": "Accounting activity",
-    "lockSubtitle": "Enter password to unlock accounting"
+    "lockSubtitle": "Enter password to unlock accounting",
+    "filter": "Period",
+    "filterToday": "Today",
+    "filterThisWeek": "This week",
+    "filterThisMonth": "This month",
+    "filterPrev3": "Previous 3 months",
+    "filterPrev6": "Previous 6 months",
+    "filterThisYear": "This year"
   },
   "Lhdn": {
     "title": "LHDN e-Invoice",

@@ -4,9 +4,10 @@ import { requireOrg } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { ActionForm } from "@/components/ActionForm";
-import { updateInvoiceStatusAction } from "@/app/actions";
+import { updateInvoiceStatusAction, recordPaymentAction } from "@/app/actions";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
 import { PrintInvoiceButton } from "@/components/PrintInvoiceButton";
+import { InvoiceExtrasForm } from "@/components/InvoiceExtrasForm";
 import type { InvoiceStatus } from "@/lib/types";
 
 export default async function InvoiceDetailPage({
@@ -17,13 +18,14 @@ export default async function InvoiceDetailPage({
   const { locale, id } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("InvoiceDetail");
+  const tInv = await getTranslations("Invoices");
   const ctx = await requireOrg(locale);
   const supabase = await createClient();
 
   const [{ data: invoice }, { data: lines }, { data: payments }] = await Promise.all([
     supabase
       .from("invoices")
-      .select("*, customers(name, phone, email)")
+      .select("*, customers(name, phone, email, address)")
       .eq("id", id)
       .eq("organization_id", ctx.organization.id)
       .maybeSingle(),
@@ -46,7 +48,14 @@ export default async function InvoiceDetailPage({
     );
   }
 
-  const canPrint = invoice.status === "paid";
+  const editable = invoice.status !== "paid" && invoice.status !== "void";
+  const balance = Math.max(0, Number(invoice.total) - Number(invoice.amount_paid));
+  const customer = invoice.customers as {
+    name?: string;
+    phone?: string | null;
+    email?: string | null;
+    address?: string | null;
+  } | null;
 
   return (
     <div className="stack" style={{ gap: "1.25rem" }}>
@@ -56,11 +65,9 @@ export default async function InvoiceDetailPage({
         actions={
           <div className="row no-print">
             <Link href="/invoices" className="btn btn-ghost">
-              {t("back")}
+              {t("exit")}
             </Link>
-            {canPrint ? (
-              <PrintInvoiceButton label={t("print")} invoiceId={invoice.id} />
-            ) : null}
+            <PrintInvoiceButton label={t("print")} invoiceId={invoice.id} />
           </div>
         }
       />
@@ -90,9 +97,9 @@ export default async function InvoiceDetailPage({
           <div className="muted" style={{ fontSize: "0.8rem" }}>
             {t("billTo")}
           </div>
-          <strong>{invoice.customers?.name || "—"}</strong>
+          <strong>{customer?.name || "—"}</strong>
           <div className="muted" style={{ fontSize: "0.85rem" }}>
-            {[invoice.customers?.phone, invoice.customers?.email].filter(Boolean).join(" · ")}
+            {[customer?.address, customer?.phone, customer?.email].filter(Boolean).join(" · ")}
           </div>
         </div>
 
@@ -115,23 +122,35 @@ export default async function InvoiceDetailPage({
                   <td>{formatCurrency(Number(line.line_total))}</td>
                 </tr>
               ))}
+              {Number(invoice.medicine_amount) > 0 || invoice.medicine_description ? (
+                <tr>
+                  <td>
+                    {t("medicine")}
+                    {invoice.medicine_description ? ` (${invoice.medicine_description})` : ""}
+                  </td>
+                  <td>1</td>
+                  <td>{formatCurrency(Number(invoice.medicine_amount || 0))}</td>
+                  <td>{formatCurrency(Number(invoice.medicine_amount || 0))}</td>
+                </tr>
+              ) : null}
+              {Number(invoice.additional_amount) > 0 || invoice.additional_description ? (
+                <tr>
+                  <td>
+                    {t("additional")}
+                    {invoice.additional_description
+                      ? ` (${invoice.additional_description})`
+                      : ""}
+                  </td>
+                  <td>1</td>
+                  <td>{formatCurrency(Number(invoice.additional_amount || 0))}</td>
+                  <td>{formatCurrency(Number(invoice.additional_amount || 0))}</td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>
 
         <div style={{ marginTop: "1rem", textAlign: "right" }}>
-          {Number(invoice.medicine_amount) > 0 || invoice.medicine_description ? (
-            <div>
-              Medicine{invoice.medicine_description ? ` (${invoice.medicine_description})` : ""}:{" "}
-              <strong>{formatCurrency(Number(invoice.medicine_amount || 0))}</strong>
-            </div>
-          ) : null}
-          {Number(invoice.additional_amount) > 0 || invoice.additional_description ? (
-            <div>
-              Additional{invoice.additional_description ? ` (${invoice.additional_description})` : ""}:{" "}
-              <strong>{formatCurrency(Number(invoice.additional_amount || 0))}</strong>
-            </div>
-          ) : null}
           <div>
             {t("subtotal")}: <strong>{formatCurrency(Number(invoice.subtotal))}</strong>
           </div>
@@ -146,6 +165,58 @@ export default async function InvoiceDetailPage({
           </div>
         </div>
       </div>
+
+      {editable ? (
+        <div className="surface no-print" style={{ padding: "1.25rem" }}>
+          <h3 style={{ marginTop: 0 }}>{t("extrasTitle")}</h3>
+          <p className="muted">{t("extrasHint")}</p>
+          <InvoiceExtrasForm
+            invoiceId={invoice.id}
+            medicineDescription={invoice.medicine_description}
+            medicineAmount={Number(invoice.medicine_amount || 0)}
+            additionalDescription={invoice.additional_description}
+            additionalAmount={Number(invoice.additional_amount || 0)}
+            labels={{
+              medicine: t("medicine"),
+              medicineDesc: t("medicineDesc"),
+              medicineAmount: t("medicineAmount"),
+              additional: t("additional"),
+              additionalDesc: t("additionalDesc"),
+              additionalAmount: t("additionalAmount"),
+              save: t("saveExtras"),
+            }}
+          />
+        </div>
+      ) : null}
+
+      {editable && balance > 0 ? (
+        <div className="surface no-print" style={{ padding: "1.25rem" }}>
+          <h3 style={{ marginTop: 0 }}>{t("recordPayment")}</h3>
+          <p className="muted">
+            {t("balanceDue")}: {formatCurrency(balance)}
+          </p>
+          <ActionForm action={recordPaymentAction} className="row">
+            <input type="hidden" name="invoice_id" value={invoice.id} />
+            <input
+              name="amount"
+              type="number"
+              step="0.01"
+              className="input"
+              style={{ width: 140 }}
+              defaultValue={balance}
+            />
+            <select name="method" className="select" style={{ width: 130 }}>
+              <option value="cash">cash</option>
+              <option value="card">card</option>
+              <option value="transfer">transfer</option>
+              <option value="ewallet">ewallet</option>
+            </select>
+            <button type="submit" className="btn btn-primary">
+              {t("pay")}
+            </button>
+          </ActionForm>
+        </div>
+      ) : null}
 
       <div className="surface no-print" style={{ padding: "1.25rem" }}>
         <h3 style={{ marginTop: 0 }}>{t("editStatus")}</h3>
@@ -202,6 +273,15 @@ export default async function InvoiceDetailPage({
         ) : (
           <p className="muted">{t("noPayments")}</p>
         )}
+      </div>
+
+      <div className="row no-print">
+        <Link href="/invoices" className="btn btn-soft">
+          {t("exit")}
+        </Link>
+        <span className="muted" style={{ fontSize: "0.85rem" }}>
+          {tInv("viewPrint")}
+        </span>
       </div>
     </div>
   );
