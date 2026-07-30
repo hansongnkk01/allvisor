@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
-import { format } from "date-fns";
+import { useMemo, useState } from "react";
+import { format, isSameDay } from "date-fns";
 import { getMyHolidayOn, holidayLabel } from "@/lib/my-holidays";
 
 type SlotAppt = {
@@ -22,14 +22,17 @@ export type TimetableHours = {
 type SlotKind = "closed" | "free" | "booked";
 
 const COLOR = {
-  freeSeg: "#c5e4de", // light green
-  bookedSeg: "#f0c9c4",
-  closedSeg: "#ddd8d2",
-  selectedSeg: "rgba(239, 68, 68, 0.28)", // light red selection fill
-  tickFree: "#2f9e8a", // green lines when free
-  tickBooked: "#e07070", // red lines when occupied
-  tickClosed: "#b8b2aa",
-  tickSelected: "#c45c5c",
+  freeSeg: "#d7efe9",
+  bookedSeg: "#f6d4cf",
+  closedSeg: "#e8e4df",
+  selectedSeg: "rgba(220, 80, 80, 0.28)",
+  tickFree: "#0f766e",
+  tickBooked: "#c45c5c",
+  tickClosed: "#a8a29a",
+  tickSelected: "#b42318",
+  trackBorder: "rgba(28, 27, 25, 0.1)",
+  trackBg: "rgba(255,255,255,0.55)",
+  now: "#b45309",
 };
 
 /** Minutes from midnight for a half-hour slot: 0, 30, 60, … 1410 */
@@ -84,6 +87,26 @@ function halfSlotKind(
   return "free";
 }
 
+function LegendDot({ color, label }: { color: string; label: string }) {
+  return (
+    <span
+      className="row"
+      style={{ gap: 6, fontSize: "0.72rem", color: "var(--muted)", whiteSpace: "nowrap" }}
+    >
+      <span
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: 999,
+          background: color,
+          boxShadow: `0 0 0 2px ${color}33`,
+        }}
+      />
+      {label}
+    </span>
+  );
+}
+
 export function DayHourTimetable({
   date,
   appointments,
@@ -115,10 +138,12 @@ export function DayHourTimetable({
   const closeHour = hoursConfig?.closeHour ?? 23;
   const closedWeekdays = hoursConfig?.closedWeekdays || [];
   const locale = hoursConfig?.locale || "ms";
+  const [hoverMin, setHoverMin] = useState<number | null>(null);
 
   const weekdayClosed = closedWeekdays.includes(date.getDay());
   const holiday = getMyHolidayOn(date, locale);
   const dayClosed = weekdayClosed;
+  const today = isSameDay(date, new Date());
 
   const hours = useMemo(() => Array.from({ length: 24 }, (_, h) => h), []);
 
@@ -141,6 +166,9 @@ export function DayHourTimetable({
       ? Math.max(selectionStart, selectionEnd)
       : null;
 
+  const nowMinutes = today ? new Date().getHours() * 60 + new Date().getMinutes() : null;
+  const nowLeftPct = nowMinutes != null ? (nowMinutes / (24 * 60)) * 100 : null;
+
   function tickSelected(minutes: number) {
     if (selStart == null) return false;
     if (selEnd == null) return minutes === selStart;
@@ -160,15 +188,13 @@ export function DayHourTimetable({
     return COLOR.freeSeg;
   }
 
-  function tickButton(
-    minutes: number,
-    opts: { tall: boolean; trackH: number; halfH: number }
-  ) {
+  function tickButton(minutes: number, opts: { tall: boolean; trackH: number; halfH: number }) {
     const kind = kindsByMinutes.get(minutes) || "free";
     const clickable = selectable && kind === "free";
     const selected = tickSelected(minutes);
+    const hovered = hoverMin === minutes;
     const h = opts.tall ? opts.trackH : opts.halfH;
-    const w = opts.tall ? 3 : 2;
+    const w = opts.tall ? (selected || hovered ? 4 : 3) : selected || hovered ? 3 : 2;
 
     const tickColor = selected
       ? COLOR.tickSelected
@@ -182,6 +208,7 @@ export function DayHourTimetable({
       <button
         type="button"
         disabled={!clickable}
+        aria-label={slotLabel(minutes)}
         title={`${slotLabel(minutes)}${
           kind === "booked"
             ? ` — ${labels.occupied}`
@@ -191,57 +218,73 @@ export function DayHourTimetable({
                 ? " · click to select"
                 : ""
         }`}
+        onMouseEnter={() => setHoverMin(minutes)}
+        onMouseLeave={() => setHoverMin(null)}
         onClick={() => {
           if (clickable) onSlotSelect?.(minutes);
         }}
         style={{
-          width: w + (selected ? 2 : 0),
+          width: w,
           height: h,
           padding: 0,
           margin: 0,
           border: "none",
-          borderRadius: 1,
+          borderRadius: 999,
           background: tickColor,
           cursor: clickable ? "pointer" : selectable ? "not-allowed" : "default",
           appearance: "none",
-          boxShadow: selected ? "0 0 0 2px rgba(196,92,92,0.25)" : undefined,
-          opacity: kind === "closed" ? 0.75 : 1,
+          transform: hovered && clickable ? "scaleY(1.08)" : undefined,
+          boxShadow: selected
+            ? `0 0 0 3px ${COLOR.tickSelected}33`
+            : hovered && clickable
+              ? `0 0 0 3px ${COLOR.tickFree}22`
+              : "none",
+          transition: "transform 120ms ease, box-shadow 120ms ease, width 120ms ease",
+          opacity: kind === "closed" ? 0.7 : 1,
         }}
       />
     );
   }
 
-  const trackH = orientation === "horizontal" ? 40 : 56;
-  const halfH = Math.round(trackH * 0.48);
+  const trackH = orientation === "horizontal" ? 44 : 58;
+  const halfH = Math.round(trackH * 0.5);
+  const railTop = Math.round(trackH * 0.2);
+  const railBottom = Math.round(trackH * 0.2);
 
   return (
     <div
       className="surface"
       style={{
-        padding: orientation === "horizontal" ? "0.85rem 1rem" : "1rem",
+        padding: orientation === "horizontal" ? "0.9rem 1.1rem" : "1.1rem 1.15rem",
         boxShadow: orientation === "horizontal" ? undefined : "none",
         background: holiday
-          ? "rgba(220, 38, 38, 0.06)"
+          ? "rgba(220, 38, 38, 0.05)"
           : dayClosed
-            ? "rgba(107, 101, 96, 0.08)"
+            ? "rgba(107, 101, 96, 0.06)"
             : undefined,
       }}
     >
-      <div className="row" style={{ justifyContent: "space-between", marginBottom: 10, gap: 8 }}>
+      <div
+        className="row"
+        style={{ justifyContent: "space-between", marginBottom: 14, gap: 10, flexWrap: "wrap" }}
+      >
         <span
           style={{
             fontSize: "0.72rem",
             letterSpacing: "0.08em",
             textTransform: "uppercase",
             color: "var(--muted)",
-            fontWeight: 600,
+            fontWeight: 650,
           }}
         >
           {labels.timetable} · {format(date, "EEE d MMM")}
         </span>
-        <div className="row" style={{ gap: 6 }}>
+        <div className="row" style={{ gap: 12, flexWrap: "wrap" }}>
+          <LegendDot color={COLOR.tickFree} label={labels.free} />
+          <LegendDot color={COLOR.tickBooked} label={labels.occupied} />
+          <LegendDot color={COLOR.tickClosed} label={labels.closed || "Closed"} />
           {holiday ? (
-            <span className="badge" style={{ background: "rgba(220,38,38,0.15)" }}>
+            <span className="badge" style={{ background: "rgba(220,38,38,0.12)" }}>
               {(labels.publicHoliday || "Public holiday") +
                 ": " +
                 holidayLabel(holiday, locale)}
@@ -254,112 +297,146 @@ export function DayHourTimetable({
       </div>
 
       <div style={{ overflowX: "auto", width: "100%" }}>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(24, minmax(28px, 1fr))",
-            width: "100%",
-            minWidth: 720,
-            paddingLeft: 6,
-            paddingRight: 6,
-          }}
-          role={selectable ? "group" : "img"}
-          aria-label={labels.timetable}
-        >
-          {hours.map((hour) => {
-            const hourMin = hour * 60;
-            const halfMin = hour * 60 + 30;
-            const hourSelected = tickSelected(hourMin);
+        <div style={{ minWidth: 760, padding: "0 8px 2px" }}>
+          <div
+            style={{
+              position: "relative",
+              display: "grid",
+              gridTemplateColumns: "repeat(24, minmax(28px, 1fr))",
+              width: "100%",
+            }}
+            role={selectable ? "group" : "img"}
+            aria-label={labels.timetable}
+          >
+            {/* continuous rail behind everything */}
+            <div
+              aria-hidden
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                top: railTop,
+                bottom: railBottom + 22,
+                borderRadius: 999,
+                background: COLOR.trackBg,
+                border: `1px solid ${COLOR.trackBorder}`,
+                boxShadow: "inset 0 1px 2px rgba(28,27,25,0.04)",
+                pointerEvents: "none",
+                zIndex: 0,
+              }}
+            />
 
-            return (
+            {nowLeftPct != null ? (
               <div
-                key={hour}
+                aria-hidden
+                title="Now"
                 style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "stretch",
-                  minWidth: 0,
+                  position: "absolute",
+                  left: `calc(${nowLeftPct}% )`,
+                  top: railTop - 4,
+                  bottom: railBottom + 18,
+                  width: 2,
+                  marginLeft: -1,
+                  borderRadius: 999,
+                  background: COLOR.now,
+                  boxShadow: `0 0 0 3px ${COLOR.now}22`,
+                  pointerEvents: "none",
+                  zIndex: 3,
                 }}
-              >
+              />
+            ) : null}
+
+            {hours.map((hour) => {
+              const hourMin = hour * 60;
+              const halfMin = hour * 60 + 30;
+              const hourSelected = tickSelected(hourMin);
+              const major = hour % 3 === 0;
+
+              return (
                 <div
+                  key={hour}
                   style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "stretch",
+                    minWidth: 0,
                     position: "relative",
-                    height: trackH,
-                    width: "100%",
+                    zIndex: 1,
                   }}
                 >
-                  {/* free / booked / selected segments */}
-                  <div
-                    style={{
-                      position: "absolute",
-                      left: 0,
-                      top: "18%",
-                      bottom: "18%",
-                      width: "50%",
-                      background: segColor(hourMin),
-                      borderRadius: 2,
-                    }}
-                  />
-                  <div
-                    style={{
-                      position: "absolute",
-                      left: "50%",
-                      top: "18%",
-                      bottom: "18%",
-                      width: "50%",
-                      background: segColor(halfMin),
-                      borderRadius: 2,
-                    }}
-                  />
+                  <div style={{ position: "relative", height: trackH, width: "100%" }}>
+                    <div
+                      style={{
+                        position: "absolute",
+                        left: 0,
+                        top: railTop,
+                        bottom: railBottom,
+                        width: "50%",
+                        background: segColor(hourMin),
+                      }}
+                    />
+                    <div
+                      style={{
+                        position: "absolute",
+                        left: "50%",
+                        top: railTop,
+                        bottom: railBottom,
+                        width: "50%",
+                        background: segColor(halfMin),
+                      }}
+                    />
 
-                  {/* thick hour line at left edge of cell (= boundary between hours) */}
-                  <div
-                    style={{
-                      position: "absolute",
-                      left: 0,
-                      top: 0,
-                      bottom: 0,
-                      transform: "translateX(-50%)",
-                      display: "flex",
-                      alignItems: "stretch",
-                      zIndex: 2,
-                    }}
-                  >
-                    {tickButton(hourMin, { tall: true, trackH, halfH })}
+                    <div
+                      style={{
+                        position: "absolute",
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        transform: "translateX(-50%)",
+                        display: "flex",
+                        alignItems: "center",
+                        zIndex: 2,
+                      }}
+                    >
+                      {tickButton(hourMin, { tall: true, trackH, halfH })}
+                    </div>
+
+                    <div
+                      style={{
+                        position: "absolute",
+                        left: "50%",
+                        top: "50%",
+                        transform: "translate(-50%, -50%)",
+                        display: "flex",
+                        zIndex: 2,
+                      }}
+                    >
+                      {tickButton(halfMin, { tall: false, trackH, halfH })}
+                    </div>
                   </div>
 
-                  {/* thin half-hour line: horizontal + vertical center */}
-                  <div
+                  <span
                     style={{
-                      position: "absolute",
-                      left: "50%",
-                      top: "50%",
-                      transform: "translate(-50%, -50%)",
-                      display: "flex",
-                      zIndex: 2,
+                      fontSize: major ? "0.68rem" : "0.6rem",
+                      lineHeight: 1,
+                      textAlign: "left",
+                      marginTop: 10,
+                      marginLeft: -8,
+                      color: hourSelected
+                        ? COLOR.tickSelected
+                        : major
+                          ? "var(--muted)"
+                          : "rgba(107, 101, 96, 0.45)",
+                      fontWeight: hourSelected || major ? 650 : 500,
+                      fontVariantNumeric: "tabular-nums",
                     }}
                   >
-                    {tickButton(halfMin, { tall: false, trackH, halfH })}
-                  </div>
+                    {String(hour).padStart(2, "0")}
+                  </span>
                 </div>
-
-                <span
-                  style={{
-                    fontSize: "0.62rem",
-                    lineHeight: 1,
-                    textAlign: "left",
-                    marginTop: 8,
-                    marginLeft: -6,
-                    color: hourSelected ? COLOR.tickSelected : "rgba(107, 101, 96, 0.65)",
-                    fontWeight: hourSelected ? 700 : 500,
-                    fontVariantNumeric: "tabular-nums",
-                  }}
-                >
-                  {String(hour).padStart(2, "0")}
-                </span>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>
