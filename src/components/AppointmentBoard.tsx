@@ -294,33 +294,37 @@ export function AppointmentBoard({
         });
         if (!ok) return;
 
-        try {
-          const result = await completeAppointmentWithInvoiceAction(id);
-          if (result?.error) {
+        // Yield so confirm close can paint before the server action (reduces INP freeze)
+        await new Promise((r) => window.setTimeout(r, 0));
+        startTransition(async () => {
+          try {
+            const result = await completeAppointmentWithInvoiceAction(id);
+            if (result?.error) {
+              await confirm({
+                title: "Allvisor",
+                message: result.error,
+                confirmLabel: "OK",
+                hideCancel: true,
+              });
+              return;
+            }
+            router.refresh();
             await confirm({
               title: "Allvisor",
-              message: result.error,
+              message:
+                "Appointment marked completed. A pending invoice was added under Invoices — open it there to review service cost and add medicine/additional if needed.",
               confirmLabel: "OK",
               hideCancel: true,
             });
-            return;
+          } catch (e) {
+            await confirm({
+              title: "Allvisor",
+              message: e instanceof Error ? e.message : "Failed to complete appointment",
+              confirmLabel: "OK",
+              hideCancel: true,
+            });
           }
-          router.refresh();
-          await confirm({
-            title: "Allvisor",
-            message:
-              "Appointment marked completed. A pending invoice was added under Invoices — open it there to review service cost and add medicine/additional if needed.",
-            confirmLabel: "OK",
-            hideCancel: true,
-          });
-        } catch (e) {
-          await confirm({
-            title: "Allvisor",
-            message: e instanceof Error ? e.message : "Failed to complete appointment",
-            confirmLabel: "OK",
-            hideCancel: true,
-          });
-        }
+        });
         return;
       }
       refreshAfter(() => updateAppointmentStatusAction(id, status));

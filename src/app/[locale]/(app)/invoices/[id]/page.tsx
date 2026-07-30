@@ -4,10 +4,11 @@ import { requireOrg } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { ActionForm } from "@/components/ActionForm";
-import { updateInvoiceStatusAction, recordPaymentAction } from "@/app/actions";
+import { updateInvoiceStatusAction } from "@/app/actions";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
 import { PrintInvoiceButton } from "@/components/PrintInvoiceButton";
 import { InvoiceCostPanel } from "@/components/InvoiceCostPanel";
+import { RecordPaymentForm } from "@/components/RecordPaymentForm";
 import type { InvoiceLineKind, InvoiceStatus } from "@/lib/types";
 
 export default async function InvoiceDetailPage({
@@ -137,7 +138,21 @@ export default async function InvoiceDetailPage({
   }
 
   const editable = invoice.status !== "paid" && invoice.status !== "void";
-  const balance = Math.max(0, Number(invoice.total) - Number(invoice.amount_paid));
+  const billLinesForPay = lines.filter((l) => l.line_kind !== "service_charge");
+  const itemsSubtotalForPay = billLinesForPay.reduce(
+    (s, l) => s + Number(l.line_total || 0),
+    0
+  );
+  const chargeLineForPay = lines.find((l) => l.line_kind === "service_charge");
+  const serviceTaxForPay =
+    chargeLineForPay != null
+      ? Number(chargeLineForPay.line_total || 0)
+      : Math.round(((itemsSubtotalForPay * pct) / 100) * 100) / 100;
+  const latestTotal = Math.max(
+    Number(invoice.total) || 0,
+    itemsSubtotalForPay + serviceTaxForPay + Number(invoice.tax_amount || 0)
+  );
+  const balance = Math.max(0, latestTotal - Number(invoice.amount_paid || 0));
   const customer = invoice.customers as {
     name?: string;
     phone?: string | null;
@@ -260,32 +275,15 @@ export default async function InvoiceDetailPage({
       </div>
 
       {editable && balance > 0 ? (
-        <div className="surface no-print" style={{ padding: "1.25rem" }}>
-          <h3 style={{ marginTop: 0 }}>{t("recordPayment")}</h3>
-          <p className="muted">
-            {t("balanceDue")}: {formatCurrency(balance)}
-          </p>
-          <ActionForm action={recordPaymentAction} className="row">
-            <input type="hidden" name="invoice_id" value={invoice.id} />
-            <input
-              name="amount"
-              type="number"
-              step="0.01"
-              className="input"
-              style={{ width: 140 }}
-              defaultValue={balance}
-            />
-            <select name="method" className="select" style={{ width: 130 }}>
-              <option value="cash">cash</option>
-              <option value="card">card</option>
-              <option value="transfer">transfer</option>
-              <option value="ewallet">ewallet</option>
-            </select>
-            <button type="submit" className="btn btn-primary">
-              {t("pay")}
-            </button>
-          </ActionForm>
-        </div>
+        <RecordPaymentForm
+          invoiceId={invoice.id}
+          balance={balance}
+          labels={{
+            title: t("recordPayment"),
+            balanceDue: t("balanceDue"),
+            pay: t("pay"),
+          }}
+        />
       ) : null}
 
       <div className="surface no-print" style={{ padding: "1.25rem" }}>

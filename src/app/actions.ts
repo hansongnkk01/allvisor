@@ -913,7 +913,8 @@ export async function addInvoiceCostAction(formData: FormData) {
     entityId: invoiceId,
   });
 
-  revalidateApp("/invoices", "/accounting", "/dashboard");
+  // Narrow revalidate keeps Add cost clicks snappy
+  revalidateApp("/invoices");
   return { success: true };
 }
 
@@ -959,7 +960,7 @@ export async function removeInvoiceLineAction(formData: FormData) {
     entityId: invoiceId,
   });
 
-  revalidateApp("/invoices", "/accounting", "/dashboard");
+  revalidateApp("/invoices");
   return { success: true };
 }
 

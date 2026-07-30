@@ -10,7 +10,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { createPortal, flushSync } from "react-dom";
+import { createPortal } from "react-dom";
 
 type ConfirmOptions = {
   title?: string;
@@ -43,15 +43,13 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
     if (activeRef.current) return;
     const next = queueRef.current.shift() || null;
     if (!next) {
-      flushSync(() => setOpen(false));
+      setOpen(false);
       return;
     }
     activeRef.current = next;
     closingRef.current = false;
-    flushSync(() => {
-      setOpts(next.opts);
-      setOpen(true);
-    });
+    setOpts(next.opts);
+    setOpen(true);
   }, []);
 
   const scheduleShowNext = useCallback(() => {
@@ -59,7 +57,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
     timerRef.current = window.setTimeout(() => {
       timerRef.current = null;
       showNext();
-    }, 60);
+    }, 50);
   }, [showNext]);
 
   const confirm = useCallback<ConfirmFn>(
@@ -67,7 +65,6 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
       const nextOpts = typeof input === "string" ? { message: input } : input;
       return new Promise<boolean>((resolve) => {
         queueRef.current.push({ opts: nextOpts, resolve });
-        // Only start if nothing is showing / closing
         if (!activeRef.current && !closingRef.current) {
           scheduleShowNext();
         }
@@ -82,15 +79,14 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
       if (!active) return;
       activeRef.current = null;
       closingRef.current = true;
-      flushSync(() => setOpen(false));
-      active.resolve(value);
-      // After close, show next queued dialog if any
-      if (timerRef.current != null) window.clearTimeout(timerRef.current);
-      timerRef.current = window.setTimeout(() => {
-        timerRef.current = null;
+      setOpen(false);
+
+      // Resolve after paint so the click handler doesn't block INP for seconds
+      window.setTimeout(() => {
+        active.resolve(value);
         closingRef.current = false;
-        showNext();
-      }, 60);
+        if (queueRef.current.length) showNext();
+      }, 0);
     },
     [showNext]
   );
@@ -143,7 +139,9 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
                 >
                   {opts.title || "Allvisor"}
                 </div>
-                <p style={{ margin: "0 0 1.15rem", lineHeight: 1.5 }}>{opts.message}</p>
+                <p style={{ margin: "0 0 1.15rem", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>
+                  {opts.message}
+                </p>
                 <div className="row" style={{ justifyContent: "flex-end", gap: 8 }}>
                   {!opts.hideCancel ? (
                     <button

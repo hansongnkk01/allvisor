@@ -158,7 +158,11 @@ export default async function InvoicesPage({
                           step="0.01"
                           className="input"
                           style={{ width: 100 }}
-                          defaultValue={Number(inv.total) - Number(inv.amount_paid)}
+                          key={`pay-${inv.id}-${Number(inv.total)}-${Number(inv.amount_paid)}`}
+                          defaultValue={Math.max(
+                            0,
+                            Number(inv.total) - Number(inv.amount_paid)
+                          )}
                         />
                         <select name="method" className="select" style={{ width: 110 }}>
                           <option value="cash">cash</option>
