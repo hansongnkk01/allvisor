@@ -454,15 +454,23 @@ export async function createAppointmentAction(formData: FormData) {
     organization_id: organization.id,
     customer_id: String(formData.get("customer_id") || ""),
     title,
-    starts_at: String(formData.get("starts_at") || ""),
-    ends_at: String(formData.get("ends_at") || ""),
+    starts_at: new Date(String(formData.get("starts_at") || "")).toISOString(),
+    ends_at: new Date(String(formData.get("ends_at") || "")).toISOString(),
     status: String(formData.get("status") || "scheduled") as AppointmentStatus,
     notes: String(formData.get("notes") || "") || null,
     reminder_sent: formData.get("reminder_sent") === "on",
   };
 
-  if (!payload.customer_id || !payload.title || !payload.starts_at || !payload.ends_at) {
+  if (
+    !payload.customer_id ||
+    !payload.title ||
+    Number.isNaN(new Date(payload.starts_at).getTime()) ||
+    Number.isNaN(new Date(payload.ends_at).getTime())
+  ) {
     return { error: "Missing appointment fields" };
+  }
+  if (new Date(payload.ends_at).getTime() <= new Date(payload.starts_at).getTime()) {
+    return { error: "End time must be after start time" };
   }
 
   const { data, error } = await supabase

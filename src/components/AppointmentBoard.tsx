@@ -566,8 +566,8 @@ export function AppointmentBoard({
                       const fd = new FormData();
                       fd.set("customer_id", patientId);
                       fd.set("category_id", categoryId);
-                      fd.set("starts_at", toLocalInputFromDate(startDt));
-                      fd.set("ends_at", toLocalInputFromDate(endDt));
+                      fd.set("starts_at", startDt.toISOString());
+                      fd.set("ends_at", endDt.toISOString());
                       fd.set("status", "scheduled");
                       fd.set("notes", notes);
                       setBookError(null);

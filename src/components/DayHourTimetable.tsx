@@ -220,84 +220,87 @@ export function DayHourTimetable({
           role={selectable ? "group" : "img"}
           aria-label={labels.timetable}
         >
-          {columns.map(({ hour, left, right }) => (
-            <div
-              key={hour}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "stretch",
-                gap: 4,
-                minWidth: 0,
-              }}
-            >
+          {columns.map(({ hour, left, right }) => {
+            const leftHl = highlightFor(left.minutes);
+            const rightHl = highlightFor(right.minutes);
+            const hourActive = leftHl !== "none" || rightHl !== "none";
+            return (
               <div
+                key={hour}
                 style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: 2,
-                  flex: 1,
-                  minHeight: orientation === "horizontal" ? 28 : 44,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "stretch",
+                  gap: 4,
+                  minWidth: 0,
                 }}
               >
-                {([left, right] as const).map((half) => {
-                  const clickable = selectable && half.kind === "free";
-                  const highlight = highlightFor(half.minutes);
-                  const label = slotLabel(half.minutes);
-                  return (
-                    <button
-                      key={half.minutes}
-                      type="button"
-                      disabled={!clickable}
-                      title={`${label} — ${tipFor(half.kind, half.tip)}${
-                        clickable
-                          ? " · click to select"
-                          : selectable && half.kind !== "free"
-                            ? " · unavailable"
-                            : ""
-                      }`}
-                      onClick={() => {
-                        if (clickable) onSlotSelect?.(half.minutes);
-                      }}
-                      style={{
-                        minWidth: 0,
-                        border:
-                          highlight !== "none"
-                            ? "2px solid var(--accent-ink)"
-                            : "1px solid rgba(28, 27, 25, 0.18)",
-                        borderRadius: 3,
-                        background: cellBg(half.kind, highlight),
-                        cursor: clickable ? "pointer" : "not-allowed",
-                        opacity: !clickable && selectable && half.kind !== "free" ? 0.85 : 1,
-                        padding: 0,
-                        appearance: "none",
-                      }}
-                    />
-                  );
-                })}
-              </div>
-              <span
-                style={{
-                  fontSize: "0.62rem",
-                  lineHeight: 1,
-                  textAlign: "center",
-                  color:
-                    highlightFor(left.minutes) !== "none" ||
-                    highlightFor(right.minutes) !== "none"
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    flex: 1,
+                    minHeight: orientation === "horizontal" ? 28 : 44,
+                    border: hourActive
+                      ? "2px solid var(--accent-ink)"
+                      : "1px solid rgba(28, 27, 25, 0.18)",
+                    borderRadius: 4,
+                    overflow: "hidden",
+                    background: "transparent",
+                  }}
+                >
+                  {([left, right] as const).map((half, idx) => {
+                    const clickable = selectable && half.kind === "free";
+                    const highlight = highlightFor(half.minutes);
+                    const label = slotLabel(half.minutes);
+                    return (
+                      <button
+                        key={half.minutes}
+                        type="button"
+                        disabled={!clickable}
+                        title={`${label} — ${tipFor(half.kind, half.tip)}${
+                          clickable
+                            ? " · click to select"
+                            : selectable && half.kind !== "free"
+                              ? " · unavailable"
+                              : ""
+                        }`}
+                        onClick={() => {
+                          if (clickable) onSlotSelect?.(half.minutes);
+                        }}
+                        style={{
+                          minWidth: 0,
+                          border: "none",
+                          borderRight:
+                            idx === 0 ? "1px solid rgba(28, 27, 25, 0.35)" : "none",
+                          borderRadius: 0,
+                          background: cellBg(half.kind, highlight),
+                          cursor: clickable ? "pointer" : "not-allowed",
+                          opacity: !clickable && selectable && half.kind !== "free" ? 0.85 : 1,
+                          padding: 0,
+                          appearance: "none",
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+                <span
+                  style={{
+                    fontSize: "0.62rem",
+                    lineHeight: 1,
+                    textAlign: "center",
+                    color: hourActive
                       ? "var(--accent-ink)"
                       : "rgba(107, 101, 96, 0.55)",
-                  fontWeight:
-                    highlightFor(left.minutes) !== "none" ||
-                    highlightFor(right.minutes) !== "none"
-                      ? 700
-                      : 500,
-                  fontVariantNumeric: "tabular-nums",
-                }}
-              >
-                {String(hour).padStart(2, "0")}
-              </span>
-            </div>
-          ))}
+                    fontWeight: hourActive ? 700 : 500,
+                    fontVariantNumeric: "tabular-nums",
+                  }}
+                >
+                  {String(hour).padStart(2, "0")}
+                </span>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
