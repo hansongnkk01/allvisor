@@ -23,9 +23,9 @@ type HalfStatus = "free" | "booked";
 type HourStatus = "closed" | "free" | "booked" | "half";
 
 const COLOR = {
-  free: "#22c55e",
-  booked: "#ef4444",
-  closed: "#9ca3af",
+  free: "#c5e4de", // soft teal — matches accent-soft theme
+  booked: "#f0c9c4", // soft coral — readable but light
+  closed: "#ddd8d2", // warm grey — closed / off hours
 };
 
 function isHourOpen(hour: number, openHour: number, closeHour: number, dayClosed: boolean) {
@@ -220,8 +220,8 @@ export function DayHourTimetable({
               style={{
                 flex: 1,
                 minHeight: orientation === "horizontal" ? 28 : 40,
-                border: "1.5px solid #1f2937",
-                borderRadius: 2,
+                border: "1px solid rgba(28, 27, 25, 0.18)",
+                borderRadius: 3,
                 background: cellBackground(top, bottom, status),
               }}
             />
