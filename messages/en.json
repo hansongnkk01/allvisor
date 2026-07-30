@@ -125,7 +125,13 @@
     "free": "Free",
     "clinicClosed": "Clinic closed",
     "publicHoliday": "Public holiday",
-    "activity": "Appointment activity"
+    "activity": "Appointment activity",
+    "bookHint": "Select a day → tap start hour → tap end hour on the timetable → choose patient → book. Red/grey slots cannot be selected.",
+    "pickStart": "Tap a free (green) start hour",
+    "pickEnd": "Tap a free end hour",
+    "pickPatient": "Choose patient & category, then book",
+    "bookNow": "Book appointment",
+    "resetBooking": "Reset"
   },
   "Invoices": {
     "title": "Invoices",

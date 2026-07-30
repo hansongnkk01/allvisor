@@ -125,7 +125,13 @@
     "free": "Kosong",
     "clinicClosed": "Klinik tutup",
     "publicHoliday": "Cuti umum",
-    "activity": "Aktiviti temujanji"
+    "activity": "Aktiviti temujanji",
+    "bookHint": "Pilih hari → tekan jam mula → tekan jam tamat pada jadual → pilih pesakit → book. Slot merah/kelabu tak boleh ditekan.",
+    "pickStart": "Tekan jam mula yang hijau (kosong)",
+    "pickEnd": "Tekan jam tamat yang kosong",
+    "pickPatient": "Pilih pesakit & kategori, kemudian book",
+    "bookNow": "Book temujanji",
+    "resetBooking": "Reset"
   },
   "Inventory": {
     "title": "Inventori",

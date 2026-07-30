@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "@/i18n/navigation";
 import {
   addDays,
@@ -14,6 +14,7 @@ import {
   startOfWeek,
 } from "date-fns";
 import {
+  createAppointmentAction,
   updateAppointmentStatusAction,
   updateAppointmentAction,
   deleteAppointmentAction,
@@ -33,6 +34,9 @@ type Appt = {
   customers?: { name: string; risk_level?: "high" | "medium" | "low" | null } | null;
 };
 
+type PatientOpt = { id: string; name: string; risk_level?: "high" | "medium" | "low" | null };
+type CategoryOpt = { id: string; name: string };
+
 const STATUSES: AppointmentStatus[] = [
   "scheduled",
   "confirmed",
@@ -44,16 +48,35 @@ const STATUSES: AppointmentStatus[] = [
 function toLocalInput(iso: string) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
+  return toLocalInputFromDate(d);
+}
+
+function toLocalInputFromDate(d: Date) {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function hourLabel(h: number | null) {
+  if (h == null) return "—";
+  return `${String(h).padStart(2, "0")}:00`;
+}
+
+function dayAtHour(day: Date, hour: number) {
+  const d = new Date(day);
+  d.setHours(hour, 0, 0, 0);
+  return d;
 }
 
 export function AppointmentBoard({
   appointments,
   labels,
   hoursConfig,
+  patients = [],
+  categories = [],
 }: {
   appointments: Appt[];
+  patients?: PatientOpt[];
+  categories?: CategoryOpt[];
   labels: {
     calendar: string;
     list: string;
@@ -76,6 +99,14 @@ export function AppointmentBoard({
     cancel: string;
     startsAt: string;
     endsAt: string;
+    bookHint: string;
+    pickStart: string;
+    pickEnd: string;
+    pickPatient: string;
+    bookNow: string;
+    category: string;
+    needCategory: string;
+    resetBooking: string;
   };
   hoursConfig?: TimetableHours;
 }) {
@@ -84,6 +115,36 @@ export function AppointmentBoard({
   const [cursor, setCursor] = useState(() => startOfMonth(new Date()));
   const [selectedDay, setSelectedDay] = useState(() => new Date());
   const [pending, startTransition] = useTransition();
+
+  const [startHour, setStartHour] = useState<number | null>(null);
+  const [endHour, setEndHour] = useState<number | null>(null);
+  const [patientId, setPatientId] = useState("");
+  const [categoryId, setCategoryId] = useState("");
+  const [notes, setNotes] = useState("");
+  const [bookError, setBookError] = useState<string | null>(null);
+  const [mouse, setMouse] = useState({ x: 24, y: 24 });
+  const [floatPinned, setFloatPinned] = useState(false);
+
+  const bookingActive = startHour != null || endHour != null;
+
+  useEffect(() => {
+    if (!bookingActive || floatPinned) return;
+    const onMove = (e: MouseEvent) => {
+      setMouse({ x: e.clientX, y: e.clientY });
+    };
+    window.addEventListener("mousemove", onMove);
+    return () => window.removeEventListener("mousemove", onMove);
+  }, [bookingActive, floatPinned]);
+
+  function resetBooking() {
+    setStartHour(null);
+    setEndHour(null);
+    setPatientId("");
+    setCategoryId("");
+    setNotes("");
+    setBookError(null);
+    setFloatPinned(false);
+  }
 
   function refreshAfter(action: () => Promise<unknown>) {
     startTransition(async () => {
@@ -112,6 +173,42 @@ export function AppointmentBoard({
   const selectedKey = format(selectedDay, "yyyy-MM-dd");
   const dayAppts = byDay.get(selectedKey) || [];
 
+  const stepHint =
+    startHour == null
+      ? labels.pickStart
+      : endHour == null
+        ? labels.pickEnd
+        : labels.pickPatient;
+
+  const canSubmit =
+    startHour != null &&
+    endHour != null &&
+    endHour > startHour &&
+    Boolean(patientId) &&
+    Boolean(categoryId) &&
+    categories.length > 0;
+
+  function onHourSelect(hour: number) {
+    setBookError(null);
+    if (startHour == null || (startHour != null && endHour != null)) {
+      setStartHour(hour);
+      setEndHour(null);
+      return;
+    }
+    if (hour === startHour) {
+      // same hour → default 1 hour slot
+      if (hour < 23) setEndHour(hour + 1);
+      else setBookError("Pick a later end hour");
+      return;
+    }
+    if (hour < startHour) {
+      setEndHour(startHour);
+      setStartHour(hour);
+      return;
+    }
+    setEndHour(hour);
+  }
+
   const listHandlers = {
     onStatus: (id: string, status: AppointmentStatus) => {
       refreshAfter(() => updateAppointmentStatusAction(id, status));
@@ -127,9 +224,12 @@ export function AppointmentBoard({
     },
   };
 
+  const floatLeft = Math.min(mouse.x + 18, typeof window !== "undefined" ? window.innerWidth - 300 : mouse.x);
+  const floatTop = Math.min(mouse.y + 18, typeof window !== "undefined" ? window.innerHeight - 320 : mouse.y);
+
   return (
     <div className="stack" style={{ gap: "1rem", opacity: pending ? 0.75 : 1 }}>
-      <div className="row" style={{ justifyContent: "space-between" }}>
+      <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
         <div className="row">
           <button
             type="button"
@@ -147,11 +247,14 @@ export function AppointmentBoard({
           </button>
         </div>
         {view === "calendar" ? (
-          <div className="row">
+          <div className="row" style={{ flexWrap: "wrap" }}>
             <button
               type="button"
               className="btn btn-ghost"
-              onClick={() => setCursor((d) => addDays(startOfMonth(d), -1))}
+              onClick={() => {
+                setCursor((d) => addDays(startOfMonth(d), -1));
+                resetBooking();
+              }}
             >
               {labels.prev}
             </button>
@@ -159,7 +262,10 @@ export function AppointmentBoard({
             <button
               type="button"
               className="btn btn-ghost"
-              onClick={() => setCursor((d) => addDays(endOfMonth(d), 1))}
+              onClick={() => {
+                setCursor((d) => addDays(endOfMonth(d), 1));
+                resetBooking();
+              }}
             >
               {labels.next}
             </button>
@@ -170,6 +276,7 @@ export function AppointmentBoard({
                 const now = new Date();
                 setCursor(startOfMonth(now));
                 setSelectedDay(now);
+                resetBooking();
               }}
             >
               {labels.today}
@@ -180,6 +287,10 @@ export function AppointmentBoard({
 
       {view === "calendar" ? (
         <>
+          <p className="muted" style={{ margin: 0, fontSize: "0.9rem" }}>
+            {labels.bookHint}
+          </p>
+
           <div
             style={{
               display: "grid",
@@ -201,7 +312,10 @@ export function AppointmentBoard({
                 <button
                   key={key}
                   type="button"
-                  onClick={() => setSelectedDay(day)}
+                  onClick={() => {
+                    setSelectedDay(day);
+                    resetBooking();
+                  }}
                   className="surface"
                   style={{
                     padding: "0.55rem",
@@ -225,34 +339,178 @@ export function AppointmentBoard({
             })}
           </div>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-              gap: "1rem",
+          <DayHourTimetable
+            date={selectedDay}
+            appointments={dayAppts}
+            hoursConfig={hoursConfig}
+            selectable
+            selectionStart={startHour}
+            selectionEnd={endHour}
+            onHourSelect={onHourSelect}
+            labels={{
+              timetable: labels.timetable,
+              occupied: labels.occupied,
+              free: labels.free,
+              closed: labels.closed,
+              publicHoliday: labels.publicHoliday,
             }}
-          >
-            <DayHourTimetable
-              date={selectedDay}
-              appointments={dayAppts}
-              hoursConfig={hoursConfig}
-              labels={{
-                timetable: labels.timetable,
-                occupied: labels.occupied,
-                free: labels.free,
-                closed: labels.closed,
-                publicHoliday: labels.publicHoliday,
-              }}
-            />
-            <div className="surface" style={{ padding: "1rem" }}>
-              <h3 style={{ marginTop: 0 }}>{format(selectedDay, "EEE, d MMM yyyy")}</h3>
-              <AppointmentList items={dayAppts} labels={labels} {...listHandlers} />
-            </div>
+          />
+
+          <div className="surface" style={{ padding: "1rem" }}>
+            <h3 style={{ marginTop: 0 }}>{format(selectedDay, "EEE, d MMM yyyy")}</h3>
+            <AppointmentList items={dayAppts} labels={labels} {...listHandlers} />
           </div>
         </>
       ) : (
         <AppointmentList items={appointments} labels={labels} {...listHandlers} />
       )}
+
+      {view === "calendar" && bookingActive ? (
+        <div
+          style={{
+            position: "fixed",
+            left: floatPinned ? undefined : floatLeft,
+            top: floatPinned ? undefined : floatTop,
+            right: floatPinned ? 16 : undefined,
+            bottom: floatPinned ? 16 : undefined,
+            zIndex: 80,
+            width: 280,
+            maxWidth: "calc(100vw - 24px)",
+            padding: "0.9rem 1rem",
+            borderRadius: 14,
+            background: "rgba(255,255,255,0.96)",
+            border: "1px solid var(--line)",
+            boxShadow: "0 12px 40px rgba(28,27,25,0.18)",
+            pointerEvents: "auto",
+            backdropFilter: "blur(8px)",
+          }}
+          onMouseEnter={() => setFloatPinned(true)}
+        >
+          <div className="row" style={{ justifyContent: "space-between", marginBottom: 8 }}>
+            <strong style={{ fontSize: "0.85rem" }}>{stepHint}</strong>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              style={{ padding: "0.2rem 0.45rem", fontSize: "0.75rem" }}
+              onClick={resetBooking}
+            >
+              {labels.resetBooking}
+            </button>
+          </div>
+
+          <div className="stack" style={{ gap: 6, fontSize: "0.85rem" }}>
+            <div className="row" style={{ justifyContent: "space-between" }}>
+              <span className="muted">{labels.calendar}</span>
+              <span>{format(selectedDay, "EEE d MMM")}</span>
+            </div>
+            <div className="row" style={{ justifyContent: "space-between" }}>
+              <span className="muted">{labels.startsAt}</span>
+              <strong style={{ color: "var(--accent-ink)" }}>{hourLabel(startHour)}</strong>
+            </div>
+            <div className="row" style={{ justifyContent: "space-between" }}>
+              <span className="muted">{labels.endsAt}</span>
+              <strong style={{ color: "var(--accent-ink)" }}>{hourLabel(endHour)}</strong>
+            </div>
+          </div>
+
+          {startHour != null && endHour != null ? (
+            <div className="stack" style={{ gap: 8, marginTop: 10 }}>
+              <div className="field">
+                <label>{labels.patient}</label>
+                <select
+                  className="select"
+                  value={patientId}
+                  onChange={(e) => setPatientId(e.target.value)}
+                  required
+                >
+                  <option value="">—</option>
+                  {patients.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="field">
+                <label>{labels.category}</label>
+                <select
+                  className="select"
+                  value={categoryId}
+                  onChange={(e) => setCategoryId(e.target.value)}
+                  required
+                >
+                  <option value="">—</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="field">
+                <label>{labels.notes}</label>
+                <input
+                  className="input"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder={labels.notes}
+                />
+              </div>
+              {!categories.length ? (
+                <p className="muted" style={{ margin: 0, fontSize: "0.8rem" }}>
+                  {labels.needCategory}
+                </p>
+              ) : null}
+              {bookError ? (
+                <p style={{ color: "var(--danger)", margin: 0, fontSize: "0.8rem" }}>{bookError}</p>
+              ) : null}
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={!canSubmit || pending}
+                onClick={() => {
+                  if (startHour == null || endHour == null) return;
+                  const startDt = dayAtHour(selectedDay, startHour);
+                  const endDt = dayAtHour(selectedDay, endHour);
+                  const clash = dayAppts.some((a) => {
+                    const s = new Date(a.starts_at).getTime();
+                    const eRaw = new Date(a.ends_at).getTime();
+                    const e = eRaw > s ? eRaw : s + 30 * 60000;
+                    return s < endDt.getTime() && e > startDt.getTime();
+                  });
+                  if (clash) {
+                    setBookError("Selected time overlaps another booking");
+                    return;
+                  }
+                  const fd = new FormData();
+                  fd.set("customer_id", patientId);
+                  fd.set("category_id", categoryId);
+                  fd.set("starts_at", toLocalInputFromDate(startDt));
+                  fd.set("ends_at", toLocalInputFromDate(endDt));
+                  fd.set("status", "scheduled");
+                  fd.set("notes", notes);
+                  setBookError(null);
+                  startTransition(async () => {
+                    const result = await createAppointmentAction(fd);
+                    if (result && "error" in result && result.error) {
+                      setBookError(result.error);
+                      return;
+                    }
+                    resetBooking();
+                    router.refresh();
+                  });
+                }}
+              >
+                {labels.bookNow}
+              </button>
+            </div>
+          ) : (
+            <p className="muted" style={{ margin: "10px 0 0", fontSize: "0.8rem" }}>
+              {stepHint}
+            </p>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -294,6 +552,12 @@ function AppointmentList({
     <div className="stack" style={{ gap: "0.75rem" }}>
       {items.map((a) => {
         const isEditing = editingId === a.id;
+        const start = new Date(a.starts_at);
+        const end = new Date(a.ends_at);
+        const endDisplay =
+          end.getTime() > start.getTime()
+            ? end
+            : new Date(start.getTime() + 30 * 60000);
         return (
           <div
             key={a.id}
@@ -308,8 +572,8 @@ function AppointmentList({
                     name={a.customers?.name || "—"}
                     risk={a.customers?.risk_level}
                   />{" "}
-                  · {new Date(a.starts_at).toLocaleString()} –{" "}
-                  {new Date(a.ends_at).toLocaleTimeString([], {
+                  · {start.toLocaleString()} –{" "}
+                  {endDisplay.toLocaleTimeString([], {
                     hour: "2-digit",
                     minute: "2-digit",
                   })}
@@ -407,7 +671,11 @@ function AppointmentList({
                       type="datetime-local"
                       className="input"
                       required
-                      defaultValue={toLocalInput(a.ends_at)}
+                      defaultValue={toLocalInput(
+                        end.getTime() > start.getTime()
+                          ? a.ends_at
+                          : new Date(start.getTime() + 60 * 60000).toISOString()
+                      )}
                     />
                   </div>
                   <div className="field">

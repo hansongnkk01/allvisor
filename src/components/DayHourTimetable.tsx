@@ -13,19 +13,21 @@ type SlotAppt = {
 };
 
 export type TimetableHours = {
-  openHour?: number; // inclusive 0-23
-  closeHour?: number; // inclusive last open hour 0-23
-  closedWeekdays?: number[]; // 0=Sun .. 6=Sat (JS getDay)
+  openHour?: number;
+  closeHour?: number;
+  closedWeekdays?: number[];
   locale?: string;
 };
 
 type HalfStatus = "free" | "booked";
-type HourStatus = "closed" | "free" | "booked" | "half";
+export type HourStatus = "closed" | "free" | "booked" | "half";
 
 const COLOR = {
-  free: "#c5e4de", // soft teal — matches accent-soft theme
-  booked: "#f0c9c4", // soft coral — readable but light
-  closed: "#ddd8d2", // warm grey — closed / off hours
+  free: "#c5e4de",
+  booked: "#f0c9c4",
+  closed: "#ddd8d2",
+  selected: "#7eb8ae",
+  range: "#a8d4cc",
 };
 
 function isHourOpen(hour: number, openHour: number, closeHour: number, dayClosed: boolean) {
@@ -38,7 +40,6 @@ function isHourOpen(hour: number, openHour: number, closeHour: number, dayClosed
   return hour >= open && hour <= close;
 }
 
-/** Overlap of [start,end) with a half-hour window, in minutes (0–30). */
 function overlapMinutes(startMs: number, endMs: number, winStart: number, winEnd: number) {
   const a = Math.max(startMs, winStart);
   const b = Math.min(endMs, winEnd);
@@ -56,8 +57,12 @@ function halfBooked(appointments: SlotAppt[], day: Date, hour: number, half: 0 |
 
   let booked = 0;
   for (const a of appointments) {
-    booked += overlapMinutes(new Date(a.starts_at).getTime(), new Date(a.ends_at).getTime(), ws, we);
-    if (booked >= 10) return true; // treat ≥10 min as that half booked
+    const start = new Date(a.starts_at).getTime();
+    const end = new Date(a.ends_at).getTime();
+    // zero-duration appointments still mark the start half
+    const effectiveEnd = end > start ? end : start + 30 * 60000;
+    booked += overlapMinutes(start, effectiveEnd, ws, we);
+    if (booked >= 10) return true;
   }
   return false;
 }
@@ -83,7 +88,8 @@ function hourStatus(
     hourStart.setHours(hour, 0, 0, 0);
     const hourEnd = new Date(day);
     hourEnd.setHours(hour + 1, 0, 0, 0);
-    return s < hourEnd && e > hourStart;
+    const endMs = e.getTime() > s.getTime() ? e.getTime() : s.getTime() + 30 * 60000;
+    return s.getTime() < hourEnd.getTime() && endMs > hourStart.getTime();
   });
   const tip =
     covering.length > 0
@@ -97,7 +103,14 @@ function hourStatus(
   return { status: "half", top, bottom, tip };
 }
 
-function cellBackground(top: HalfStatus, bottom: HalfStatus, status: HourStatus) {
+function cellBackground(
+  top: HalfStatus,
+  bottom: HalfStatus,
+  status: HourStatus,
+  highlight: "none" | "start" | "end" | "range"
+) {
+  if (highlight === "start" || highlight === "end") return COLOR.selected;
+  if (highlight === "range") return COLOR.range;
   if (status === "closed") return COLOR.closed;
   if (status === "free") return COLOR.free;
   if (status === "booked") return COLOR.booked;
@@ -112,6 +125,10 @@ export function DayHourTimetable({
   labels,
   orientation = "vertical",
   hoursConfig,
+  selectable = false,
+  selectionStart = null,
+  selectionEnd = null,
+  onHourSelect,
 }: {
   date: Date;
   appointments: SlotAppt[];
@@ -124,6 +141,10 @@ export function DayHourTimetable({
   };
   orientation?: "vertical" | "horizontal";
   hoursConfig?: TimetableHours;
+  selectable?: boolean;
+  selectionStart?: number | null;
+  selectionEnd?: number | null;
+  onHourSelect?: (hour: number) => void;
 }) {
   const openHour = hoursConfig?.openHour ?? 0;
   const closeHour = hoursConfig?.closeHour ?? 23;
@@ -151,6 +172,19 @@ export function DayHourTimetable({
       return { hour, ...info, tipLabel };
     });
   }, [hours, openHour, closeHour, dayClosed, appointments, date, labels]);
+
+  function highlightFor(hour: number): "none" | "start" | "end" | "range" {
+    if (selectionStart == null) return "none";
+    if (selectionEnd == null) {
+      return hour === selectionStart ? "start" : "none";
+    }
+    const lo = Math.min(selectionStart, selectionEnd);
+    const hi = Math.max(selectionStart, selectionEnd);
+    if (hour === selectionStart) return "start";
+    if (hour === selectionEnd) return "end";
+    if (hour > lo && hour < hi) return "range";
+    return "none";
+  }
 
   return (
     <div
@@ -192,54 +226,75 @@ export function DayHourTimetable({
       </div>
 
       <div style={{ overflowX: "auto", width: "100%" }}>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(24, minmax(18px, 1fr))",
-          gap: 3,
-          width: "100%",
-          minWidth: 480,
-          minHeight: orientation === "horizontal" ? 36 : 48,
-        }}
-        role="img"
-        aria-label={labels.timetable}
-      >
-        {slots.map(({ hour, status, top, bottom, tipLabel }) => (
-          <div
-            key={hour}
-            title={`${String(hour).padStart(2, "0")}:00 — ${tipLabel}`}
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "stretch",
-              gap: 4,
-              minWidth: 0,
-            }}
-          >
-            <div
-              style={{
-                flex: 1,
-                minHeight: orientation === "horizontal" ? 28 : 40,
-                border: "1px solid rgba(28, 27, 25, 0.18)",
-                borderRadius: 3,
-                background: cellBackground(top, bottom, status),
-              }}
-            />
-            <span
-              style={{
-                fontSize: "0.62rem",
-                lineHeight: 1,
-                textAlign: "center",
-                color: "rgba(107, 101, 96, 0.55)",
-                fontWeight: 500,
-                fontVariantNumeric: "tabular-nums",
-              }}
-            >
-              {String(hour).padStart(2, "0")}
-            </span>
-          </div>
-        ))}
-      </div>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(24, minmax(18px, 1fr))",
+            gap: 3,
+            width: "100%",
+            minWidth: 480,
+            minHeight: orientation === "horizontal" ? 36 : 48,
+          }}
+          role={selectable ? "group" : "img"}
+          aria-label={labels.timetable}
+        >
+          {slots.map(({ hour, status, top, bottom, tipLabel }) => {
+            const clickable = selectable && status === "free";
+            const highlight = highlightFor(hour);
+            return (
+              <div
+                key={hour}
+                title={`${String(hour).padStart(2, "0")}:00 — ${tipLabel}${
+                  clickable ? " · click to select" : status !== "free" && selectable ? " · unavailable" : ""
+                }`}
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "stretch",
+                  gap: 4,
+                  minWidth: 0,
+                }}
+              >
+                <button
+                  type="button"
+                  disabled={!clickable}
+                  onClick={() => {
+                    if (clickable) onHourSelect?.(hour);
+                  }}
+                  style={{
+                    flex: 1,
+                    minHeight: orientation === "horizontal" ? 28 : 44,
+                    border:
+                      highlight !== "none"
+                        ? "2px solid var(--accent-ink)"
+                        : "1px solid rgba(28, 27, 25, 0.18)",
+                    borderRadius: 3,
+                    background: cellBackground(top, bottom, status, highlight),
+                    cursor: clickable ? "pointer" : "not-allowed",
+                    opacity: !clickable && selectable && status !== "free" ? 0.85 : 1,
+                    padding: 0,
+                    appearance: "none",
+                  }}
+                />
+                <span
+                  style={{
+                    fontSize: "0.62rem",
+                    lineHeight: 1,
+                    textAlign: "center",
+                    color:
+                      highlight !== "none"
+                        ? "var(--accent-ink)"
+                        : "rgba(107, 101, 96, 0.55)",
+                    fontWeight: highlight !== "none" ? 700 : 500,
+                    fontVariantNumeric: "tabular-nums",
+                  }}
+                >
+                  {String(hour).padStart(2, "0")}
+                </span>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
