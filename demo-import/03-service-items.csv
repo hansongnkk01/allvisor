@@ -1,0 +1,11 @@
+name,category,unit_price,description
+Consultation fee,General consultation,50.00,Yuran konsultasi biasa
+Extended consultation,General consultation,80.00,Konsultasi > 30 minit
+Follow-up review,Follow-up,35.00,Semakan keputusan / ubat
+Wound dressing basic,Wound care,30.00,Dressing ringkas
+Wound dressing complex,Wound care,55.00,Dressing kompleks
+Flu vaccine,Vaccination,45.00,Vaksin influenza
+Hep B vaccine,Vaccination,60.00,Vaksin Hepatitis B
+Full blood count,Lab / blood test,25.00,FBC
+Lipid profile,Lab / blood test,40.00,Kolesterol / lipid
+Walk-in fee,Emergency / walk-in,60.00,Walk-in tanpa appointment

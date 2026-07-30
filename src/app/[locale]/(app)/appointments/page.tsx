@@ -157,6 +157,11 @@ export default async function AppointmentsPage({
               free: t("free"),
               closed: t("clinicClosed"),
               publicHoliday: t("publicHoliday"),
+              edit: t("edit"),
+              save: t("save"),
+              cancel: t("cancel"),
+              startsAt: t("startsAt"),
+              endsAt: t("endsAt"),
             }}
           />
         </div>

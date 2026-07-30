@@ -1,0 +1,11 @@
+patient_name,patient_ic,patient_phone,category,starts_at,ends_at,status,notes
+Ahmad bin Ali,900101145678,0123456789,General consultation,2026-07-30 09:00,2026-07-30 09:30,completed,BP check
+Siti Aminah,880202085432,0198765432,Follow-up,2026-07-30 10:00,2026-07-30 10:30,confirmed,Allergy review
+Tan Wei Ming,950315146789,0161122334,Lab / blood test,2026-07-30 11:00,2026-07-30 11:30,scheduled,FBC + lipid
+Nurul Huda binti Hassan,920718085321,0179988776,General consultation,2026-07-31 09:00,2026-07-31 09:30,scheduled,Antenatal
+Rajesh Kumar,870505145432,0135566778,Wound care,2026-07-31 14:00,2026-07-31 14:30,scheduled,Dressing
+Lim Mei Ling,910909086543,0112233445,Vaccination,2026-08-01 10:00,2026-08-01 10:20,scheduled,Flu vaccine
+Mohd Faizal bin Omar,930404147890,0183344556,Follow-up,2026-08-01 15:00,2026-08-01 15:30,scheduled,Post-op knee
+Aisyah Zahra,000120085678,0126677889,Vaccination,2026-08-02 09:30,2026-08-02 09:50,scheduled,Kanak-kanak
+Chong Kah Wai,860611144321,0147788990,Lab / blood test,2026-08-02 11:00,2026-08-02 11:30,scheduled,Lipid profile
+Farah Natasha,940825087654,0194455667,Emergency / walk-in,2026-08-03 16:00,2026-08-03 16:30,scheduled,Skin rash

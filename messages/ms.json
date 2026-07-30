@@ -118,6 +118,8 @@
     "prev": "Sebelum",
     "next": "Seterus",
     "delete": "Padam",
+    "edit": "Edit",
+    "cancel": "Batal",
     "timetable": "Jadual jam",
     "occupied": "Diambil",
     "free": "Kosong",

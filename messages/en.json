@@ -118,6 +118,8 @@
     "prev": "Prev",
     "next": "Next",
     "delete": "Delete",
+    "edit": "Edit",
+    "cancel": "Cancel",
     "timetable": "Hour timetable",
     "occupied": "Occupied",
     "free": "Free",

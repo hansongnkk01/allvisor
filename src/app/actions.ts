@@ -499,6 +499,47 @@ export async function updateAppointmentStatusAction(id: string, status: Appointm
   return { success: true };
 }
 
+export async function updateAppointmentAction(formData: FormData) {
+  const { supabase } = await requireMember();
+  const id = String(formData.get("id") || "");
+  if (!id) return { error: "Missing appointment id" };
+
+  const startsAt = String(formData.get("starts_at") || "");
+  const endsAt = String(formData.get("ends_at") || "");
+  const notes = String(formData.get("notes") || "").trim() || null;
+  const status = String(formData.get("status") || "scheduled") as AppointmentStatus;
+
+  if (!startsAt || !endsAt) return { error: "Start and end time required" };
+  if (new Date(endsAt).getTime() <= new Date(startsAt).getTime()) {
+    return { error: "End time must be after start time" };
+  }
+  if (!["scheduled", "confirmed", "completed", "cancelled", "no_show"].includes(status)) {
+    return { error: "Invalid status" };
+  }
+
+  const { error } = await supabase
+    .from("appointments")
+    .update({
+      starts_at: new Date(startsAt).toISOString(),
+      ends_at: new Date(endsAt).toISOString(),
+      notes,
+      status,
+    })
+    .eq("id", id);
+
+  if (error) return { error: error.message };
+
+  await logActivity({
+    action: "appointment.update",
+    summary: `Updated appointment time ${startsAt} → ${endsAt}`,
+    entityType: "appointment",
+    entityId: id,
+  });
+
+  revalidateApp("/appointments", "/dashboard", "/staff");
+  return { success: true };
+}
+
 export async function deleteAppointmentAction(id: string) {
   const { supabase } = await requireMember();
   const { error } = await supabase.from("appointments").delete().eq("id", id);
