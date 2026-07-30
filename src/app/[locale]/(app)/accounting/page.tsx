@@ -167,27 +167,6 @@ export default async function AccountingPage({
         </div>
       </div>
 
-      <AccountingCashChart
-        ledger={(ledger || []).map((e) => ({
-          id: e.id,
-          entry_type: e.entry_type,
-          amount: e.amount,
-          entry_date: e.entry_date,
-          created_at: e.created_at,
-          description: e.description,
-        }))}
-        labels={{
-          title: t("chartTitle"),
-          byHour: t("chartByHour"),
-          byDay: t("chartByDay"),
-          byWeek: t("chartByWeek"),
-          byMonth: t("chartByMonth"),
-          income: t("income"),
-          expense: t("expense"),
-          empty: t("emptyLedger"),
-        }}
-      />
-
       <div className="fluid-grid">
         <div className="surface" style={{ padding: "1.25rem" }}>
           <h3 style={{ marginTop: 0 }}>{t("addIncome")}</h3>
@@ -269,6 +248,27 @@ export default async function AccountingPage({
           </ActionForm>
         </div>
       </div>
+
+      <AccountingCashChart
+        ledger={(ledger || []).map((e) => ({
+          id: e.id,
+          entry_type: e.entry_type,
+          amount: e.amount,
+          entry_date: e.entry_date,
+          created_at: e.created_at,
+          description: e.description,
+        }))}
+        labels={{
+          title: t("chartTitle"),
+          byHour: t("chartByHour"),
+          byDay: t("chartByDay"),
+          byWeek: t("chartByWeek"),
+          byMonth: t("chartByMonth"),
+          income: t("income"),
+          expense: t("expense"),
+          empty: t("emptyLedger"),
+        }}
+      />
 
       <div className="fluid-grid">
         <div className="surface" style={{ padding: "1.25rem" }}>

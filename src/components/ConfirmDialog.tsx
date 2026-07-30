@@ -4,12 +4,14 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import { flushSync } from "react-dom";
 
 type ConfirmOptions = {
   title?: string;
@@ -23,25 +25,58 @@ type ConfirmFn = (options: ConfirmOptions | string) => Promise<boolean>;
 
 const ConfirmContext = createContext<ConfirmFn | null>(null);
 
+type QueueItem = {
+  opts: ConfirmOptions;
+  resolve: (v: boolean) => void;
+};
+
 export function ConfirmProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [opts, setOpts] = useState<ConfirmOptions>({ message: "" });
-  const resolver = useRef<((v: boolean) => void) | null>(null);
+  const queueRef = useRef<QueueItem[]>([]);
+  const activeRef = useRef<QueueItem | null>(null);
 
-  const confirm = useCallback<ConfirmFn>((input) => {
-    const next = typeof input === "string" ? { message: input } : input;
-    setOpts(next);
-    setOpen(true);
-    return new Promise<boolean>((resolve) => {
-      resolver.current = resolve;
+  const showNext = useCallback(() => {
+    const next = queueRef.current.shift() || null;
+    activeRef.current = next;
+    if (!next) {
+      flushSync(() => setOpen(false));
+      return;
+    }
+    flushSync(() => {
+      setOpts(next.opts);
+      setOpen(true);
     });
   }, []);
 
+  const confirm = useCallback<ConfirmFn>(
+    (input) => {
+      const nextOpts = typeof input === "string" ? { message: input } : input;
+      return new Promise<boolean>((resolve) => {
+        queueRef.current.push({ opts: nextOpts, resolve });
+        if (!activeRef.current) showNext();
+      });
+    },
+    [showNext]
+  );
+
   function finish(value: boolean) {
-    setOpen(false);
-    resolver.current?.(value);
-    resolver.current = null;
+    const active = activeRef.current;
+    activeRef.current = null;
+    flushSync(() => setOpen(false));
+    active?.resolve(value);
+    // Allow UI to close before next dialog (double-confirm flow)
+    window.setTimeout(() => showNext(), 40);
   }
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") finish(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   const value = useMemo(() => confirm, [confirm]);
 
@@ -56,12 +91,12 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
               style={{
                 position: "fixed",
                 inset: 0,
-                zIndex: 220,
+                zIndex: 9999,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 padding: 16,
-                background: "rgba(28, 27, 25, 0.42)",
+                background: "rgba(28, 27, 25, 0.45)",
                 backdropFilter: "blur(4px)",
               }}
               onClick={() => finish(false)}
@@ -72,6 +107,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
                   width: "min(420px, 100%)",
                   padding: "1.25rem 1.35rem",
                   boxShadow: "0 24px 60px rgba(28,27,25,0.28)",
+                  background: "#fff",
                 }}
                 onClick={(e) => e.stopPropagation()}
               >
@@ -92,7 +128,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
                   </button>
                   <button
                     type="button"
-                    className={opts.danger ? "btn btn-primary" : "btn btn-primary"}
+                    className="btn btn-primary"
                     style={
                       opts.danger
                         ? { background: "var(--danger)", borderColor: "var(--danger)" }

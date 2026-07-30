@@ -283,21 +283,22 @@ export function AppointmentBoard({
   }
 
   const listHandlers = {
-    onStatus: (id: string, status: AppointmentStatus) => {
+    onStatus: async (id: string, status: AppointmentStatus) => {
       if (status === "completed") {
+        // Keep confirm OUTSIDE startTransition so the modal paints immediately
+        const ok1 = await confirm({
+          title: "Allvisor",
+          message: labels.completeConfirm1,
+          confirmLabel: "Continue",
+        });
+        if (!ok1) return;
+        const ok2 = await confirm({
+          title: "Allvisor",
+          message: labels.completeConfirm2,
+          confirmLabel: "Confirm",
+        });
+        if (!ok2) return;
         startTransition(async () => {
-          const ok1 = await confirm({
-            title: "Allvisor",
-            message: labels.completeConfirm1,
-            confirmLabel: "Continue",
-          });
-          if (!ok1) return;
-          const ok2 = await confirm({
-            title: "Allvisor",
-            message: labels.completeConfirm2,
-            confirmLabel: "Confirm",
-          });
-          if (!ok2) return;
           const result = await completeAppointmentWithInvoiceAction(id);
           if (result?.error) {
             await confirm({
@@ -318,19 +319,16 @@ export function AppointmentBoard({
       }
       refreshAfter(() => updateAppointmentStatusAction(id, status));
     },
-    onDelete: (id: string) => {
-      startTransition(async () => {
-        const ok = await confirm({
-          title: "Allvisor",
-          message: "Delete this appointment?",
-          confirmLabel: "Delete",
-          cancelLabel: "Cancel",
-          danger: true,
-        });
-        if (!ok) return;
-        await deleteAppointmentAction(id);
-        router.refresh();
+    onDelete: async (id: string) => {
+      const ok = await confirm({
+        title: "Allvisor",
+        message: "Delete this appointment?",
+        confirmLabel: "Delete",
+        cancelLabel: "Cancel",
+        danger: true,
       });
+      if (!ok) return;
+      refreshAfter(() => deleteAppointmentAction(id));
     },
     onSave: async (formData: FormData) => {
       const nextStatus = String(formData.get("status") || "") as AppointmentStatus;
@@ -684,8 +682,8 @@ function AppointmentList({
     startsAt: string;
     endsAt: string;
   };
-  onStatus: (id: string, status: AppointmentStatus) => void;
-  onDelete: (id: string) => void;
+  onStatus: (id: string, status: AppointmentStatus) => void | Promise<void>;
+  onDelete: (id: string) => void | Promise<void>;
   onSave: (formData: FormData) => Promise<{ error?: string; success?: boolean } | void>;
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);

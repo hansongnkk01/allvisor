@@ -165,20 +165,6 @@ export function DayHourTimetable({
     });
   }
 
-  function showBookedTip(e: MouseEvent, minutes: number) {
-    const kind = kindsByMinutes.get(minutes) || "free";
-    if (kind !== "booked") {
-      setHoverTip(null);
-      return;
-    }
-    const items = appointmentsInSlot(minutes);
-    if (!items.length) {
-      setHoverTip(null);
-      return;
-    }
-    setHoverTip({ x: e.clientX, y: e.clientY, items });
-  }
-
   const weekdayClosed = closedWeekdays.includes(date.getDay());
   const holiday = getMyHolidayOn(date, locale);
   const dayClosed = weekdayClosed;
@@ -195,6 +181,40 @@ export function DayHourTimetable({
     }
     return map;
   }, [openHour, closeHour, dayClosed, appointments, date]);
+
+  const trackH = orientation === "horizontal" ? 44 : 58;
+  const halfH = Math.round(trackH * 0.5);
+  const railTop = Math.round(trackH * 0.2);
+  const railBottom = Math.round(trackH * 0.2);
+  const tipW = 270;
+  const tipH = 160;
+
+  function showBookedTip(clientX: number, clientY: number, minutes: number) {
+    const kind = kindsByMinutes.get(minutes) || "free";
+    if (kind !== "booked") {
+      setHoverTip(null);
+      return;
+    }
+    const items = appointmentsInSlot(minutes);
+    if (!items.length) {
+      setHoverTip(null);
+      return;
+    }
+    setHoverTip({ x: clientX, y: clientY, items });
+  }
+
+  function handleTrackMouseMove(e: MouseEvent<HTMLDivElement>) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const relY = e.clientY - rect.top;
+    // Only show tip while cursor is over the colored track (not the hour labels)
+    if (relY < 0 || relY > trackH + 6) {
+      setHoverTip(null);
+      return;
+    }
+    const relX = Math.max(0, Math.min(rect.width - 0.001, e.clientX - rect.left));
+    const minutes = Math.floor((relX / rect.width) * 48) * 30; // 48 half-hour slots
+    showBookedTip(e.clientX, e.clientY, minutes);
+  }
 
   const selStart =
     selectionStart != null && selectionEnd != null
@@ -307,11 +327,6 @@ export function DayHourTimetable({
     );
   }
 
-  const trackH = orientation === "horizontal" ? 44 : 58;
-  const halfH = Math.round(trackH * 0.5);
-  const railTop = Math.round(trackH * 0.2);
-  const railBottom = Math.round(trackH * 0.2);
-
   return (
     <div
       className="surface"
@@ -360,14 +375,17 @@ export function DayHourTimetable({
       <div style={{ overflowX: "auto", width: "100%" }}>
         <div style={{ minWidth: 760, padding: "0 8px 2px" }}>
           <div
+            role={selectable ? "group" : "img"}
+            aria-label={labels.timetable}
+            onMouseMove={handleTrackMouseMove}
+            onMouseLeave={() => setHoverTip(null)}
             style={{
               position: "relative",
               display: "grid",
               gridTemplateColumns: "repeat(24, minmax(28px, 1fr))",
               width: "100%",
+              cursor: hoverTip ? "help" : undefined,
             }}
-            role={selectable ? "group" : "img"}
-            aria-label={labels.timetable}
           >
             {/* continuous rail behind everything */}
             <div
@@ -427,8 +445,6 @@ export function DayHourTimetable({
                 >
                   <div style={{ position: "relative", height: trackH, width: "100%" }}>
                     <div
-                      onMouseMove={(e) => showBookedTip(e, hourMin)}
-                      onMouseLeave={() => setHoverTip(null)}
                       style={{
                         position: "absolute",
                         left: 0,
@@ -441,11 +457,10 @@ export function DayHourTimetable({
                             ? "help"
                             : undefined,
                         zIndex: 1,
+                        pointerEvents: "none",
                       }}
                     />
                     <div
-                      onMouseMove={(e) => showBookedTip(e, halfMin)}
-                      onMouseLeave={() => setHoverTip(null)}
                       style={{
                         position: "absolute",
                         left: "50%",
@@ -458,6 +473,7 @@ export function DayHourTimetable({
                             ? "help"
                             : undefined,
                         zIndex: 1,
+                        pointerEvents: "none",
                       }}
                     />
 
@@ -521,15 +537,21 @@ export function DayHourTimetable({
               role="tooltip"
               style={{
                 position: "fixed",
-                left: Math.min(hoverTip.x + 14, window.innerWidth - 280),
-                top: Math.min(hoverTip.y + 14, window.innerHeight - 140),
-                zIndex: 80,
-                width: 260,
-                padding: "0.7rem 0.85rem",
+                left: Math.max(
+                  8,
+                  Math.min(hoverTip.x + 16, window.innerWidth - tipW - 8)
+                ),
+                top: Math.max(
+                  8,
+                  Math.min(hoverTip.y + 16, window.innerHeight - tipH - 8)
+                ),
+                zIndex: 9000,
+                width: tipW,
+                padding: "0.75rem 0.9rem",
                 borderRadius: 12,
                 background: "#fff",
                 border: "1px solid var(--line)",
-                boxShadow: "0 12px 32px rgba(28,27,25,0.18)",
+                boxShadow: "0 14px 36px rgba(28,27,25,0.2)",
                 pointerEvents: "none",
               }}
             >
@@ -539,13 +561,13 @@ export function DayHourTimetable({
                   letterSpacing: "0.06em",
                   textTransform: "uppercase",
                   color: "var(--muted)",
-                  marginBottom: 6,
+                  marginBottom: 8,
                   fontWeight: 650,
                 }}
               >
                 {labels.occupied}
               </div>
-              <div className="stack" style={{ gap: 8 }}>
+              <div className="stack" style={{ gap: 10 }}>
                 {hoverTip.items.map((a) => {
                   const start = new Date(a.starts_at);
                   const endRaw = new Date(a.ends_at);
@@ -553,31 +575,30 @@ export function DayHourTimetable({
                     endRaw.getTime() > start.getTime()
                       ? endRaw
                       : new Date(start.getTime() + 30 * 60000);
+                  const timeLabel = `${start.toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })} – ${end.toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}`;
                   return (
                     <div key={a.id}>
-                      <strong style={{ fontSize: "0.9rem" }}>{a.title}</strong>
-                      <div className="muted" style={{ fontSize: "0.82rem" }}>
+                      <div style={{ fontSize: "0.9rem", fontWeight: 700 }}>
                         {a.customers?.name || "—"}
                       </div>
-                      <div style={{ fontSize: "0.82rem", marginTop: 2 }}>
-                        {start.toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}{" "}
-                        –{" "}
-                        {end.toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                      <div className="muted" style={{ fontSize: "0.8rem", marginTop: 3 }}>
+                        Time: {timeLabel}
                       </div>
-                      {a.notes ? (
-                        <div
-                          className="muted"
-                          style={{ fontSize: "0.78rem", marginTop: 4, lineHeight: 1.35 }}
-                        >
-                          Notes: {a.notes}
-                        </div>
-                      ) : null}
+                      <div className="muted" style={{ fontSize: "0.8rem", marginTop: 2 }}>
+                        Category: {a.title || "—"}
+                      </div>
+                      <div
+                        className="muted"
+                        style={{ fontSize: "0.8rem", marginTop: 2, lineHeight: 1.35 }}
+                      >
+                        Notes: {a.notes?.trim() ? a.notes : "—"}
+                      </div>
                     </div>
                   );
                 })}
