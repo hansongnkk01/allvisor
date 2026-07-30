@@ -358,7 +358,8 @@ async function syncInvoiceChargeAndTotals(
   const addLines = nonCharge.filter((l) => l.line_kind === "additional");
   const medAmt = medLines.reduce((s, l) => s + Number(l.line_total || 0), 0);
   const addAmt = addLines.reduce((s, l) => s + Number(l.line_total || 0), 0);
-  const subtotal = base + chargeAmt;
+  // subtotal = bill lines only; service tax is applied on top before total
+  const subtotal = base;
 
   const { data: invoice } = await supabase
     .from("invoices")
@@ -380,7 +381,7 @@ async function syncInvoiceChargeAndTotals(
           .join("; ") || null,
       additional_amount: addAmt,
       subtotal,
-      total: subtotal + tax,
+      total: subtotal + chargeAmt + tax,
     })
     .eq("id", invoiceId);
 }
@@ -441,8 +442,8 @@ export async function createInvoiceAction(formData: FormData) {
   const pct = Number(organization.service_charge_percent ?? 0);
   const chargeBase = servicesTotal + med + add;
   const chargeAmt = Math.round(((chargeBase * pct) / 100) * 100) / 100;
-  const subtotal = chargeBase + chargeAmt;
-  const total = subtotal + taxAmount;
+  const subtotal = chargeBase;
+  const total = subtotal + chargeAmt + taxAmount;
 
   const { count } = await supabase
     .from("invoices")

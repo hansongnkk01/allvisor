@@ -135,8 +135,8 @@
     "resetBooking": "Reset",
     "searchPatient": "Type to search patient…",
     "searchCategory": "Type to search category…",
-    "completeConfirm1": "Mark this appointment as completed? A pending invoice will be created.",
-    "completeConfirm2": "Confirm again: create pending invoice and open it for medicine/additional costs?"
+    "completeConfirm1": "Mark this appointment as completed? A pending invoice will be created in Invoices.",
+    "completeConfirm2": "Confirm again: status becomes completed and a pending invoice is added. Go to Invoices to open it."
   },
   "Invoices": {
     "title": "Invoices",
@@ -214,11 +214,13 @@
     "saveExtras": "Add cost",
     "addCost": "Add cost",
     "remove": "Remove",
+    "deleteCost": "Delete",
     "costKind": "Cost type",
     "costDesc": "Description",
     "costAmount": "Amount",
     "productService": "Product / Service",
     "serviceCharge": "Service charge",
+    "serviceTax": "Service tax",
     "recordPayment": "Record payment",
     "pay": "Paid",
     "exit": "Exit invoice",
@@ -277,7 +279,7 @@
     "activity": "Admin & supervisor activity log",
     "activityHint": "Tracks staff actions visible to admins and supervisors.",
     "serviceChargePercent": "Service charge (%)",
-    "serviceChargeHint": "Applied automatically on every invoice as a required line (based on product/service + optional costs).",
+    "serviceChargeHint": "Applied automatically on every invoice as service tax (shown in small text before total).",
     "saveServiceCharge": "Save service charge",
     "clinicHoursTitle": "Clinic hours & weekly off",
     "clinicHoursHint": "Controls what hours appear on Dashboard and Appointments timetables. Last hour shown = closing hour.",

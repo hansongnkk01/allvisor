@@ -309,11 +309,14 @@ export function AppointmentBoard({
             });
             return;
           }
-          if (result?.invoiceId) {
-            router.push(`/invoices/${result.invoiceId}`);
-            return;
-          }
           router.refresh();
+          await confirm({
+            title: "Allvisor",
+            message:
+              "Appointment marked completed. A pending invoice was added under Invoices — open it there to review service cost and add medicine/additional if needed.",
+            confirmLabel: "OK",
+            cancelLabel: "Close",
+          });
         });
         return;
       }
@@ -348,11 +351,14 @@ export function AppointmentBoard({
         if (!ok2) return { error: "Cancelled" };
         const result = await completeAppointmentWithInvoiceAction(apptId);
         if (result?.error) return result;
-        if (result?.invoiceId) {
-          router.push(`/invoices/${result.invoiceId}`);
-          return result;
-        }
         router.refresh();
+        await confirm({
+          title: "Allvisor",
+          message:
+            "Appointment marked completed. A pending invoice was added under Invoices — open it there to review service cost and add medicine/additional if needed.",
+          confirmLabel: "OK",
+          cancelLabel: "Close",
+        });
         return result;
       }
       const result = await updateAppointmentAction(formData);

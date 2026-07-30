@@ -135,8 +135,8 @@
     "resetBooking": "Reset",
     "searchPatient": "Taip untuk cari pesakit…",
     "searchCategory": "Taip untuk cari kategori…",
-    "completeConfirm1": "Tukar status temujanji kepada completed? Invois pending akan dicipta.",
-    "completeConfirm2": "Sahkan sekali lagi: cipta invois pending dan buka untuk tambah ubat/caj tambahan?"
+    "completeConfirm1": "Tukar status temujanji kepada completed? Invois pending akan dicipta di Invoices.",
+    "completeConfirm2": "Sahkan sekali lagi: status jadi completed dan invois pending ditambah. Pergi ke Invoices untuk buka invois itu."
   },
   "Inventory": {
     "title": "Inventori",
@@ -244,11 +244,13 @@
     "saveExtras": "Tambah kos",
     "addCost": "Tambah kos",
     "remove": "Buang",
+    "deleteCost": "Padam",
     "costKind": "Jenis kos",
     "costDesc": "Penerangan",
     "costAmount": "Jumlah",
     "productService": "Produk / Servis",
     "serviceCharge": "Caj perkhidmatan",
+    "serviceTax": "Cukai perkhidmatan",
     "recordPayment": "Rekod bayaran",
     "pay": "Paid",
     "exit": "Keluar invois",
@@ -307,7 +309,7 @@
     "activity": "Log aktiviti admin & supervisor",
     "activityHint": "Jejak tindakan staf yang boleh dilihat admin dan supervisor.",
     "serviceChargePercent": "Caj perkhidmatan (%)",
-    "serviceChargeHint": "Dikenakan automatik pada setiap invois sebagai baris wajib (berdasarkan produk/servis + kos pilihan).",
+    "serviceChargeHint": "Dikenakan automatik pada setiap invois sebagai cukai perkhidmatan (ditunjuk dalam tulisan kecil sebelum total).",
     "saveServiceCharge": "Simpan caj perkhidmatan",
     "clinicHoursTitle": "Waktu operasi & cuti mingguan",
     "clinicHoursHint": "Kawalan jam yang dipapar pada jadual Dashboard dan Temujanji. Jam terakhir = waktu tutup.",

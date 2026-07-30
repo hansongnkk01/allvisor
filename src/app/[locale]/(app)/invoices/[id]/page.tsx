@@ -115,14 +115,15 @@ export default async function InvoiceDetailPage({
       line_total: chargeAmt,
       line_kind: "service_charge",
     });
-    const subtotal = base + chargeAmt;
+    const subtotal = base;
     const tax = Number(invoice.tax_amount || 0);
+    const total = subtotal + chargeAmt + tax;
     await supabase
       .from("invoices")
-      .update({ subtotal, total: subtotal + tax })
+      .update({ subtotal, total })
       .eq("id", invoice.id);
     invoice.subtotal = subtotal;
-    invoice.total = subtotal + tax;
+    invoice.total = total;
 
     const { data: finalLines } = await supabase
       .from("invoice_lines")
@@ -210,9 +211,9 @@ export default async function InvoiceDetailPage({
             medicine: t("medicine"),
             additional: t("additional"),
             service: t("productService"),
-            serviceCharge: t("serviceCharge"),
+            serviceCharge: t("serviceTax"),
             addCost: t("addCost"),
-            remove: t("remove"),
+            remove: t("deleteCost"),
             costKind: t("costKind"),
             costDesc: t("costDesc"),
             costAmount: t("costAmount"),
@@ -220,20 +221,42 @@ export default async function InvoiceDetailPage({
           }}
         />
 
-        <div style={{ marginTop: "1rem", textAlign: "right" }}>
-          <div>
-            {t("subtotal")}: <strong>{formatCurrency(Number(invoice.subtotal))}</strong>
-          </div>
-          <div>
-            {t("tax")}: <strong>{formatCurrency(Number(invoice.tax_amount))}</strong>
-          </div>
-          <div style={{ fontSize: "1.2rem", marginTop: 6 }}>
-            {t("total")}: <strong>{formatCurrency(Number(invoice.total))}</strong>
-          </div>
-          <div className="muted">
-            {t("paid")}: {formatCurrency(Number(invoice.amount_paid))}
-          </div>
-        </div>
+        {(() => {
+          const billLines = lines.filter((l) => l.line_kind !== "service_charge");
+          const itemsSubtotal = billLines.reduce(
+            (s, l) => s + Number(l.line_total || 0),
+            0
+          );
+          const chargeLine = lines.find((l) => l.line_kind === "service_charge");
+          const serviceTax =
+            chargeLine != null
+              ? Number(chargeLine.line_total || 0)
+              : Math.round(((itemsSubtotal * pct) / 100) * 100) / 100;
+          return (
+            <div style={{ marginTop: "1rem", textAlign: "right" }}>
+              <div>
+                {t("subtotal")}: <strong>{formatCurrency(itemsSubtotal)}</strong>
+              </div>
+              <div
+                className="muted"
+                style={{ fontSize: "0.8rem", marginTop: 4, lineHeight: 1.4 }}
+              >
+                {t("serviceTax")} ({pct}%): {formatCurrency(serviceTax)}
+              </div>
+              {Number(invoice.tax_amount) > 0 ? (
+                <div style={{ marginTop: 4 }}>
+                  {t("tax")}: <strong>{formatCurrency(Number(invoice.tax_amount))}</strong>
+                </div>
+              ) : null}
+              <div style={{ fontSize: "1.2rem", marginTop: 8 }}>
+                {t("total")}: <strong>{formatCurrency(Number(invoice.total))}</strong>
+              </div>
+              <div className="muted">
+                {t("paid")}: {formatCurrency(Number(invoice.amount_paid))}
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {editable && balance > 0 ? (

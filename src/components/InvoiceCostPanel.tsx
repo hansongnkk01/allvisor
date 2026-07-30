@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "@/i18n/navigation";
 import { addInvoiceCostAction, removeInvoiceLineAction } from "@/app/actions";
 import { formatCurrency } from "@/lib/utils";
@@ -51,10 +51,15 @@ export function InvoiceCostPanel({
   const [amount, setAmount] = useState("");
   const [error, setError] = useState<string | null>(null);
 
+  // Bill list: service + optional medicine/additional only (service tax is shown under totals)
+  const billLines = useMemo(
+    () => lines.filter((l) => l.line_kind !== "service_charge"),
+    [lines]
+  );
+
   function kindLabel(k?: string | null) {
     if (k === "medicine") return labels.medicine;
     if (k === "additional") return labels.additional;
-    if (k === "service_charge") return labels.serviceCharge;
     return labels.service;
   }
 
@@ -107,7 +112,7 @@ export function InvoiceCostPanel({
             </tr>
           </thead>
           <tbody>
-            {lines.map((line) => {
+            {billLines.map((line) => {
               const removable =
                 editable &&
                 (line.line_kind === "medicine" || line.line_kind === "additional");
@@ -128,7 +133,11 @@ export function InvoiceCostPanel({
                         <button
                           type="button"
                           className="btn btn-ghost"
-                          style={{ padding: "0.3rem 0.65rem", fontSize: "0.82rem" }}
+                          style={{
+                            padding: "0.3rem 0.65rem",
+                            fontSize: "0.82rem",
+                            color: "var(--danger)",
+                          }}
                           onClick={() => removeLine(line.id)}
                           disabled={pending}
                         >
@@ -142,7 +151,7 @@ export function InvoiceCostPanel({
                 </tr>
               );
             })}
-            {!lines.length ? (
+            {!billLines.length ? (
               <tr>
                 <td colSpan={editable ? 5 : 4} className="muted">
                   —
@@ -154,7 +163,7 @@ export function InvoiceCostPanel({
       </div>
 
       {editable ? (
-        <div className="surface" style={{ padding: "1rem", boxShadow: "none" }}>
+        <div className="surface no-print" style={{ padding: "1rem", boxShadow: "none" }}>
           <h3 style={{ marginTop: 0, marginBottom: 6 }}>{labels.addCost}</h3>
           <p className="muted" style={{ marginTop: 0 }}>
             {labels.extrasHint} · {labels.serviceCharge}: {serviceChargePercent}%
