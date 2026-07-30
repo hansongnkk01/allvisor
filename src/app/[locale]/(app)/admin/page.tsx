@@ -25,6 +25,7 @@ import {
   upsertServiceCategoryAction,
   upsertServiceItemAction,
 } from "@/app/actions";
+import { DataImportPanel } from "@/components/DataImportPanel";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { PLAN_LIMITS } from "@/lib/subscription";
 import { defaultAdminPassword } from "@/lib/admin-lock";
@@ -359,6 +360,29 @@ export default async function AdminPage({
               </button>
             </ActionForm>
           </div>
+
+          <DataImportPanel
+            labels={{
+              title: t("importTitle"),
+              hint: t("importHint"),
+              steps: t("importSteps"),
+              kind: t("importKind"),
+              downloadTemplate: t("importDownloadTemplate"),
+              chooseFile: t("importChooseFile"),
+              preview: t("importPreview"),
+              importBtn: t("importBtn"),
+              importing: t("importing"),
+              patients: t("importPatients"),
+              products: t("importProducts"),
+              serviceCategories: t("importServiceCategories"),
+              serviceItems: t("importServiceItems"),
+              appointments: t("importAppointments"),
+              orderHint: t("importOrderHint"),
+              noRows: t("importNoRows"),
+              success: t("importSuccess"),
+              partial: t("importPartial"),
+            }}
+          />
 
           <div className="surface" style={{ padding: "1.25rem" }}>
             <h3 style={{ marginTop: 0 }}>{t("upgrade")}</h3>

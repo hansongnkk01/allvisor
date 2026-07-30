@@ -15,7 +15,6 @@ import {
   verifyAdminPassword,
   type LockedSection,
 } from "@/lib/admin-lock";
-import { canAccessSensitive, canManageStaff } from "@/lib/roles";
 import type {
   AppointmentStatus,
   InvoiceStatus,
@@ -23,6 +22,13 @@ import type {
   PaymentMethod,
   SubscriptionPlan,
 } from "@/lib/types";
+import {
+  parseDateTime,
+  toNumber,
+  type ImportKind,
+  type ImportRow,
+} from "@/lib/data-import";
+import { canAccessSensitive, canManageStaff } from "@/lib/roles";
 
 async function requireMember() {
   const ctx = await getOrgContext();
@@ -1569,6 +1575,273 @@ export async function updateClinicHoursAction(formData: FormData) {
   revalidateApp("/admin", "/dashboard", "/appointments");
   revalidateAppLayout();
   return { success: true };
+}
+
+export async function importMigrationDataAction(
+  kind: ImportKind,
+  rows: ImportRow[]
+): Promise<{
+  error?: string;
+  success?: boolean;
+  inserted?: number;
+  skipped?: number;
+  errors?: { row: number; message: string }[];
+}> {
+  const { supabase, organization, membership, profile } = await requireMember();
+  if (!canManageStaff(membership.role) && membership.role !== "supervisor") {
+    return { error: "Forbidden" };
+  }
+  const unlocked = await isSectionUnlocked("admin");
+  if (!unlocked) return { error: "Admin unlock required" };
+
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return { error: "No rows to import" };
+  }
+  if (rows.length > 2000) {
+    return { error: "Max 2000 rows per import. Split the file and try again." };
+  }
+
+  const errors: { row: number; message: string }[] = [];
+  let inserted = 0;
+  let skipped = 0;
+  const actor = profile.full_name || profile.email || "Staff";
+
+  if (kind === "patients") {
+    const payloads = [];
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      const name = String(r.name || "").trim();
+      if (!name) {
+        skipped++;
+        errors.push({ row: i + 2, message: "Name required" });
+        continue;
+      }
+      const risk = String(r.risk_level || "").toLowerCase();
+      payloads.push({
+        organization_id: organization.id,
+        name,
+        ic_number: String(r.ic_number || "").trim() || null,
+        phone: String(r.phone || "").trim() || null,
+        email: String(r.email || "").trim() || null,
+        notes: String(r.notes || "").trim() || null,
+        risk_level: (["high", "medium", "low"].includes(risk)
+          ? risk
+          : null) as "high" | "medium" | "low" | null,
+        created_by: profile.id,
+        created_by_name: actor,
+      });
+    }
+    for (let i = 0; i < payloads.length; i += 100) {
+      const chunk = payloads.slice(i, i + 100);
+      const { error } = await supabase.from("customers").insert(chunk);
+      if (error) return { error: error.message, inserted, skipped, errors };
+      inserted += chunk.length;
+    }
+  } else if (kind === "products") {
+    const payloads = [];
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      const name = String(r.name || "").trim();
+      if (!name) {
+        skipped++;
+        errors.push({ row: i + 2, message: "Name required" });
+        continue;
+      }
+      payloads.push({
+        organization_id: organization.id,
+        name,
+        sku: String(r.sku || "").trim() || null,
+        description: String(r.description || "").trim() || null,
+        unit_price: toNumber(r.unit_price),
+        cost_price: toNumber(r.cost_price),
+        quantity: Math.round(toNumber(r.quantity)),
+        low_stock_threshold: Math.round(toNumber(r.low_stock_threshold, 5)),
+        is_active: true,
+      });
+    }
+    for (let i = 0; i < payloads.length; i += 100) {
+      const chunk = payloads.slice(i, i + 100);
+      const { error } = await supabase.from("products").insert(chunk);
+      if (error) return { error: error.message, inserted, skipped, errors };
+      inserted += chunk.length;
+    }
+  } else if (kind === "service_categories") {
+    const payloads = [];
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      const name = String(r.name || "").trim();
+      if (!name) {
+        skipped++;
+        errors.push({ row: i + 2, message: "Category name required" });
+        continue;
+      }
+      payloads.push({
+        organization_id: organization.id,
+        name,
+        description: String(r.description || "").trim() || null,
+      });
+    }
+    for (let i = 0; i < payloads.length; i += 100) {
+      const chunk = payloads.slice(i, i + 100);
+      const { error } = await supabase.from("service_categories").insert(chunk);
+      if (error) return { error: error.message, inserted, skipped, errors };
+      inserted += chunk.length;
+    }
+  } else if (kind === "service_items") {
+    const { data: cats } = await supabase
+      .from("service_categories")
+      .select("id, name")
+      .eq("organization_id", organization.id);
+    const byName = new Map(
+      (cats || []).map((c) => [c.name.trim().toLowerCase(), c] as const)
+    );
+    const payloads = [];
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      const name = String(r.name || "").trim();
+      const catName = String(r.category || "").trim();
+      if (!name) {
+        skipped++;
+        errors.push({ row: i + 2, message: "Service name required" });
+        continue;
+      }
+      if (!catName) {
+        skipped++;
+        errors.push({ row: i + 2, message: "Category required" });
+        continue;
+      }
+      const cat = byName.get(catName.toLowerCase());
+      if (!cat) {
+        skipped++;
+        errors.push({ row: i + 2, message: `Category not found: ${catName}` });
+        continue;
+      }
+      payloads.push({
+        organization_id: organization.id,
+        name,
+        category_id: cat.id,
+        category: cat.name,
+        unit_price: toNumber(r.unit_price),
+        description: String(r.description || "").trim() || null,
+        is_active: true,
+      });
+    }
+    for (let i = 0; i < payloads.length; i += 100) {
+      const chunk = payloads.slice(i, i + 100);
+      const { error } = await supabase.from("service_items").insert(chunk);
+      if (error) return { error: error.message, inserted, skipped, errors };
+      inserted += chunk.length;
+    }
+  } else if (kind === "appointments") {
+    const { data: customers } = await supabase
+      .from("customers")
+      .select("id, name, ic_number, phone")
+      .eq("organization_id", organization.id);
+    const { data: cats } = await supabase
+      .from("service_categories")
+      .select("id, name")
+      .eq("organization_id", organization.id);
+
+    const byIc = new Map(
+      (customers || [])
+        .filter((c) => c.ic_number)
+        .map((c) => [c.ic_number!.trim().toLowerCase(), c.id] as const)
+    );
+    const byPhone = new Map(
+      (customers || [])
+        .filter((c) => c.phone)
+        .map((c) => [c.phone!.replace(/\D/g, ""), c.id] as const)
+    );
+    const byName = new Map(
+      (customers || []).map((c) => [c.name.trim().toLowerCase(), c.id] as const)
+    );
+    const catByName = new Map(
+      (cats || []).map((c) => [c.name.trim().toLowerCase(), c.name] as const)
+    );
+
+    const payloads = [];
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      const patientName = String(r.patient_name || "").trim();
+      const patientIc = String(r.patient_ic || "").trim().toLowerCase();
+      const patientPhone = String(r.patient_phone || "").replace(/\D/g, "");
+      let customerId =
+        (patientIc && byIc.get(patientIc)) ||
+        (patientPhone && byPhone.get(patientPhone)) ||
+        (patientName && byName.get(patientName.toLowerCase())) ||
+        null;
+
+      if (!customerId) {
+        skipped++;
+        errors.push({
+          row: i + 2,
+          message: `Patient not found (${patientName || patientIc || patientPhone || "—"})`,
+        });
+        continue;
+      }
+
+      const catName = String(r.category || "").trim();
+      const title = (catName && catByName.get(catName.toLowerCase())) || catName;
+      if (!title) {
+        skipped++;
+        errors.push({ row: i + 2, message: "Category / title required" });
+        continue;
+      }
+
+      const starts = parseDateTime(r.starts_at);
+      const ends = parseDateTime(r.ends_at) || (starts ? new Date(new Date(starts).getTime() + 30 * 60000).toISOString() : null);
+      if (!starts || !ends) {
+        skipped++;
+        errors.push({ row: i + 2, message: "Invalid starts_at / ends_at" });
+        continue;
+      }
+
+      const statusRaw = String(r.status || "scheduled").toLowerCase().replace(/\s+/g, "_");
+      const status = (
+        ["scheduled", "confirmed", "completed", "cancelled", "no_show"].includes(statusRaw)
+          ? statusRaw
+          : "scheduled"
+      ) as AppointmentStatus;
+
+      payloads.push({
+        organization_id: organization.id,
+        customer_id: customerId,
+        title,
+        starts_at: starts,
+        ends_at: ends,
+        status,
+        notes: String(r.notes || "").trim() || null,
+        reminder_sent: false,
+      });
+    }
+    for (let i = 0; i < payloads.length; i += 100) {
+      const chunk = payloads.slice(i, i + 100);
+      const { error } = await supabase.from("appointments").insert(chunk);
+      if (error) return { error: error.message, inserted, skipped, errors };
+      inserted += chunk.length;
+    }
+  } else {
+    return { error: "Unknown import type" };
+  }
+
+  await logActivity({
+    action: "admin.data_import",
+    summary: `Imported ${inserted} ${kind} row(s) from migration file (${skipped} skipped)`,
+    entityType: "organization",
+    entityId: organization.id,
+    meta: { kind, inserted, skipped, errorCount: errors.length },
+  });
+
+  revalidateApp(
+    "/admin",
+    "/customers",
+    "/appointments",
+    "/inventory",
+    "/invoices",
+    "/dashboard",
+    "/staff"
+  );
+  return { success: true, inserted, skipped, errors: errors.slice(0, 20) };
 }
 
 export async function signOutAction() {
