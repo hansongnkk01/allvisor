@@ -214,11 +214,11 @@ export function DayHourTimetable({
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(24, minmax(16px, 1fr))",
+            gridTemplateColumns: "repeat(24, minmax(27px, 1fr))",
             gap: 2,
             width: "100%",
-            maxWidth: "60%",
-            minWidth: 430,
+            maxWidth: "100%",
+            minWidth: 730,
             minHeight: orientation === "horizontal" ? 42 : 66,
           }}
           role={selectable ? "group" : "img"}
