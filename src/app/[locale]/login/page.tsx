@@ -24,9 +24,13 @@ export default function LoginPage() {
     >
       <div className="surface" style={{ width: "100%", maxWidth: 420, padding: "1.75rem" }}>
         <div className="row" style={{ justifyContent: "space-between", marginBottom: "1.25rem" }}>
-          <div className="display" style={{ fontSize: "1.6rem" }}>
+          <Link
+            href="/"
+            className="display"
+            style={{ fontSize: "1.6rem", textDecoration: "none", color: "inherit" }}
+          >
             {brand("name")}
-          </div>
+          </Link>
           <LanguageSwitcher />
         </div>
         <h1 style={{ marginTop: 0 }}>{t("loginTitle")}</h1>
