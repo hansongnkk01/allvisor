@@ -5,6 +5,7 @@ import { useRouter } from "@/i18n/navigation";
 import { ActionForm } from "@/components/ActionForm";
 import { adjustStockAction, bulkAdjustStockAction } from "@/app/actions";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
+import { LoadingOverlay } from "@/components/LoadingOverlay";
 
 type Product = {
   id: string;
@@ -83,6 +84,7 @@ export function InventoryStockTable({
 
   return (
     <div className="stack" style={{ gap: "0.85rem" }}>
+      <LoadingOverlay show={pending} label="Updating stock…" />
       <div
         className="row"
         style={{ flexWrap: "wrap", gap: "0.55rem", alignItems: "center" }}

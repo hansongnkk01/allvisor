@@ -1,6 +1,7 @@
 import { requireOrg } from "@/lib/org";
 import { AppShell } from "@/components/AppShell";
 import { OrgProvider } from "@/components/OrgProvider";
+import { ConfirmProvider } from "@/components/ConfirmDialog";
 import { setRequestLocale } from "next-intl/server";
 
 export default async function AppLayout({
@@ -16,13 +17,15 @@ export default async function AppLayout({
 
   return (
     <OrgProvider organization={ctx.organization} role={ctx.membership.role}>
-      <AppShell
-        niche={ctx.organization.niche}
-        orgName={ctx.organization.name}
-        role={ctx.membership.role}
-      >
-        {children}
-      </AppShell>
+      <ConfirmProvider>
+        <AppShell
+          niche={ctx.organization.niche}
+          orgName={ctx.organization.name}
+          role={ctx.membership.role}
+        >
+          {children}
+        </AppShell>
+      </ConfirmProvider>
     </OrgProvider>
   );
 }

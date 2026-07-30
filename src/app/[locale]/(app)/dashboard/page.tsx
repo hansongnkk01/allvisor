@@ -64,6 +64,7 @@ export default async function DashboardPage({
     starts_at: string;
     ends_at: string;
     status?: string;
+    notes?: string | null;
     customers?: { name: string; risk_level?: "high" | "medium" | "low" | null } | null;
   }> = [];
   let todayAppts: typeof upcoming = [];
@@ -91,7 +92,7 @@ export default async function DashboardPage({
 
     const { data: todayData } = await supabase
       .from("appointments")
-      .select("id, title, starts_at, ends_at, status, customers(name, risk_level)")
+      .select("id, title, starts_at, ends_at, status, notes, customers(name, risk_level)")
       .eq("organization_id", orgId)
       .gte("starts_at", todayStart.toISOString())
       .lte("starts_at", todayEnd.toISOString())
@@ -102,6 +103,7 @@ export default async function DashboardPage({
       starts_at: a.starts_at,
       ends_at: a.ends_at,
       status: a.status,
+      notes: a.notes,
       customers: Array.isArray(a.customers) ? a.customers[0] || null : a.customers,
     }));
   } else {

@@ -11,6 +11,7 @@ type SlotAppt = {
   starts_at: string;
   ends_at: string;
   status?: string;
+  notes?: string | null;
   customers?: { name: string; risk_level?: "high" | "medium" | "low" | null } | null;
 };
 
@@ -569,6 +570,14 @@ export function DayHourTimetable({
                           minute: "2-digit",
                         })}
                       </div>
+                      {a.notes ? (
+                        <div
+                          className="muted"
+                          style={{ fontSize: "0.78rem", marginTop: 4, lineHeight: 1.35 }}
+                        >
+                          Notes: {a.notes}
+                        </div>
+                      ) : null}
                     </div>
                   );
                 })}

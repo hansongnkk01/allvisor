@@ -17,6 +17,7 @@ import {
 } from "@/lib/admin-lock";
 import type {
   AppointmentStatus,
+  InvoiceLineKind,
   InvoiceStatus,
   MembershipRole,
   PaymentMethod,
@@ -251,24 +252,137 @@ export async function adjustStockAction(formData: FormData) {
 }
 
 export async function bulkAdjustStockAction(formData: FormData) {
-  const productIds = formData.getAll("product_ids").map(String).filter(Boolean);
+  const { supabase, organization, profile } = await requireMember();
+  const productIds = [...new Set(formData.getAll("product_ids").map(String).filter(Boolean))];
   const type = String(formData.get("type") || "in") as "in" | "out" | "adjust";
   const quantity = Number(formData.get("quantity") || 0);
   const note = String(formData.get("note") || "") || null;
 
   if (!productIds.length || !quantity) return { error: "Select at least one item and a quantity" };
 
-  for (const productId of productIds) {
-    const fd = new FormData();
-    fd.set("product_id", productId);
-    fd.set("type", type);
-    fd.set("quantity", String(quantity));
-    if (note) fd.set("note", note);
-    const result = await adjustStockAction(fd);
-    if (result.error) return result;
+  const { data: products, error: fetchErr } = await supabase
+    .from("products")
+    .select("id, name, quantity")
+    .eq("organization_id", organization.id)
+    .in("id", productIds);
+  if (fetchErr) return { error: fetchErr.message };
+  if (!products?.length) return { error: "No products found" };
+
+  const byId = new Map(products.map((p) => [p.id, p]));
+  const movements: Array<{
+    organization_id: string;
+    product_id: string;
+    type: "in" | "out" | "adjust";
+    quantity: number;
+    note: string | null;
+    created_by: string;
+  }> = [];
+  const updates: Array<{ id: string; quantity: number; name: string }> = [];
+
+  for (const id of productIds) {
+    const product = byId.get(id);
+    if (!product) return { error: "Product not found" };
+    let nextQty = Number(product.quantity);
+    if (type === "in") nextQty += quantity;
+    else nextQty -= quantity;
+    if (nextQty < 0) return { error: `Insufficient stock for ${product.name}` };
+    movements.push({
+      organization_id: organization.id,
+      product_id: id,
+      type,
+      quantity,
+      note,
+      created_by: profile.id,
+    });
+    updates.push({ id, quantity: nextQty, name: product.name });
   }
 
+  const { error: moveError } = await supabase.from("stock_movements").insert(movements);
+  if (moveError) return { error: moveError.message };
+
+  // Parallel product updates (single round of network calls)
+  const results = await Promise.all(
+    updates.map((u) =>
+      supabase.from("products").update({ quantity: u.quantity }).eq("id", u.id)
+    )
+  );
+  const failed = results.find((r) => r.error);
+  if (failed?.error) return { error: failed.error.message };
+
+  await logActivity({
+    action: type === "in" ? "inventory.bulk_stock_in" : "inventory.bulk_stock_out",
+    summary: `Bulk ${type} ×${quantity} on ${updates.length} item(s)`,
+    entityType: "product",
+    entityId: null,
+  });
+
+  revalidateApp("/inventory", "/pos", "/dashboard", "/staff");
   return { success: true };
+}
+
+/** Recalculate invoice totals + keep a single service_charge line in sync. */
+async function syncInvoiceChargeAndTotals(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  organizationId: string,
+  invoiceId: string,
+  serviceChargePercent: number
+) {
+  const pct = Math.min(100, Math.max(0, Number(serviceChargePercent) || 0));
+  const { data: lines } = await supabase
+    .from("invoice_lines")
+    .select("id, description, line_total, line_kind")
+    .eq("invoice_id", invoiceId);
+
+  const nonCharge = (lines || []).filter((l) => l.line_kind !== "service_charge");
+  const base = nonCharge.reduce((s, l) => s + Number(l.line_total || 0), 0);
+  const chargeAmt = Math.round(((base * pct) / 100) * 100) / 100;
+
+  const chargeIds = (lines || [])
+    .filter((l) => l.line_kind === "service_charge")
+    .map((l) => l.id);
+  if (chargeIds.length) {
+    await supabase.from("invoice_lines").delete().in("id", chargeIds);
+  }
+
+  await supabase.from("invoice_lines").insert({
+    invoice_id: invoiceId,
+    organization_id: organizationId,
+    description: `Service charge (${pct}%)`,
+    quantity: 1,
+    unit_price: chargeAmt,
+    line_total: chargeAmt,
+    line_kind: "service_charge" as InvoiceLineKind,
+  });
+
+  const medLines = nonCharge.filter((l) => l.line_kind === "medicine");
+  const addLines = nonCharge.filter((l) => l.line_kind === "additional");
+  const medAmt = medLines.reduce((s, l) => s + Number(l.line_total || 0), 0);
+  const addAmt = addLines.reduce((s, l) => s + Number(l.line_total || 0), 0);
+  const subtotal = base + chargeAmt;
+
+  const { data: invoice } = await supabase
+    .from("invoices")
+    .select("tax_amount")
+    .eq("id", invoiceId)
+    .maybeSingle();
+  const tax = Number(invoice?.tax_amount || 0);
+
+  await supabase
+    .from("invoices")
+    .update({
+      medicine_description:
+        medLines.map((l) => l.description.replace(/^Medicine\s*\((.+)\)\s*$/i, "$1")).join("; ") ||
+        null,
+      medicine_amount: medAmt,
+      additional_description:
+        addLines
+          .map((l) => l.description.replace(/^Additional\s*\((.+)\)\s*$/i, "$1"))
+          .join("; ") || null,
+      additional_amount: addAmt,
+      subtotal,
+      total: subtotal + tax,
+    })
+    .eq("id", invoiceId);
 }
 
 export async function createInvoiceAction(formData: FormData) {
@@ -318,10 +432,16 @@ export async function createInvoiceAction(formData: FormData) {
 
   if (!lines.length) return { error: "Add at least one invoice line" };
 
-  const subtotal =
-    lines.reduce((sum, line) => sum + line.quantity * line.unit_price, 0) +
-    (medicineAmount > 0 ? medicineAmount : 0) +
-    (additionalAmount > 0 ? additionalAmount : 0);
+  const servicesTotal = lines.reduce(
+    (sum, line) => sum + line.quantity * line.unit_price,
+    0
+  );
+  const med = medicineAmount > 0 ? medicineAmount : 0;
+  const add = additionalAmount > 0 ? additionalAmount : 0;
+  const pct = Number(organization.service_charge_percent ?? 0);
+  const chargeBase = servicesTotal + med + add;
+  const chargeAmt = Math.round(((chargeBase * pct) / 100) * 100) / 100;
+  const subtotal = chargeBase + chargeAmt;
   const total = subtotal + taxAmount;
 
   const { count } = await supabase
@@ -345,28 +465,60 @@ export async function createInvoiceAction(formData: FormData) {
       tax_amount: taxAmount,
       total,
       amount_paid: 0,
-      medicine_description: medicineDescription,
-      medicine_amount: medicineAmount > 0 ? medicineAmount : 0,
-      additional_description: additionalDescription,
-      additional_amount: additionalAmount > 0 ? additionalAmount : 0,
+      medicine_description: med > 0 ? medicineDescription : null,
+      medicine_amount: med,
+      additional_description: add > 0 ? additionalDescription : null,
+      additional_amount: add,
     })
     .select("*")
     .single();
 
   if (error || !invoice) return { error: error?.message || "Invoice failed" };
 
-  const { error: linesError } = await supabase.from("invoice_lines").insert(
-    lines.map((line) => ({
+  const lineRows: Array<Record<string, unknown>> = lines.map((line) => ({
+    invoice_id: invoice.id,
+    organization_id: organization.id,
+    product_id: line.product_id || null,
+    price_list_item_id: line.price_list_item_id || null,
+    description: line.description,
+    quantity: line.quantity,
+    unit_price: line.unit_price,
+    line_total: line.quantity * line.unit_price,
+    line_kind: "service" as InvoiceLineKind,
+  }));
+  if (med > 0) {
+    lineRows.push({
       invoice_id: invoice.id,
       organization_id: organization.id,
-      product_id: line.product_id || null,
-      price_list_item_id: line.price_list_item_id || null,
-      description: line.description,
-      quantity: line.quantity,
-      unit_price: line.unit_price,
-      line_total: line.quantity * line.unit_price,
-    }))
-  );
+      description: `Medicine (${medicineDescription || "Medicine"})`,
+      quantity: 1,
+      unit_price: med,
+      line_total: med,
+      line_kind: "medicine" as InvoiceLineKind,
+    });
+  }
+  if (add > 0) {
+    lineRows.push({
+      invoice_id: invoice.id,
+      organization_id: organization.id,
+      description: `Additional (${additionalDescription || "Additional"})`,
+      quantity: 1,
+      unit_price: add,
+      line_total: add,
+      line_kind: "additional" as InvoiceLineKind,
+    });
+  }
+  lineRows.push({
+    invoice_id: invoice.id,
+    organization_id: organization.id,
+    description: `Service charge (${pct}%)`,
+    quantity: 1,
+    unit_price: chargeAmt,
+    line_total: chargeAmt,
+    line_kind: "service_charge" as InvoiceLineKind,
+  });
+
+  const { error: linesError } = await supabase.from("invoice_lines").insert(lineRows);
 
   if (linesError) return { error: linesError.message };
 
@@ -642,17 +794,16 @@ export async function completeAppointmentWithInvoiceAction(appointmentId: string
   const finalPrice = price > 0 ? price : unitPrice;
   await supabase.from("invoice_lines").insert({
     invoice_id: invoice.id,
+    organization_id: organization.id,
     description: title,
     quantity: 1,
     unit_price: finalPrice,
     line_total: finalPrice,
+    line_kind: "service" as InvoiceLineKind,
   });
-  if (finalPrice > 0) {
-    await supabase
-      .from("invoices")
-      .update({ subtotal: finalPrice, total: finalPrice })
-      .eq("id", invoice.id);
-  }
+
+  const pct = Number(organization.service_charge_percent ?? 0);
+  await syncInvoiceChargeAndTotals(supabase, organization.id, invoice.id, pct);
 
   await logActivity({
     action: "appointment.complete_invoice",
@@ -665,22 +816,23 @@ export async function completeAppointmentWithInvoiceAction(appointmentId: string
   return { success: true, invoiceId: invoice.id };
 }
 
-/** Add/update medicine & additional charges on a pending invoice (recalculates totals). */
-export async function updateInvoiceExtrasAction(formData: FormData) {
+/** Add an optional medicine or additional cost line on a pending invoice. */
+export async function addInvoiceCostAction(formData: FormData) {
   const { supabase, organization } = await requireMember();
   const invoiceId = String(formData.get("invoice_id") || "");
-  if (!invoiceId) return { error: "Missing invoice" };
+  const kindRaw = String(formData.get("cost_kind") || "medicine");
+  const kind: InvoiceLineKind =
+    kindRaw === "additional" ? "additional" : "medicine";
+  const description = String(formData.get("description") || "").trim();
+  const amount = Number(formData.get("amount") || 0);
 
-  const medicineDescription =
-    String(formData.get("medicine_description") || "").trim() || null;
-  const medicineAmount = Number(formData.get("medicine_amount") || 0);
-  const additionalDescription =
-    String(formData.get("additional_description") || "").trim() || null;
-  const additionalAmount = Number(formData.get("additional_amount") || 0);
+  if (!invoiceId) return { error: "Missing invoice" };
+  if (!description) return { error: "Description required" };
+  if (!(amount > 0)) return { error: "Amount must be greater than 0" };
 
   const { data: invoice } = await supabase
     .from("invoices")
-    .select("id, tax_amount, status")
+    .select("id, status")
     .eq("id", invoiceId)
     .eq("organization_id", organization.id)
     .maybeSingle();
@@ -689,39 +841,92 @@ export async function updateInvoiceExtrasAction(formData: FormData) {
     return { error: "Cannot edit a paid/void invoice" };
   }
 
-  const { data: lines } = await supabase
-    .from("invoice_lines")
-    .select("line_total")
-    .eq("invoice_id", invoiceId);
-  const linesTotal = (lines || []).reduce((s, l) => s + Number(l.line_total || 0), 0);
-  const med = medicineAmount > 0 ? medicineAmount : 0;
-  const add = additionalAmount > 0 ? additionalAmount : 0;
-  const subtotal = linesTotal + med + add;
-  const tax = Number(invoice.tax_amount || 0);
-  const total = subtotal + tax;
-
-  const { error } = await supabase
-    .from("invoices")
-    .update({
-      medicine_description: medicineDescription,
-      medicine_amount: med,
-      additional_description: additionalDescription,
-      additional_amount: add,
-      subtotal,
-      total,
-    })
-    .eq("id", invoiceId);
+  const label = kind === "medicine" ? "Medicine" : "Additional";
+  const { error } = await supabase.from("invoice_lines").insert({
+    invoice_id: invoiceId,
+    organization_id: organization.id,
+    description: `${label} (${description})`,
+    quantity: 1,
+    unit_price: amount,
+    line_total: amount,
+    line_kind: kind,
+  });
   if (error) return { error: error.message };
 
+  const pct = Number(organization.service_charge_percent ?? 0);
+  await syncInvoiceChargeAndTotals(supabase, organization.id, invoiceId, pct);
+
   await logActivity({
-    action: "invoice.extras",
-    summary: `Updated medicine/additional on invoice`,
+    action: "invoice.add_cost",
+    summary: `Added ${kind} cost: ${description} (RM ${amount.toFixed(2)})`,
     entityType: "invoice",
     entityId: invoiceId,
   });
 
   revalidateApp("/invoices", "/accounting", "/dashboard");
   return { success: true };
+}
+
+/** Remove a medicine/additional cost line (not product/service or service charge). */
+export async function removeInvoiceLineAction(formData: FormData) {
+  const { supabase, organization } = await requireMember();
+  const invoiceId = String(formData.get("invoice_id") || "");
+  const lineId = String(formData.get("line_id") || "");
+  if (!invoiceId || !lineId) return { error: "Missing invoice/line" };
+
+  const { data: invoice } = await supabase
+    .from("invoices")
+    .select("id, status")
+    .eq("id", invoiceId)
+    .eq("organization_id", organization.id)
+    .maybeSingle();
+  if (!invoice) return { error: "Invoice not found" };
+  if (invoice.status === "paid" || invoice.status === "void") {
+    return { error: "Cannot edit a paid/void invoice" };
+  }
+
+  const { data: line } = await supabase
+    .from("invoice_lines")
+    .select("id, line_kind, description")
+    .eq("id", lineId)
+    .eq("invoice_id", invoiceId)
+    .maybeSingle();
+  if (!line) return { error: "Line not found" };
+  if (line.line_kind !== "medicine" && line.line_kind !== "additional") {
+    return { error: "Only medicine/additional costs can be removed here" };
+  }
+
+  const { error } = await supabase.from("invoice_lines").delete().eq("id", lineId);
+  if (error) return { error: error.message };
+
+  const pct = Number(organization.service_charge_percent ?? 0);
+  await syncInvoiceChargeAndTotals(supabase, organization.id, invoiceId, pct);
+
+  await logActivity({
+    action: "invoice.remove_cost",
+    summary: `Removed cost line: ${line.description}`,
+    entityType: "invoice",
+    entityId: invoiceId,
+  });
+
+  revalidateApp("/invoices", "/accounting", "/dashboard");
+  return { success: true };
+}
+
+/** @deprecated use addInvoiceCostAction — kept for older forms */
+export async function updateInvoiceExtrasAction(formData: FormData) {
+  const kind = String(formData.get("medicine_amount") || "0") !== "0" ? "medicine" : "additional";
+  const fd = new FormData();
+  fd.set("invoice_id", String(formData.get("invoice_id") || ""));
+  fd.set("cost_kind", kind === "medicine" ? "medicine" : "additional");
+  if (kind === "medicine") {
+    fd.set("description", String(formData.get("medicine_description") || "Medicine"));
+    fd.set("amount", String(formData.get("medicine_amount") || 0));
+  } else {
+    fd.set("description", String(formData.get("additional_description") || "Additional"));
+    fd.set("amount", String(formData.get("additional_amount") || 0));
+  }
+  return addInvoiceCostAction(fd);
 }
 
 export async function updateAppointmentAction(formData: FormData) {
@@ -1847,6 +2052,34 @@ export async function updateClinicHoursAction(formData: FormData) {
   });
 
   revalidateApp("/admin", "/dashboard", "/appointments");
+  revalidateAppLayout();
+  return { success: true };
+}
+
+export async function updateServiceChargeAction(formData: FormData) {
+  const { supabase, organization } = await requireAdminAccess();
+  const unlocked = await isSectionUnlocked("admin");
+  if (!unlocked) return { error: "Admin unlock required" };
+
+  const pct = Number(formData.get("service_charge_percent") || 0);
+  if (Number.isNaN(pct) || pct < 0 || pct > 100) {
+    return { error: "Service charge must be between 0 and 100%" };
+  }
+
+  const { error } = await supabase
+    .from("organizations")
+    .update({ service_charge_percent: pct })
+    .eq("id", organization.id);
+  if (error) return { error: error.message };
+
+  await logActivity({
+    action: "admin.service_charge",
+    summary: `Set service charge to ${pct}%`,
+    entityType: "organization",
+    entityId: organization.id,
+  });
+
+  revalidateApp("/admin", "/invoices", "/dashboard");
   revalidateAppLayout();
   return { success: true };
 }

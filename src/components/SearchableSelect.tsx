@@ -70,6 +70,7 @@ export function SearchableSelect({
             boxShadow: "0 10px 28px rgba(28,27,25,0.14)",
             maxHeight: "calc(10 * 2.05rem)",
             overflowY: "auto",
+            scrollbarWidth: "thin",
           }}
         >
           {filtered.length === 0 ? (

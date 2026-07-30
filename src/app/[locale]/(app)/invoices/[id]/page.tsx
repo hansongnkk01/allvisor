@@ -7,8 +7,8 @@ import { ActionForm } from "@/components/ActionForm";
 import { updateInvoiceStatusAction, recordPaymentAction } from "@/app/actions";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
 import { PrintInvoiceButton } from "@/components/PrintInvoiceButton";
-import { InvoiceExtrasForm } from "@/components/InvoiceExtrasForm";
-import type { InvoiceStatus } from "@/lib/types";
+import { InvoiceCostPanel } from "@/components/InvoiceCostPanel";
+import type { InvoiceLineKind, InvoiceStatus } from "@/lib/types";
 
 export default async function InvoiceDetailPage({
   params,
@@ -18,18 +18,22 @@ export default async function InvoiceDetailPage({
   const { locale, id } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("InvoiceDetail");
-  const tInv = await getTranslations("Invoices");
   const ctx = await requireOrg(locale);
   const supabase = await createClient();
+  const pct = Number(ctx.organization.service_charge_percent ?? 0);
 
-  const [{ data: invoice }, { data: lines }, { data: payments }] = await Promise.all([
+  const [{ data: invoice }, { data: linesRaw }, { data: payments }] = await Promise.all([
     supabase
       .from("invoices")
       .select("*, customers(name, phone, email, address)")
       .eq("id", id)
       .eq("organization_id", ctx.organization.id)
       .maybeSingle(),
-    supabase.from("invoice_lines").select("*").eq("invoice_id", id).order("id"),
+    supabase
+      .from("invoice_lines")
+      .select("*")
+      .eq("invoice_id", id)
+      .order("id"),
     supabase
       .from("payments")
       .select("*")
@@ -46,6 +50,89 @@ export default async function InvoiceDetailPage({
         </Link>
       </div>
     );
+  }
+
+  let lines = (linesRaw || []).map((l) => ({
+    ...l,
+    line_kind: (l.line_kind || "service") as InvoiceLineKind,
+  }));
+
+  // Migrate legacy medicine/additional columns into lines once if needed
+  const hasMedLine = lines.some((l) => l.line_kind === "medicine");
+  const hasAddLine = lines.some((l) => l.line_kind === "additional");
+  const hasCharge = lines.some((l) => l.line_kind === "service_charge");
+
+  if (
+    invoice.status !== "paid" &&
+    invoice.status !== "void" &&
+    ((!hasMedLine && Number(invoice.medicine_amount) > 0) ||
+      (!hasAddLine && Number(invoice.additional_amount) > 0) ||
+      !hasCharge)
+  ) {
+    if (!hasMedLine && Number(invoice.medicine_amount) > 0) {
+      await supabase.from("invoice_lines").insert({
+        invoice_id: invoice.id,
+        organization_id: ctx.organization.id,
+        description: `Medicine (${invoice.medicine_description || "Medicine"})`,
+        quantity: 1,
+        unit_price: Number(invoice.medicine_amount),
+        line_total: Number(invoice.medicine_amount),
+        line_kind: "medicine",
+      });
+    }
+    if (!hasAddLine && Number(invoice.additional_amount) > 0) {
+      await supabase.from("invoice_lines").insert({
+        invoice_id: invoice.id,
+        organization_id: ctx.organization.id,
+        description: `Additional (${invoice.additional_description || "Additional"})`,
+        quantity: 1,
+        unit_price: Number(invoice.additional_amount),
+        line_total: Number(invoice.additional_amount),
+        line_kind: "additional",
+      });
+    }
+    // Rebuild service charge + totals
+    const { data: refreshed } = await supabase
+      .from("invoice_lines")
+      .select("*")
+      .eq("invoice_id", id)
+      .order("id");
+    const nonCharge = (refreshed || []).filter((l) => l.line_kind !== "service_charge");
+    const base = nonCharge.reduce((s, l) => s + Number(l.line_total || 0), 0);
+    const chargeAmt = Math.round(((base * pct) / 100) * 100) / 100;
+    const chargeIds = (refreshed || [])
+      .filter((l) => l.line_kind === "service_charge")
+      .map((l) => l.id);
+    if (chargeIds.length) {
+      await supabase.from("invoice_lines").delete().in("id", chargeIds);
+    }
+    await supabase.from("invoice_lines").insert({
+      invoice_id: invoice.id,
+      organization_id: ctx.organization.id,
+      description: `Service charge (${pct}%)`,
+      quantity: 1,
+      unit_price: chargeAmt,
+      line_total: chargeAmt,
+      line_kind: "service_charge",
+    });
+    const subtotal = base + chargeAmt;
+    const tax = Number(invoice.tax_amount || 0);
+    await supabase
+      .from("invoices")
+      .update({ subtotal, total: subtotal + tax })
+      .eq("id", invoice.id);
+    invoice.subtotal = subtotal;
+    invoice.total = subtotal + tax;
+
+    const { data: finalLines } = await supabase
+      .from("invoice_lines")
+      .select("*")
+      .eq("invoice_id", id)
+      .order("id");
+    lines = (finalLines || []).map((l) => ({
+      ...l,
+      line_kind: (l.line_kind || "service") as InvoiceLineKind,
+    }));
   }
 
   const editable = invoice.status !== "paid" && invoice.status !== "void";
@@ -103,52 +190,35 @@ export default async function InvoiceDetailPage({
           </div>
         </div>
 
-        <div className="table-wrap">
-          <table className="data">
-            <thead>
-              <tr>
-                <th>{t("description")}</th>
-                <th>{t("qty")}</th>
-                <th>{t("price")}</th>
-                <th>{t("amount")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(lines || []).map((line) => (
-                <tr key={line.id}>
-                  <td>{line.description}</td>
-                  <td>{line.quantity}</td>
-                  <td>{formatCurrency(Number(line.unit_price))}</td>
-                  <td>{formatCurrency(Number(line.line_total))}</td>
-                </tr>
-              ))}
-              {Number(invoice.medicine_amount) > 0 || invoice.medicine_description ? (
-                <tr>
-                  <td>
-                    {t("medicine")}
-                    {invoice.medicine_description ? ` (${invoice.medicine_description})` : ""}
-                  </td>
-                  <td>1</td>
-                  <td>{formatCurrency(Number(invoice.medicine_amount || 0))}</td>
-                  <td>{formatCurrency(Number(invoice.medicine_amount || 0))}</td>
-                </tr>
-              ) : null}
-              {Number(invoice.additional_amount) > 0 || invoice.additional_description ? (
-                <tr>
-                  <td>
-                    {t("additional")}
-                    {invoice.additional_description
-                      ? ` (${invoice.additional_description})`
-                      : ""}
-                  </td>
-                  <td>1</td>
-                  <td>{formatCurrency(Number(invoice.additional_amount || 0))}</td>
-                  <td>{formatCurrency(Number(invoice.additional_amount || 0))}</td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
+        <InvoiceCostPanel
+          invoiceId={invoice.id}
+          editable={editable}
+          serviceChargePercent={pct}
+          lines={lines.map((l) => ({
+            id: l.id,
+            description: l.description,
+            quantity: Number(l.quantity),
+            unit_price: Number(l.unit_price),
+            line_total: Number(l.line_total),
+            line_kind: l.line_kind,
+          }))}
+          labels={{
+            description: t("description"),
+            qty: t("qty"),
+            price: t("price"),
+            amount: t("amount"),
+            medicine: t("medicine"),
+            additional: t("additional"),
+            service: t("productService"),
+            serviceCharge: t("serviceCharge"),
+            addCost: t("addCost"),
+            remove: t("remove"),
+            costKind: t("costKind"),
+            costDesc: t("costDesc"),
+            costAmount: t("costAmount"),
+            extrasHint: t("extrasHint"),
+          }}
+        />
 
         <div style={{ marginTop: "1rem", textAlign: "right" }}>
           <div>
@@ -165,29 +235,6 @@ export default async function InvoiceDetailPage({
           </div>
         </div>
       </div>
-
-      {editable ? (
-        <div className="surface no-print" style={{ padding: "1.25rem" }}>
-          <h3 style={{ marginTop: 0 }}>{t("extrasTitle")}</h3>
-          <p className="muted">{t("extrasHint")}</p>
-          <InvoiceExtrasForm
-            invoiceId={invoice.id}
-            medicineDescription={invoice.medicine_description}
-            medicineAmount={Number(invoice.medicine_amount || 0)}
-            additionalDescription={invoice.additional_description}
-            additionalAmount={Number(invoice.additional_amount || 0)}
-            labels={{
-              medicine: t("medicine"),
-              medicineDesc: t("medicineDesc"),
-              medicineAmount: t("medicineAmount"),
-              additional: t("additional"),
-              additionalDesc: t("additionalDesc"),
-              additionalAmount: t("additionalAmount"),
-              save: t("saveExtras"),
-            }}
-          />
-        </div>
-      ) : null}
 
       {editable && balance > 0 ? (
         <div className="surface no-print" style={{ padding: "1.25rem" }}>
@@ -279,9 +326,6 @@ export default async function InvoiceDetailPage({
         <Link href="/invoices" className="btn btn-soft">
           {t("exit")}
         </Link>
-        <span className="muted" style={{ fontSize: "0.85rem" }}>
-          {tInv("viewPrint")}
-        </span>
       </div>
     </div>
   );

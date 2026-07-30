@@ -23,6 +23,7 @@ import {
 import { DayHourTimetable, slotLabel, type TimetableHours } from "@/components/DayHourTimetable";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import { PatientName } from "@/components/PatientName";
+import { useConfirm } from "@/components/ConfirmDialog";
 import type { AppointmentStatus } from "@/lib/types";
 import { createPortal } from "react-dom";
 type Appt = {
@@ -148,6 +149,7 @@ export function AppointmentBoard({
   hoursConfig?: TimetableHours;
 }) {
   const router = useRouter();
+  const confirm = useConfirm();
   const [view, setView] = useState<"calendar" | "list">("calendar");
   const [cursor, setCursor] = useState(() => startOfMonth(new Date()));
   const [selectedDay, setSelectedDay] = useState(() => new Date());
@@ -283,12 +285,27 @@ export function AppointmentBoard({
   const listHandlers = {
     onStatus: (id: string, status: AppointmentStatus) => {
       if (status === "completed") {
-        if (!window.confirm(labels.completeConfirm1)) return;
-        if (!window.confirm(labels.completeConfirm2)) return;
         startTransition(async () => {
+          const ok1 = await confirm({
+            title: "Allvisor",
+            message: labels.completeConfirm1,
+            confirmLabel: "Continue",
+          });
+          if (!ok1) return;
+          const ok2 = await confirm({
+            title: "Allvisor",
+            message: labels.completeConfirm2,
+            confirmLabel: "Confirm",
+          });
+          if (!ok2) return;
           const result = await completeAppointmentWithInvoiceAction(id);
           if (result?.error) {
-            window.alert(result.error);
+            await confirm({
+              title: "Allvisor",
+              message: result.error,
+              confirmLabel: "OK",
+              cancelLabel: "Close",
+            });
             return;
           }
           if (result?.invoiceId) {
@@ -302,14 +319,35 @@ export function AppointmentBoard({
       refreshAfter(() => updateAppointmentStatusAction(id, status));
     },
     onDelete: (id: string) => {
-      refreshAfter(() => deleteAppointmentAction(id));
+      startTransition(async () => {
+        const ok = await confirm({
+          title: "Allvisor",
+          message: "Delete this appointment?",
+          confirmLabel: "Delete",
+          cancelLabel: "Cancel",
+          danger: true,
+        });
+        if (!ok) return;
+        await deleteAppointmentAction(id);
+        router.refresh();
+      });
     },
     onSave: async (formData: FormData) => {
       const nextStatus = String(formData.get("status") || "") as AppointmentStatus;
       const apptId = String(formData.get("id") || "");
       if (nextStatus === "completed" && apptId) {
-        if (!window.confirm(labels.completeConfirm1)) return { error: "Cancelled" };
-        if (!window.confirm(labels.completeConfirm2)) return { error: "Cancelled" };
+        const ok1 = await confirm({
+          title: "Allvisor",
+          message: labels.completeConfirm1,
+          confirmLabel: "Continue",
+        });
+        if (!ok1) return { error: "Cancelled" };
+        const ok2 = await confirm({
+          title: "Allvisor",
+          message: labels.completeConfirm2,
+          confirmLabel: "Confirm",
+        });
+        if (!ok2) return { error: "Cancelled" };
         const result = await completeAppointmentWithInvoiceAction(apptId);
         if (result?.error) return result;
         if (result?.invoiceId) {

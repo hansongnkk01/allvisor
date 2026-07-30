@@ -50,8 +50,11 @@ export interface Organization {
   clinic_open_hour?: number;
   clinic_close_hour?: number;
   closed_weekdays?: number[];
+  service_charge_percent?: number;
   created_at: string;
 }
+
+export type InvoiceLineKind = "service" | "medicine" | "additional" | "service_charge";
 
 export interface Membership {
   id: string;
@@ -169,6 +172,7 @@ export interface InvoiceLine {
   unit_price: number;
   line_total: number;
   price_list_item_id?: string | null;
+  line_kind?: InvoiceLineKind;
 }
 
 export interface ServiceCategory {

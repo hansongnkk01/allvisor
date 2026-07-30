@@ -19,6 +19,7 @@ import {
   respondBranchLinkAction,
   unlockAdminAction,
   updateClinicHoursAction,
+  updateServiceChargeAction,
   upgradePlanAction,
   upsertBranchServiceCategoryAction,
   upsertBranchServiceItemAction,
@@ -314,6 +315,26 @@ export default async function AdminPage({
           <div className="surface" style={{ padding: "1.25rem" }}>
             <h3 style={{ marginTop: 0 }}>{t("clinicHoursTitle")}</h3>
             <p className="muted">{t("clinicHoursHint")}</p>
+            <ActionForm action={updateServiceChargeAction} className="stack" style={{ marginBottom: "1.25rem" }}>
+              <div className="field" style={{ maxWidth: 260 }}>
+                <label>{t("serviceChargePercent")}</label>
+                <input
+                  name="service_charge_percent"
+                  type="number"
+                  step="0.01"
+                  min={0}
+                  max={100}
+                  className="input"
+                  defaultValue={String(org.service_charge_percent ?? 0)}
+                />
+              </div>
+              <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
+                {t("serviceChargeHint")}
+              </p>
+              <button type="submit" className="btn btn-soft">
+                {t("saveServiceCharge")}
+              </button>
+            </ActionForm>
             <ActionForm action={updateClinicHoursAction} className="stack">
               <div
                 style={{

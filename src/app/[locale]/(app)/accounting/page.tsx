@@ -15,6 +15,8 @@ import {
   formatDayKeyMY,
   type AccountingPeriod,
 } from "@/lib/datetime-my";
+import { AccountingCashChart } from "@/components/AccountingCashChart";
+import { CsvDownloadButton } from "@/components/CsvDownloadButton";
 
 const CLINIC_EXPENSE_CATS = [
   "Rent",
@@ -165,6 +167,27 @@ export default async function AccountingPage({
         </div>
       </div>
 
+      <AccountingCashChart
+        ledger={(ledger || []).map((e) => ({
+          id: e.id,
+          entry_type: e.entry_type,
+          amount: e.amount,
+          entry_date: e.entry_date,
+          created_at: e.created_at,
+          description: e.description,
+        }))}
+        labels={{
+          title: t("chartTitle"),
+          byHour: t("chartByHour"),
+          byDay: t("chartByDay"),
+          byWeek: t("chartByWeek"),
+          byMonth: t("chartByMonth"),
+          income: t("income"),
+          expense: t("expense"),
+          empty: t("emptyLedger"),
+        }}
+      />
+
       <div className="fluid-grid">
         <div className="surface" style={{ padding: "1.25rem" }}>
           <h3 style={{ marginTop: 0 }}>{t("addIncome")}</h3>
@@ -249,7 +272,29 @@ export default async function AccountingPage({
 
       <div className="fluid-grid">
         <div className="surface" style={{ padding: "1.25rem" }}>
-          <h3 style={{ marginTop: 0 }}>{t("cashFlowLedger")}</h3>
+          <div className="row" style={{ justifyContent: "space-between", marginBottom: 8 }}>
+            <h3 style={{ margin: 0 }}>{t("cashFlowLedger")}</h3>
+            <CsvDownloadButton
+              label={t("exportCsv")}
+              filename={`allvisor-cash-flow-${period}.csv`}
+              headers={[
+                t("date"),
+                t("type"),
+                t("description"),
+                t("source"),
+                t("amount"),
+                t("recordedAt"),
+              ]}
+              rows={(ledger || []).map((e) => [
+                e.entry_date,
+                e.entry_type,
+                e.description || "",
+                e.source,
+                Number(e.amount),
+                e.created_at,
+              ])}
+            />
+          </div>
           <div className="table-wrap">
             <table className="data">
               <thead>
@@ -296,7 +341,20 @@ export default async function AccountingPage({
         </div>
 
         <div className="surface" style={{ padding: "1.25rem" }}>
-          <h3 style={{ marginTop: 0 }}>{t("expenseList")}</h3>
+          <div className="row" style={{ justifyContent: "space-between", marginBottom: 8 }}>
+            <h3 style={{ margin: 0 }}>{t("expenseList")}</h3>
+            <CsvDownloadButton
+              label={t("exportCsv")}
+              filename={`allvisor-expenses-${period}.csv`}
+              headers={[t("date"), t("category"), t("description"), t("amount")]}
+              rows={(expenses || []).map((e) => [
+                e.expense_date,
+                e.category,
+                e.description || "",
+                Number(e.amount),
+              ])}
+            />
+          </div>
           <div className="table-wrap">
             <table className="data">
               <thead>

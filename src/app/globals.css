@@ -73,6 +73,63 @@
   box-sizing: border-box;
 }
 
+/* Thin, clean scrollbars (Firefox + Chromium/WebKit) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(28, 27, 25, 0.28) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(28, 27, 25, 0.22);
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(28, 27, 25, 0.38);
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+@keyframes allvisor-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(246, 244, 241, 0.55);
+  backdrop-filter: blur(3px);
+}
+
+.loading-spinner {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  border: 3px solid rgba(15, 118, 110, 0.18);
+  border-top-color: var(--accent);
+  animation: allvisor-spin 0.7s linear infinite;
+}
+
 html,
 body {
   min-height: 100%;
