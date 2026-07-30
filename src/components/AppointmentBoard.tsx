@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "@/i18n/navigation";
 import {
   addDays,
@@ -62,6 +62,42 @@ function dayAtMinutes(day: Date, minutes: number) {
   return d;
 }
 
+const FLOAT_PAD = 12;
+const FLOAT_W = 280;
+
+/** Keep floating panel fully inside the viewport. */
+function clampFloatPosition(
+  cursorX: number,
+  cursorY: number,
+  boxW: number,
+  boxH: number,
+  preferFollow: boolean
+) {
+  if (typeof window === "undefined") {
+    return { left: cursorX, top: cursorY };
+  }
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const w = Math.min(boxW, vw - FLOAT_PAD * 2);
+  const h = Math.min(boxH, vh - FLOAT_PAD * 2);
+
+  let left = preferFollow ? cursorX + 16 : cursorX;
+  let top = preferFollow ? cursorY + 16 : cursorY;
+
+  // Flip to left of cursor if not enough room on the right
+  if (preferFollow && left + w > vw - FLOAT_PAD) {
+    left = cursorX - w - 16;
+  }
+  // Flip above cursor if not enough room below
+  if (preferFollow && top + h > vh - FLOAT_PAD) {
+    top = cursorY - h - 16;
+  }
+
+  left = Math.max(FLOAT_PAD, Math.min(left, vw - w - FLOAT_PAD));
+  top = Math.max(FLOAT_PAD, Math.min(top, vh - h - FLOAT_PAD));
+  return { left, top };
+}
+
 export function AppointmentBoard({
   appointments,
   labels,
@@ -117,8 +153,10 @@ export function AppointmentBoard({
   const [categoryId, setCategoryId] = useState("");
   const [notes, setNotes] = useState("");
   const [bookError, setBookError] = useState<string | null>(null);
-  const [mouse, setMouse] = useState({ x: 24, y: 24 });
+  const [mouse, setMouse] = useState({ x: 80, y: 80 });
   const [mounted, setMounted] = useState(false);
+  const [floatSize, setFloatSize] = useState({ w: FLOAT_W, h: 280 });
+  const floatRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -132,11 +170,36 @@ export function AppointmentBoard({
   useEffect(() => {
     if (!followMouse) return;
     const onMove = (e: MouseEvent) => {
-      setMouse({ x: e.clientX, y: e.clientY });
+      const x = Math.max(0, Math.min(e.clientX, window.innerWidth));
+      const y = Math.max(0, Math.min(e.clientY, window.innerHeight));
+      setMouse({ x, y });
     };
     window.addEventListener("mousemove", onMove);
     return () => window.removeEventListener("mousemove", onMove);
   }, [followMouse]);
+
+  // Re-clamp on resize so a frozen panel never sits off-screen
+  useEffect(() => {
+    if (!bookingActive) return;
+    const onResize = () => {
+      setMouse((m) => ({
+        x: Math.max(0, Math.min(m.x, window.innerWidth)),
+        y: Math.max(0, Math.min(m.y, window.innerHeight)),
+      }));
+      if (floatRef.current) {
+        const r = floatRef.current.getBoundingClientRect();
+        setFloatSize({ w: r.width, h: r.height });
+      }
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [bookingActive]);
+
+  useLayoutEffect(() => {
+    if (!bookingActive || !floatRef.current) return;
+    const r = floatRef.current.getBoundingClientRect();
+    setFloatSize({ w: r.width || FLOAT_W, h: r.height || 280 });
+  }, [bookingActive, startSlot, endSlot, patientId, categoryId, notes, bookError]);
 
   function resetBooking() {
     setStartSlot(null);
@@ -226,13 +289,14 @@ export function AppointmentBoard({
     },
   };
 
-  const floatLeft = Math.min(
-    mouse.x + 18,
-    typeof window !== "undefined" ? window.innerWidth - 300 : mouse.x
-  );
-  const floatTop = Math.min(
-    mouse.y + 18,
-    typeof window !== "undefined" ? window.innerHeight - 320 : mouse.y
+  // Always position relative to last cursor point; when end is picked,
+  // mousemove stops so the panel freezes — clamp keeps it inside the viewport.
+  const { left: floatLeft, top: floatTop } = clampFloatPosition(
+    mouse.x,
+    mouse.y,
+    floatSize.w,
+    floatSize.h,
+    true
   );
 
   return (
@@ -378,14 +442,15 @@ export function AppointmentBoard({
       bookingActive
         ? createPortal(
             <div
+              ref={floatRef}
               style={{
                 position: "fixed",
                 left: floatLeft,
                 top: floatTop,
                 zIndex: 10000,
-                width: 280,
-                maxWidth: "calc(100vw - 24px)",
-                maxHeight: "calc(100vh - 24px)",
+                width: FLOAT_W,
+                maxWidth: `calc(100vw - ${FLOAT_PAD * 2}px)`,
+                maxHeight: `calc(100vh - ${FLOAT_PAD * 2}px)`,
                 overflowY: "auto",
                 padding: "0.9rem 1rem",
                 borderRadius: 14,
