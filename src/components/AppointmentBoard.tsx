@@ -123,18 +123,20 @@ export function AppointmentBoard({
   const [notes, setNotes] = useState("");
   const [bookError, setBookError] = useState<string | null>(null);
   const [mouse, setMouse] = useState({ x: 24, y: 24 });
-  const [floatPinned, setFloatPinned] = useState(false);
 
   const bookingActive = startHour != null || endHour != null;
+  // Follow cursor while picking times; freeze once end hour is chosen.
+  // Re-tapping the timetable clears endHour and starts following again.
+  const followMouse = startHour != null && endHour == null;
 
   useEffect(() => {
-    if (!bookingActive || floatPinned) return;
+    if (!followMouse) return;
     const onMove = (e: MouseEvent) => {
       setMouse({ x: e.clientX, y: e.clientY });
     };
     window.addEventListener("mousemove", onMove);
     return () => window.removeEventListener("mousemove", onMove);
-  }, [bookingActive, floatPinned]);
+  }, [followMouse]);
 
   function resetBooking() {
     setStartHour(null);
@@ -143,7 +145,6 @@ export function AppointmentBoard({
     setCategoryId("");
     setNotes("");
     setBookError(null);
-    setFloatPinned(false);
   }
 
   function refreshAfter(action: () => Promise<unknown>) {
@@ -191,12 +192,13 @@ export function AppointmentBoard({
   function onHourSelect(hour: number) {
     setBookError(null);
     if (startHour == null || (startHour != null && endHour != null)) {
+      // New selection or re-pick after end was set → follow mouse again
       setStartHour(hour);
       setEndHour(null);
       return;
     }
     if (hour === startHour) {
-      // same hour → default 1 hour slot
+      // same hour → default 1 hour slot (end set → stop following)
       if (hour < 23) setEndHour(hour + 1);
       else setBookError("Pick a later end hour");
       return;
@@ -224,8 +226,14 @@ export function AppointmentBoard({
     },
   };
 
-  const floatLeft = Math.min(mouse.x + 18, typeof window !== "undefined" ? window.innerWidth - 300 : mouse.x);
-  const floatTop = Math.min(mouse.y + 18, typeof window !== "undefined" ? window.innerHeight - 320 : mouse.y);
+  const floatLeft = Math.min(
+    mouse.x + 18,
+    typeof window !== "undefined" ? window.innerWidth - 300 : mouse.x
+  );
+  const floatTop = Math.min(
+    mouse.y + 18,
+    typeof window !== "undefined" ? window.innerHeight - 320 : mouse.y
+  );
 
   return (
     <div className="stack" style={{ gap: "1rem", opacity: pending ? 0.75 : 1 }}>
@@ -369,22 +377,20 @@ export function AppointmentBoard({
         <div
           style={{
             position: "fixed",
-            left: floatPinned ? undefined : floatLeft,
-            top: floatPinned ? undefined : floatTop,
-            right: floatPinned ? 16 : undefined,
-            bottom: floatPinned ? 16 : undefined,
+            left: floatLeft,
+            top: floatTop,
             zIndex: 80,
             width: 280,
             maxWidth: "calc(100vw - 24px)",
             padding: "0.9rem 1rem",
             borderRadius: 14,
             background: "rgba(255,255,255,0.96)",
-            border: "1px solid var(--line)",
+            border: followMouse ? "1px solid var(--line)" : "1.5px solid var(--accent)",
             boxShadow: "0 12px 40px rgba(28,27,25,0.18)",
             pointerEvents: "auto",
             backdropFilter: "blur(8px)",
+            transition: followMouse ? undefined : "box-shadow 160ms ease",
           }}
-          onMouseEnter={() => setFloatPinned(true)}
         >
           <div className="row" style={{ justifyContent: "space-between", marginBottom: 8 }}>
             <strong style={{ fontSize: "0.85rem" }}>{stepHint}</strong>
