@@ -19,10 +19,10 @@ import {
   updateAppointmentAction,
   deleteAppointmentAction,
 } from "@/app/actions";
-import { DayHourTimetable, type TimetableHours } from "@/components/DayHourTimetable";
+import { DayHourTimetable, slotLabel, type TimetableHours } from "@/components/DayHourTimetable";
 import { PatientName } from "@/components/PatientName";
 import type { AppointmentStatus } from "@/lib/types";
-
+import { createPortal } from "react-dom";
 type Appt = {
   id: string;
   title: string;
@@ -56,14 +56,9 @@ function toLocalInputFromDate(d: Date) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function hourLabel(h: number | null) {
-  if (h == null) return "—";
-  return `${String(h).padStart(2, "0")}:00`;
-}
-
-function dayAtHour(day: Date, hour: number) {
+function dayAtMinutes(day: Date, minutes: number) {
   const d = new Date(day);
-  d.setHours(hour, 0, 0, 0);
+  d.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
   return d;
 }
 
@@ -116,18 +111,23 @@ export function AppointmentBoard({
   const [selectedDay, setSelectedDay] = useState(() => new Date());
   const [pending, startTransition] = useTransition();
 
-  const [startHour, setStartHour] = useState<number | null>(null);
-  const [endHour, setEndHour] = useState<number | null>(null);
+  const [startSlot, setStartSlot] = useState<number | null>(null);
+  const [endSlot, setEndSlot] = useState<number | null>(null);
   const [patientId, setPatientId] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [notes, setNotes] = useState("");
   const [bookError, setBookError] = useState<string | null>(null);
   const [mouse, setMouse] = useState({ x: 24, y: 24 });
+  const [mounted, setMounted] = useState(false);
 
-  const bookingActive = startHour != null || endHour != null;
-  // Follow cursor while picking times; freeze once end hour is chosen.
-  // Re-tapping the timetable clears endHour and starts following again.
-  const followMouse = startHour != null && endHour == null;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const bookingActive = startSlot != null || endSlot != null;
+  // Follow cursor while picking times; freeze once end slot is chosen.
+  // Re-tapping the timetable clears endSlot and starts following again.
+  const followMouse = startSlot != null && endSlot == null;
 
   useEffect(() => {
     if (!followMouse) return;
@@ -139,8 +139,8 @@ export function AppointmentBoard({
   }, [followMouse]);
 
   function resetBooking() {
-    setStartHour(null);
-    setEndHour(null);
+    setStartSlot(null);
+    setEndSlot(null);
     setPatientId("");
     setCategoryId("");
     setNotes("");
@@ -175,40 +175,40 @@ export function AppointmentBoard({
   const dayAppts = byDay.get(selectedKey) || [];
 
   const stepHint =
-    startHour == null
+    startSlot == null
       ? labels.pickStart
-      : endHour == null
+      : endSlot == null
         ? labels.pickEnd
         : labels.pickPatient;
 
   const canSubmit =
-    startHour != null &&
-    endHour != null &&
-    endHour > startHour &&
+    startSlot != null &&
+    endSlot != null &&
+    endSlot > startSlot &&
     Boolean(patientId) &&
     Boolean(categoryId) &&
     categories.length > 0;
 
-  function onHourSelect(hour: number) {
+  function onSlotSelect(minutes: number) {
     setBookError(null);
-    if (startHour == null || (startHour != null && endHour != null)) {
+    if (startSlot == null || (startSlot != null && endSlot != null)) {
       // New selection or re-pick after end was set → follow mouse again
-      setStartHour(hour);
-      setEndHour(null);
+      setStartSlot(minutes);
+      setEndSlot(null);
       return;
     }
-    if (hour === startHour) {
-      // same hour → default 1 hour slot (end set → stop following)
-      if (hour < 23) setEndHour(hour + 1);
-      else setBookError("Pick a later end hour");
+    if (minutes === startSlot) {
+      // same slot → default +30 min
+      if (minutes + 30 <= 23 * 60 + 30) setEndSlot(minutes + 30);
+      else setBookError("Pick a later end time");
       return;
     }
-    if (hour < startHour) {
-      setEndHour(startHour);
-      setStartHour(hour);
+    if (minutes < startSlot) {
+      setEndSlot(startSlot);
+      setStartSlot(minutes);
       return;
     }
-    setEndHour(hour);
+    setEndSlot(minutes);
   }
 
   const listHandlers = {
@@ -352,9 +352,9 @@ export function AppointmentBoard({
             appointments={dayAppts}
             hoursConfig={hoursConfig}
             selectable
-            selectionStart={startHour}
-            selectionEnd={endHour}
-            onHourSelect={onHourSelect}
+            selectionStart={startSlot}
+            selectionEnd={endSlot}
+            onSlotSelect={onSlotSelect}
             labels={{
               timetable: labels.timetable,
               occupied: labels.occupied,
@@ -373,150 +373,162 @@ export function AppointmentBoard({
         <AppointmentList items={appointments} labels={labels} {...listHandlers} />
       )}
 
-      {view === "calendar" && bookingActive ? (
-        <div
-          style={{
-            position: "fixed",
-            left: floatLeft,
-            top: floatTop,
-            zIndex: 80,
-            width: 280,
-            maxWidth: "calc(100vw - 24px)",
-            padding: "0.9rem 1rem",
-            borderRadius: 14,
-            background: "rgba(255,255,255,0.96)",
-            border: followMouse ? "1px solid var(--line)" : "1.5px solid var(--accent)",
-            boxShadow: "0 12px 40px rgba(28,27,25,0.18)",
-            pointerEvents: "auto",
-            backdropFilter: "blur(8px)",
-            transition: followMouse ? undefined : "box-shadow 160ms ease",
-          }}
-        >
-          <div className="row" style={{ justifyContent: "space-between", marginBottom: 8 }}>
-            <strong style={{ fontSize: "0.85rem" }}>{stepHint}</strong>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              style={{ padding: "0.2rem 0.45rem", fontSize: "0.75rem" }}
-              onClick={resetBooking}
+      {mounted &&
+      view === "calendar" &&
+      bookingActive
+        ? createPortal(
+            <div
+              style={{
+                position: "fixed",
+                left: floatLeft,
+                top: floatTop,
+                zIndex: 10000,
+                width: 280,
+                maxWidth: "calc(100vw - 24px)",
+                maxHeight: "calc(100vh - 24px)",
+                overflowY: "auto",
+                padding: "0.9rem 1rem",
+                borderRadius: 14,
+                background: "rgba(255,255,255,0.98)",
+                border: followMouse ? "1px solid var(--line)" : "1.5px solid var(--accent)",
+                boxShadow: "0 16px 48px rgba(28,27,25,0.28)",
+                pointerEvents: "auto",
+                backdropFilter: "blur(8px)",
+              }}
             >
-              {labels.resetBooking}
-            </button>
-          </div>
-
-          <div className="stack" style={{ gap: 6, fontSize: "0.85rem" }}>
-            <div className="row" style={{ justifyContent: "space-between" }}>
-              <span className="muted">{labels.calendar}</span>
-              <span>{format(selectedDay, "EEE d MMM")}</span>
-            </div>
-            <div className="row" style={{ justifyContent: "space-between" }}>
-              <span className="muted">{labels.startsAt}</span>
-              <strong style={{ color: "var(--accent-ink)" }}>{hourLabel(startHour)}</strong>
-            </div>
-            <div className="row" style={{ justifyContent: "space-between" }}>
-              <span className="muted">{labels.endsAt}</span>
-              <strong style={{ color: "var(--accent-ink)" }}>{hourLabel(endHour)}</strong>
-            </div>
-          </div>
-
-          {startHour != null && endHour != null ? (
-            <div className="stack" style={{ gap: 8, marginTop: 10 }}>
-              <div className="field">
-                <label>{labels.patient}</label>
-                <select
-                  className="select"
-                  value={patientId}
-                  onChange={(e) => setPatientId(e.target.value)}
-                  required
+              <div className="row" style={{ justifyContent: "space-between", marginBottom: 8 }}>
+                <strong style={{ fontSize: "0.85rem" }}>{stepHint}</strong>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  style={{ padding: "0.2rem 0.45rem", fontSize: "0.75rem" }}
+                  onClick={resetBooking}
                 >
-                  <option value="">—</option>
-                  {patients.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
+                  {labels.resetBooking}
+                </button>
               </div>
-              <div className="field">
-                <label>{labels.category}</label>
-                <select
-                  className="select"
-                  value={categoryId}
-                  onChange={(e) => setCategoryId(e.target.value)}
-                  required
-                >
-                  <option value="">—</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
+
+              <div className="stack" style={{ gap: 6, fontSize: "0.85rem" }}>
+                <div className="row" style={{ justifyContent: "space-between" }}>
+                  <span className="muted">{labels.calendar}</span>
+                  <span>{format(selectedDay, "EEE d MMM")}</span>
+                </div>
+                <div className="row" style={{ justifyContent: "space-between" }}>
+                  <span className="muted">{labels.startsAt}</span>
+                  <strong style={{ color: "var(--accent-ink)" }}>
+                    {startSlot == null ? "—" : slotLabel(startSlot)}
+                  </strong>
+                </div>
+                <div className="row" style={{ justifyContent: "space-between" }}>
+                  <span className="muted">{labels.endsAt}</span>
+                  <strong style={{ color: "var(--accent-ink)" }}>
+                    {endSlot == null ? "—" : slotLabel(endSlot)}
+                  </strong>
+                </div>
               </div>
-              <div className="field">
-                <label>{labels.notes}</label>
-                <input
-                  className="input"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder={labels.notes}
-                />
-              </div>
-              {!categories.length ? (
-                <p className="muted" style={{ margin: 0, fontSize: "0.8rem" }}>
-                  {labels.needCategory}
+
+              {startSlot != null && endSlot != null ? (
+                <div className="stack" style={{ gap: 8, marginTop: 10 }}>
+                  <div className="field">
+                    <label>{labels.patient}</label>
+                    <select
+                      className="select"
+                      value={patientId}
+                      onChange={(e) => setPatientId(e.target.value)}
+                      required
+                    >
+                      <option value="">—</option>
+                      {patients.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="field">
+                    <label>{labels.category}</label>
+                    <select
+                      className="select"
+                      value={categoryId}
+                      onChange={(e) => setCategoryId(e.target.value)}
+                      required
+                    >
+                      <option value="">—</option>
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="field">
+                    <label>{labels.notes}</label>
+                    <input
+                      className="input"
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      placeholder={labels.notes}
+                    />
+                  </div>
+                  {!categories.length ? (
+                    <p className="muted" style={{ margin: 0, fontSize: "0.8rem" }}>
+                      {labels.needCategory}
+                    </p>
+                  ) : null}
+                  {bookError ? (
+                    <p style={{ color: "var(--danger)", margin: 0, fontSize: "0.8rem" }}>
+                      {bookError}
+                    </p>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    disabled={!canSubmit || pending}
+                    onClick={() => {
+                      if (startSlot == null || endSlot == null) return;
+                      const startDt = dayAtMinutes(selectedDay, startSlot);
+                      const endDt = dayAtMinutes(selectedDay, endSlot);
+                      const clash = dayAppts.some((a) => {
+                        const s = new Date(a.starts_at).getTime();
+                        const eRaw = new Date(a.ends_at).getTime();
+                        const e = eRaw > s ? eRaw : s + 30 * 60000;
+                        return s < endDt.getTime() && e > startDt.getTime();
+                      });
+                      if (clash) {
+                        setBookError("Selected time overlaps another booking");
+                        return;
+                      }
+                      const fd = new FormData();
+                      fd.set("customer_id", patientId);
+                      fd.set("category_id", categoryId);
+                      fd.set("starts_at", toLocalInputFromDate(startDt));
+                      fd.set("ends_at", toLocalInputFromDate(endDt));
+                      fd.set("status", "scheduled");
+                      fd.set("notes", notes);
+                      setBookError(null);
+                      startTransition(async () => {
+                        const result = await createAppointmentAction(fd);
+                        if (result && "error" in result && result.error) {
+                          setBookError(result.error);
+                          return;
+                        }
+                        resetBooking();
+                        router.refresh();
+                      });
+                    }}
+                  >
+                    {labels.bookNow}
+                  </button>
+                </div>
+              ) : (
+                <p className="muted" style={{ margin: "10px 0 0", fontSize: "0.8rem" }}>
+                  {stepHint}
                 </p>
-              ) : null}
-              {bookError ? (
-                <p style={{ color: "var(--danger)", margin: 0, fontSize: "0.8rem" }}>{bookError}</p>
-              ) : null}
-              <button
-                type="button"
-                className="btn btn-primary"
-                disabled={!canSubmit || pending}
-                onClick={() => {
-                  if (startHour == null || endHour == null) return;
-                  const startDt = dayAtHour(selectedDay, startHour);
-                  const endDt = dayAtHour(selectedDay, endHour);
-                  const clash = dayAppts.some((a) => {
-                    const s = new Date(a.starts_at).getTime();
-                    const eRaw = new Date(a.ends_at).getTime();
-                    const e = eRaw > s ? eRaw : s + 30 * 60000;
-                    return s < endDt.getTime() && e > startDt.getTime();
-                  });
-                  if (clash) {
-                    setBookError("Selected time overlaps another booking");
-                    return;
-                  }
-                  const fd = new FormData();
-                  fd.set("customer_id", patientId);
-                  fd.set("category_id", categoryId);
-                  fd.set("starts_at", toLocalInputFromDate(startDt));
-                  fd.set("ends_at", toLocalInputFromDate(endDt));
-                  fd.set("status", "scheduled");
-                  fd.set("notes", notes);
-                  setBookError(null);
-                  startTransition(async () => {
-                    const result = await createAppointmentAction(fd);
-                    if (result && "error" in result && result.error) {
-                      setBookError(result.error);
-                      return;
-                    }
-                    resetBooking();
-                    router.refresh();
-                  });
-                }}
-              >
-                {labels.bookNow}
-              </button>
-            </div>
-          ) : (
-            <p className="muted" style={{ margin: "10px 0 0", fontSize: "0.8rem" }}>
-              {stepHint}
-            </p>
-          )}
-        </div>
-      ) : null}
+              )}
+            </div>,
+            document.body
+          )
+        : null}
     </div>
   );
 }

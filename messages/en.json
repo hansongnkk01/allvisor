@@ -126,9 +126,9 @@
     "clinicClosed": "Clinic closed",
     "publicHoliday": "Public holiday",
     "activity": "Appointment activity",
-    "bookHint": "Select a day → tap start hour → tap end hour on the timetable → choose patient → book. Red/grey slots cannot be selected.",
-    "pickStart": "Tap a free (green) start hour",
-    "pickEnd": "Tap a free end hour",
+    "bookHint": "Select a day → tap start (:00 or :30) → tap end on the timetable → choose patient → book. Red/grey halves cannot be selected.",
+    "pickStart": "Tap a free (green) start time (:00 / :30)",
+    "pickEnd": "Tap a free end time (:00 / :30)",
     "pickPatient": "Choose patient & category, then book",
     "bookNow": "Book appointment",
     "resetBooking": "Reset"

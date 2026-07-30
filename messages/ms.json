@@ -126,9 +126,9 @@
     "clinicClosed": "Klinik tutup",
     "publicHoliday": "Cuti umum",
     "activity": "Aktiviti temujanji",
-    "bookHint": "Pilih hari → tekan jam mula → tekan jam tamat pada jadual → pilih pesakit → book. Slot merah/kelabu tak boleh ditekan.",
-    "pickStart": "Tekan jam mula yang hijau (kosong)",
-    "pickEnd": "Tekan jam tamat yang kosong",
+    "bookHint": "Pilih hari → tekan mula (:00 atau :30) → tekan tamat pada jadual → pilih pesakit → book. Separuh merah/kelabu tak boleh ditekan.",
+    "pickStart": "Tekan masa mula hijau (:00 / :30)",
+    "pickEnd": "Tekan masa tamat yang kosong (:00 / :30)",
     "pickPatient": "Pilih pesakit & kategori, kemudian book",
     "bookNow": "Book temujanji",
     "resetBooking": "Reset"
