@@ -10,8 +10,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { createPortal } from "react-dom";
-import { flushSync } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 
 type ConfirmOptions = {
   title?: string;
@@ -19,6 +18,8 @@ type ConfirmOptions = {
   confirmLabel?: string;
   cancelLabel?: string;
   danger?: boolean;
+  /** Hide cancel button (info / success alerts) */
+  hideCancel?: boolean;
 };
 
 type ConfirmFn = (options: ConfirmOptions | string) => Promise<boolean>;
@@ -35,39 +36,64 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
   const [opts, setOpts] = useState<ConfirmOptions>({ message: "" });
   const queueRef = useRef<QueueItem[]>([]);
   const activeRef = useRef<QueueItem | null>(null);
+  const closingRef = useRef(false);
+  const timerRef = useRef<number | null>(null);
 
   const showNext = useCallback(() => {
+    if (activeRef.current) return;
     const next = queueRef.current.shift() || null;
-    activeRef.current = next;
     if (!next) {
       flushSync(() => setOpen(false));
       return;
     }
+    activeRef.current = next;
+    closingRef.current = false;
     flushSync(() => {
       setOpts(next.opts);
       setOpen(true);
     });
   }, []);
 
+  const scheduleShowNext = useCallback(() => {
+    if (timerRef.current != null) window.clearTimeout(timerRef.current);
+    timerRef.current = window.setTimeout(() => {
+      timerRef.current = null;
+      showNext();
+    }, 60);
+  }, [showNext]);
+
   const confirm = useCallback<ConfirmFn>(
     (input) => {
       const nextOpts = typeof input === "string" ? { message: input } : input;
       return new Promise<boolean>((resolve) => {
         queueRef.current.push({ opts: nextOpts, resolve });
-        if (!activeRef.current) showNext();
+        // Only start if nothing is showing / closing
+        if (!activeRef.current && !closingRef.current) {
+          scheduleShowNext();
+        }
       });
+    },
+    [scheduleShowNext]
+  );
+
+  const finish = useCallback(
+    (value: boolean) => {
+      const active = activeRef.current;
+      if (!active) return;
+      activeRef.current = null;
+      closingRef.current = true;
+      flushSync(() => setOpen(false));
+      active.resolve(value);
+      // After close, show next queued dialog if any
+      if (timerRef.current != null) window.clearTimeout(timerRef.current);
+      timerRef.current = window.setTimeout(() => {
+        timerRef.current = null;
+        closingRef.current = false;
+        showNext();
+      }, 60);
     },
     [showNext]
   );
-
-  function finish(value: boolean) {
-    const active = activeRef.current;
-    activeRef.current = null;
-    flushSync(() => setOpen(false));
-    active?.resolve(value);
-    // Allow UI to close before next dialog (double-confirm flow)
-    window.setTimeout(() => showNext(), 40);
-  }
 
   useEffect(() => {
     if (!open) return;
@@ -76,7 +102,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  });
+  }, [open, finish]);
 
   const value = useMemo(() => confirm, [confirm]);
 
@@ -119,13 +145,15 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
                 </div>
                 <p style={{ margin: "0 0 1.15rem", lineHeight: 1.5 }}>{opts.message}</p>
                 <div className="row" style={{ justifyContent: "flex-end", gap: 8 }}>
-                  <button
-                    type="button"
-                    className="btn btn-ghost"
-                    onClick={() => finish(false)}
-                  >
-                    {opts.cancelLabel || "Cancel"}
-                  </button>
+                  {!opts.hideCancel ? (
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      onClick={() => finish(false)}
+                    >
+                      {opts.cancelLabel || "Cancel"}
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     className="btn btn-primary"

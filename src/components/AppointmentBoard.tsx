@@ -285,27 +285,23 @@ export function AppointmentBoard({
   const listHandlers = {
     onStatus: async (id: string, status: AppointmentStatus) => {
       if (status === "completed") {
-        // Keep confirm OUTSIDE startTransition so the modal paints immediately
-        const ok1 = await confirm({
+        // Single confirm — avoid double-dialog races; run action outside startTransition
+        const ok = await confirm({
           title: "Allvisor",
-          message: labels.completeConfirm1,
-          confirmLabel: "Continue",
-        });
-        if (!ok1) return;
-        const ok2 = await confirm({
-          title: "Allvisor",
-          message: labels.completeConfirm2,
+          message: `${labels.completeConfirm1}\n\n${labels.completeConfirm2}`,
           confirmLabel: "Confirm",
+          cancelLabel: "Cancel",
         });
-        if (!ok2) return;
-        startTransition(async () => {
+        if (!ok) return;
+
+        try {
           const result = await completeAppointmentWithInvoiceAction(id);
           if (result?.error) {
             await confirm({
               title: "Allvisor",
               message: result.error,
               confirmLabel: "OK",
-              cancelLabel: "Close",
+              hideCancel: true,
             });
             return;
           }
@@ -315,9 +311,16 @@ export function AppointmentBoard({
             message:
               "Appointment marked completed. A pending invoice was added under Invoices — open it there to review service cost and add medicine/additional if needed.",
             confirmLabel: "OK",
-            cancelLabel: "Close",
+            hideCancel: true,
           });
-        });
+        } catch (e) {
+          await confirm({
+            title: "Allvisor",
+            message: e instanceof Error ? e.message : "Failed to complete appointment",
+            confirmLabel: "OK",
+            hideCancel: true,
+          });
+        }
         return;
       }
       refreshAfter(() => updateAppointmentStatusAction(id, status));
@@ -337,18 +340,13 @@ export function AppointmentBoard({
       const nextStatus = String(formData.get("status") || "") as AppointmentStatus;
       const apptId = String(formData.get("id") || "");
       if (nextStatus === "completed" && apptId) {
-        const ok1 = await confirm({
+        const ok = await confirm({
           title: "Allvisor",
-          message: labels.completeConfirm1,
-          confirmLabel: "Continue",
-        });
-        if (!ok1) return { error: "Cancelled" };
-        const ok2 = await confirm({
-          title: "Allvisor",
-          message: labels.completeConfirm2,
+          message: `${labels.completeConfirm1}\n\n${labels.completeConfirm2}`,
           confirmLabel: "Confirm",
+          cancelLabel: "Cancel",
         });
-        if (!ok2) return { error: "Cancelled" };
+        if (!ok) return { error: "Cancelled" };
         const result = await completeAppointmentWithInvoiceAction(apptId);
         if (result?.error) return result;
         router.refresh();
@@ -357,7 +355,7 @@ export function AppointmentBoard({
           message:
             "Appointment marked completed. A pending invoice was added under Invoices — open it there to review service cost and add medicine/additional if needed.",
           confirmLabel: "OK",
-          cancelLabel: "Close",
+          hideCancel: true,
         });
         return result;
       }

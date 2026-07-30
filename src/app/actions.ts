@@ -328,10 +328,31 @@ async function syncInvoiceChargeAndTotals(
   serviceChargePercent: number
 ) {
   const pct = Math.min(100, Math.max(0, Number(serviceChargePercent) || 0));
-  const { data: lines } = await supabase
+  const { data: lines, error: linesErr } = await supabase
     .from("invoice_lines")
     .select("id, description, line_total, line_kind")
     .eq("invoice_id", invoiceId);
+
+  // If line_kind column missing, just sum all lines into totals
+  if (linesErr && /line_kind/i.test(linesErr.message)) {
+    const { data: plain } = await supabase
+      .from("invoice_lines")
+      .select("line_total")
+      .eq("invoice_id", invoiceId);
+    const base = (plain || []).reduce((s, l) => s + Number(l.line_total || 0), 0);
+    const chargeAmt = Math.round(((base * pct) / 100) * 100) / 100;
+    const { data: invoice } = await supabase
+      .from("invoices")
+      .select("tax_amount")
+      .eq("id", invoiceId)
+      .maybeSingle();
+    const tax = Number(invoice?.tax_amount || 0);
+    await supabase
+      .from("invoices")
+      .update({ subtotal: base, total: base + chargeAmt + tax })
+      .eq("id", invoiceId);
+    return;
+  }
 
   const nonCharge = (lines || []).filter((l) => l.line_kind !== "service_charge");
   const base = nonCharge.reduce((s, l) => s + Number(l.line_total || 0), 0);
@@ -344,7 +365,7 @@ async function syncInvoiceChargeAndTotals(
     await supabase.from("invoice_lines").delete().in("id", chargeIds);
   }
 
-  await supabase.from("invoice_lines").insert({
+  const { error: chargeErr } = await supabase.from("invoice_lines").insert({
     invoice_id: invoiceId,
     organization_id: organizationId,
     description: `Service charge (${pct}%)`,
@@ -353,6 +374,9 @@ async function syncInvoiceChargeAndTotals(
     line_total: chargeAmt,
     line_kind: "service_charge" as InvoiceLineKind,
   });
+  if (chargeErr && /line_kind/i.test(chargeErr.message)) {
+    // Skip charge line row; still bake amount into total
+  }
 
   const medLines = nonCharge.filter((l) => l.line_kind === "medicine");
   const addLines = nonCharge.filter((l) => l.line_kind === "additional");
@@ -793,7 +817,7 @@ export async function completeAppointmentWithInvoiceAction(appointmentId: string
   }
 
   const finalPrice = price > 0 ? price : unitPrice;
-  await supabase.from("invoice_lines").insert({
+  const linePayload: Record<string, unknown> = {
     invoice_id: invoice.id,
     organization_id: organization.id,
     description: title,
@@ -801,10 +825,35 @@ export async function completeAppointmentWithInvoiceAction(appointmentId: string
     unit_price: finalPrice,
     line_total: finalPrice,
     line_kind: "service" as InvoiceLineKind,
-  });
+  };
+  let { error: lineErr } = await supabase.from("invoice_lines").insert(linePayload);
+  // Fallback if migration 011 (line_kind) not applied yet
+  if (lineErr && /line_kind/i.test(lineErr.message)) {
+    delete linePayload.line_kind;
+    const retry = await supabase.from("invoice_lines").insert(linePayload);
+    lineErr = retry.error;
+  }
+  if (lineErr) {
+    // Status already completed — still surface invoice line failure clearly
+    return {
+      error: `Appointment completed, but invoice line failed: ${lineErr.message}`,
+      invoiceId: invoice.id,
+    };
+  }
+
+  if (finalPrice > 0) {
+    await supabase
+      .from("invoices")
+      .update({ subtotal: finalPrice, total: finalPrice })
+      .eq("id", invoice.id);
+  }
 
   const pct = Number(organization.service_charge_percent ?? 0);
-  await syncInvoiceChargeAndTotals(supabase, organization.id, invoice.id, pct);
+  try {
+    await syncInvoiceChargeAndTotals(supabase, organization.id, invoice.id, pct);
+  } catch {
+    // non-fatal — invoice already exists
+  }
 
   await logActivity({
     action: "appointment.complete_invoice",
