@@ -22,11 +22,14 @@ export type TimetableHours = {
 type SlotKind = "closed" | "free" | "booked";
 
 const COLOR = {
-  free: "#c5e4de",
-  booked: "#f0c9c4",
-  closed: "#ddd8d2",
-  selected: "#7eb8ae",
-  range: "#a8d4cc",
+  freeSeg: "transparent",
+  bookedSeg: "#f0c9c4",
+  closedSeg: "#ddd8d2",
+  selectedSeg: "rgba(239, 68, 68, 0.22)", // light red between lines
+  tickHour: "#4a4540",
+  tickHalf: "#9a948c",
+  tickSelected: "#c45c5c",
+  tickDisabled: "#cfc9c2",
 };
 
 /** Minutes from midnight for a half-hour slot: 0, 30, 60, … 1410 */
@@ -56,12 +59,13 @@ function overlapMinutes(startMs: number, endMs: number, winStart: number, winEnd
 function halfSlotKind(
   appointments: SlotAppt[],
   day: Date,
-  hour: number,
-  half: 0 | 1,
+  minutes: number,
   open: boolean
-): { kind: SlotKind; tip: string } {
-  if (!open) return { kind: "closed", tip: "closed" };
+): SlotKind {
+  if (!open) return "closed";
 
+  const hour = Math.floor(minutes / 60);
+  const half = (minutes % 60 === 0 ? 0 : 1) as 0 | 1;
   const winStart = new Date(day);
   winStart.setHours(hour, half * 30, 0, 0);
   const winEnd = new Date(day);
@@ -69,32 +73,22 @@ function halfSlotKind(
   const ws = winStart.getTime();
   const we = winEnd.getTime();
 
-  const covering: string[] = [];
   let booked = 0;
   for (const a of appointments) {
     const start = new Date(a.starts_at).getTime();
     const endRaw = new Date(a.ends_at).getTime();
     const end = endRaw > start ? endRaw : start + 30 * 60000;
-    const mins = overlapMinutes(start, end, ws, we);
-    if (mins > 0) {
-      covering.push(`${a.title}${a.customers?.name ? ` · ${a.customers.name}` : ""}`);
-      booked += mins;
-    }
+    booked += overlapMinutes(start, end, ws, we);
+    if (booked >= 10) return "booked";
   }
-
-  if (booked >= 10) {
-    return { kind: "booked", tip: covering.join(" | ") };
-  }
-  return { kind: "free", tip: "free" };
+  return "free";
 }
 
-function cellBg(kind: SlotKind, highlight: "none" | "start" | "end" | "range") {
-  if (highlight === "start" || highlight === "end") return COLOR.selected;
-  if (highlight === "range") return COLOR.range;
-  if (kind === "closed") return COLOR.closed;
-  if (kind === "booked") return COLOR.booked;
-  return COLOR.free;
-}
+type Tick = {
+  minutes: number;
+  kind: "hour" | "half";
+  hourLabel?: string;
+};
 
 export function DayHourTimetable({
   date,
@@ -119,7 +113,6 @@ export function DayHourTimetable({
   orientation?: "vertical" | "horizontal";
   hoursConfig?: TimetableHours;
   selectable?: boolean;
-  /** Minutes from midnight (0, 30, 60, …) */
   selectionStart?: number | null;
   selectionEnd?: number | null;
   onSlotSelect?: (minutes: number) => void;
@@ -133,43 +126,58 @@ export function DayHourTimetable({
   const holiday = getMyHolidayOn(date, locale);
   const dayClosed = weekdayClosed;
 
-  const hours = useMemo(() => Array.from({ length: 24 }, (_, h) => h), []);
-
-  const columns = useMemo(() => {
-    return hours.map((hour) => {
-      const open = isHourOpen(hour, openHour, closeHour, dayClosed);
-      const left = halfSlotKind(appointments, date, hour, 0, open);
-      const right = halfSlotKind(appointments, date, hour, 1, open);
-      return {
-        hour,
-        left: { ...left, minutes: hour * 60 },
-        right: { ...right, minutes: hour * 60 + 30 },
-      };
-    });
-  }, [hours, openHour, closeHour, dayClosed, appointments, date]);
-
-  function highlightFor(minutes: number): "none" | "start" | "end" | "range" {
-    if (selectionStart == null) return "none";
-    if (selectionEnd == null) {
-      return minutes === selectionStart ? "start" : "none";
+  const ticks: Tick[] = useMemo(() => {
+    const list: Tick[] = [];
+    for (let h = 0; h < 24; h++) {
+      list.push({
+        minutes: h * 60,
+        kind: "hour",
+        hourLabel: String(h).padStart(2, "0"),
+      });
+      list.push({ minutes: h * 60 + 30, kind: "half" });
     }
-    // End is exclusive: 10:00→16:30 covers halves [10:00 … 16:00], not 16:30.
-    const start = Math.min(selectionStart, selectionEnd);
-    const end = Math.max(selectionStart, selectionEnd);
-    if (end <= start) return minutes === start ? "start" : "none";
+    return list;
+  }, []);
 
-    const lastIncluded = end - 30;
-    if (minutes < start || minutes >= end) return "none";
-    if (minutes === start) return "start";
-    if (minutes === lastIncluded) return "end";
-    return "range";
+  const kindsByMinutes = useMemo(() => {
+    const map = new Map<number, SlotKind>();
+    for (const t of ticks) {
+      const hour = Math.floor(t.minutes / 60);
+      const open = isHourOpen(hour, openHour, closeHour, dayClosed);
+      map.set(t.minutes, halfSlotKind(appointments, date, t.minutes, open));
+    }
+    return map;
+  }, [ticks, openHour, closeHour, dayClosed, appointments, date]);
+
+  const selStart =
+    selectionStart != null && selectionEnd != null
+      ? Math.min(selectionStart, selectionEnd)
+      : selectionStart;
+  const selEnd =
+    selectionStart != null && selectionEnd != null
+      ? Math.max(selectionStart, selectionEnd)
+      : null;
+
+  function tickInSelection(minutes: number) {
+    if (selStart == null) return false;
+    if (selEnd == null) return minutes === selStart;
+    return minutes >= selStart && minutes <= selEnd;
   }
 
-  function tipFor(kind: SlotKind, tip: string) {
-    if (kind === "closed") return labels.closed || "Clinic closed";
-    if (kind === "free") return labels.free;
-    return `${labels.occupied}: ${tip}`;
+  function segmentInSelection(segStart: number) {
+    if (selStart == null || selEnd == null) return false;
+    // segment [segStart, segStart+30) is inside [selStart, selEnd)
+    return segStart >= selStart && segStart + 30 <= selEnd;
   }
+
+  function segmentBaseColor(segStart: number) {
+    const kind = kindsByMinutes.get(segStart) || "free";
+    if (kind === "closed") return COLOR.closedSeg;
+    if (kind === "booked") return COLOR.bookedSeg;
+    return COLOR.freeSeg;
+  }
+
+  const tall = orientation === "horizontal" ? 36 : 52;
 
   return (
     <div
@@ -213,95 +221,121 @@ export function DayHourTimetable({
       <div style={{ overflowX: "auto", width: "100%" }}>
         <div
           style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(24, minmax(27px, 1fr))",
-            gap: 2,
+            display: "flex",
+            alignItems: "flex-end",
             width: "100%",
-            maxWidth: "100%",
-            minWidth: 730,
-            minHeight: orientation === "horizontal" ? 42 : 66,
+            minWidth: 720,
+            height: tall + 22,
+            paddingTop: 4,
           }}
           role={selectable ? "group" : "img"}
           aria-label={labels.timetable}
         >
-          {columns.map(({ hour, left, right }) => {
-            const leftHl = highlightFor(left.minutes);
-            const rightHl = highlightFor(right.minutes);
-            const hourActive = leftHl !== "none" || rightHl !== "none";
+          {ticks.map((tick, i) => {
+            const kind = kindsByMinutes.get(tick.minutes) || "free";
+            const clickable = selectable && kind === "free";
+            const selected = tickInSelection(tick.minutes);
+            const isHour = tick.kind === "hour";
+            const tickH = isHour ? tall : Math.round(tall * 0.45);
+            const tickW = isHour ? 3 : 2;
+            const next = ticks[i + 1];
+
             return (
               <div
-                key={hour}
+                key={tick.minutes}
                 style={{
                   display: "flex",
-                  flexDirection: "column",
-                  alignItems: "stretch",
-                  gap: 4,
-                  minWidth: 0,
+                  alignItems: "flex-end",
+                  flex: isHour ? "0 0 auto" : "1 1 0",
+                  minWidth: isHour ? 0 : 8,
+                  height: "100%",
                 }}
               >
                 <div
                   style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    flex: 1,
-                    minHeight: orientation === "horizontal" ? 42 : 66,
-                    border: hourActive
-                      ? "2px solid var(--accent-ink)"
-                      : "1px solid rgba(28, 27, 25, 0.18)",
-                    borderRadius: 4,
-                    overflow: "hidden",
-                    background: "transparent",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "flex-end",
+                    height: "100%",
+                    flex: "0 0 auto",
+                    position: "relative",
+                    zIndex: 1,
                   }}
                 >
-                  {([left, right] as const).map((half, idx) => {
-                    const clickable = selectable && half.kind === "free";
-                    const highlight = highlightFor(half.minutes);
-                    const label = slotLabel(half.minutes);
-                    return (
-                      <button
-                        key={half.minutes}
-                        type="button"
-                        disabled={!clickable}
-                        title={`${label} — ${tipFor(half.kind, half.tip)}${
-                          clickable
+                  <button
+                    type="button"
+                    disabled={!clickable}
+                    title={`${slotLabel(tick.minutes)}${
+                      kind === "booked"
+                        ? ` — ${labels.occupied}`
+                        : kind === "closed"
+                          ? ` — ${labels.closed || "closed"}`
+                          : clickable
                             ? " · click to select"
-                            : selectable && half.kind !== "free"
-                              ? " · unavailable"
-                              : ""
-                        }`}
-                        onClick={() => {
-                          if (clickable) onSlotSelect?.(half.minutes);
-                        }}
-                        style={{
-                          minWidth: 0,
-                          border: "none",
-                          borderRight:
-                            idx === 0 ? "1px solid rgba(28, 27, 25, 0.35)" : "none",
-                          borderRadius: 0,
-                          background: cellBg(half.kind, highlight),
-                          cursor: clickable ? "pointer" : "not-allowed",
-                          opacity: !clickable && selectable && half.kind !== "free" ? 0.85 : 1,
-                          padding: 0,
-                          appearance: "none",
-                        }}
-                      />
-                    );
-                  })}
+                            : ""
+                    }`}
+                    onClick={() => {
+                      if (clickable) onSlotSelect?.(tick.minutes);
+                    }}
+                    style={{
+                      width: tickW + (clickable || selected ? 4 : 0),
+                      minWidth: tickW,
+                      height: tickH,
+                      padding: 0,
+                      margin: 0,
+                      border: "none",
+                      borderRadius: 1,
+                      background: selected
+                        ? COLOR.tickSelected
+                        : !clickable && selectable
+                          ? COLOR.tickDisabled
+                          : isHour
+                            ? COLOR.tickHour
+                            : COLOR.tickHalf,
+                      cursor: clickable ? "pointer" : selectable ? "not-allowed" : "default",
+                      appearance: "none",
+                      boxShadow: selected ? "0 0 0 2px rgba(196,92,92,0.25)" : undefined,
+                    }}
+                  />
+                  {isHour ? (
+                    <span
+                      style={{
+                        fontSize: "0.62rem",
+                        lineHeight: 1,
+                        marginTop: 6,
+                        color: selected ? COLOR.tickSelected : "rgba(107, 101, 96, 0.65)",
+                        fontWeight: selected ? 700 : 500,
+                        fontVariantNumeric: "tabular-nums",
+                      }}
+                    >
+                      {tick.hourLabel}
+                    </span>
+                  ) : (
+                    <span style={{ height: 14, marginTop: 6 }} />
+                  )}
                 </div>
-                <span
-                  style={{
-                    fontSize: "0.62rem",
-                    lineHeight: 1,
-                    textAlign: "center",
-                    color: hourActive
-                      ? "var(--accent-ink)"
-                      : "rgba(107, 101, 96, 0.55)",
-                    fontWeight: hourActive ? 700 : 500,
-                    fontVariantNumeric: "tabular-nums",
-                  }}
-                >
-                  {String(hour).padStart(2, "0")}
-                </span>
+
+                {next ? (
+                  <div
+                    style={{
+                      flex: "1 1 0",
+                      minWidth: 4,
+                      height: Math.round(tall * 0.55),
+                      marginBottom: 14,
+                      alignSelf: "flex-end",
+                      background: segmentInSelection(tick.minutes)
+                        ? COLOR.selectedSeg
+                        : segmentBaseColor(tick.minutes),
+                      borderRadius: 1,
+                    }}
+                    title={
+                      segmentInSelection(tick.minutes)
+                        ? `${slotLabel(tick.minutes)} – ${slotLabel(next.minutes)}`
+                        : undefined
+                    }
+                  />
+                ) : null}
               </div>
             );
           })}
