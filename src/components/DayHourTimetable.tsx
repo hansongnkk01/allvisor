@@ -214,12 +214,12 @@ export function DayHourTimetable({
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(24, minmax(14px, 1fr))",
+            gridTemplateColumns: "repeat(24, minmax(16px, 1fr))",
             gap: 2,
             width: "100%",
-            maxWidth: "50%",
-            minWidth: 360,
-            minHeight: orientation === "horizontal" ? 28 : 40,
+            maxWidth: "60%",
+            minWidth: 430,
+            minHeight: orientation === "horizontal" ? 42 : 66,
           }}
           role={selectable ? "group" : "img"}
           aria-label={labels.timetable}
@@ -244,7 +244,7 @@ export function DayHourTimetable({
                     display: "grid",
                     gridTemplateColumns: "1fr 1fr",
                     flex: 1,
-                    minHeight: orientation === "horizontal" ? 22 : 36,
+                    minHeight: orientation === "horizontal" ? 42 : 66,
                     border: hourActive
                       ? "2px solid var(--accent-ink)"
                       : "1px solid rgba(28, 27, 25, 0.18)",
