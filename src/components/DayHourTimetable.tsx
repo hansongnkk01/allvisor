@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { format } from "date-fns";
 import { PatientName } from "@/components/PatientName";
+import { getMyHolidayOn, holidayLabel } from "@/lib/my-holidays";
 
 type SlotAppt = {
   id: string;
@@ -12,18 +13,57 @@ type SlotAppt = {
   customers?: { name: string; risk_level?: "high" | "medium" | "low" | null } | null;
 };
 
+export type TimetableHours = {
+  openHour?: number; // inclusive 0-23
+  closeHour?: number; // inclusive last displayed hour 0-23
+  closedWeekdays?: number[]; // 0=Sun .. 6=Sat (JS getDay)
+  locale?: string;
+};
+
+function buildHours(openHour: number, closeHour: number) {
+  const open = Math.min(23, Math.max(0, openHour));
+  const close = Math.min(23, Math.max(0, closeHour));
+  if (close < open) {
+    // overnight shift: open..23 then 0..close
+    const hours: number[] = [];
+    for (let h = open; h <= 23; h++) hours.push(h);
+    for (let h = 0; h <= close; h++) hours.push(h);
+    return hours;
+  }
+  const hours: number[] = [];
+  for (let h = open; h <= close; h++) hours.push(h);
+  return hours;
+}
+
 export function DayHourTimetable({
   date,
   appointments,
   labels,
   orientation = "vertical",
+  hoursConfig,
 }: {
   date: Date;
   appointments: SlotAppt[];
-  labels: { occupied: string; free: string; timetable: string };
+  labels: {
+    occupied: string;
+    free: string;
+    timetable: string;
+    closed?: string;
+    publicHoliday?: string;
+  };
   orientation?: "vertical" | "horizontal";
+  hoursConfig?: TimetableHours;
 }) {
-  const hours = useMemo(() => Array.from({ length: 12 }, (_, i) => i + 8), []);
+  const openHour = hoursConfig?.openHour ?? 0;
+  const closeHour = hoursConfig?.closeHour ?? 23;
+  const closedWeekdays = hoursConfig?.closedWeekdays || [];
+  const locale = hoursConfig?.locale || "ms";
+
+  const hours = useMemo(() => buildHours(openHour, closeHour), [openHour, closeHour]);
+
+  const weekdayClosed = closedWeekdays.includes(date.getDay());
+  const holiday = getMyHolidayOn(date, locale);
+  const dayClosed = weekdayClosed;
 
   const byHour = useMemo(() => {
     const map = new Map<number, SlotAppt[]>();
@@ -37,12 +77,41 @@ export function DayHourTimetable({
   }, [appointments]);
 
   return (
-    <div className="surface" style={{ padding: "1rem", boxShadow: orientation === "horizontal" ? undefined : "none" }}>
-      <div className="row" style={{ justifyContent: "space-between", marginBottom: 8 }}>
+    <div
+      className="surface"
+      style={{
+        padding: "1rem",
+        boxShadow: orientation === "horizontal" ? undefined : "none",
+        background: holiday
+          ? "rgba(220, 38, 38, 0.06)"
+          : dayClosed
+            ? "rgba(107, 101, 96, 0.08)"
+            : undefined,
+      }}
+    >
+      <div className="row" style={{ justifyContent: "space-between", marginBottom: 8, gap: 8 }}>
         <strong>
           {labels.timetable} · {format(date, "EEE d MMM")}
         </strong>
+        <div className="row" style={{ gap: 6 }}>
+          {holiday ? (
+            <span className="badge" style={{ background: "rgba(220,38,38,0.15)" }}>
+              {(labels.publicHoliday || "Public holiday") +
+                ": " +
+                holidayLabel(holiday, locale)}
+            </span>
+          ) : null}
+          {dayClosed ? (
+            <span className="badge">{labels.closed || "Clinic closed"}</span>
+          ) : null}
+        </div>
       </div>
+
+      {dayClosed && !appointments.length ? (
+        <p className="muted" style={{ margin: 0 }}>
+          {labels.closed || "Clinic closed today (weekly off)."}
+        </p>
+      ) : null}
 
       {orientation === "horizontal" ? (
         <div
@@ -51,6 +120,7 @@ export function DayHourTimetable({
             gap: 8,
             overflowX: "auto",
             paddingBottom: 4,
+            opacity: dayClosed ? 0.55 : 1,
           }}
         >
           {hours.map((hour) => {
@@ -58,7 +128,7 @@ export function DayHourTimetable({
             const occupied = items.length > 0;
             return (
               <div
-                key={hour}
+                key={`${hour}-${items.length}`}
                 style={{
                   minWidth: 88,
                   flex: "0 0 auto",
@@ -111,7 +181,7 @@ export function DayHourTimetable({
           })}
         </div>
       ) : (
-        <div className="stack" style={{ gap: 6 }}>
+        <div className="stack" style={{ gap: 6, opacity: dayClosed ? 0.55 : 1 }}>
           {hours.map((hour) => {
             const items = byHour.get(hour) || [];
             const occupied = items.length > 0;

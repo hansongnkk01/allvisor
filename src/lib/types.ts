@@ -47,6 +47,9 @@ export interface Organization {
   subscription_status: SubscriptionStatus;
   trial_ends_at: string | null;
   admin_password_hash?: string | null;
+  clinic_open_hour?: number;
+  clinic_close_hour?: number;
+  closed_weekdays?: number[];
   created_at: string;
 }
 

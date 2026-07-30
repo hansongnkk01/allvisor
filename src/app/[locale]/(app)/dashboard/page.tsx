@@ -213,10 +213,18 @@ export default async function DashboardPage({
           date={now}
           appointments={todayAppts}
           orientation="horizontal"
+          hoursConfig={{
+            openHour: ctx.organization.clinic_open_hour ?? 0,
+            closeHour: ctx.organization.clinic_close_hour ?? 23,
+            closedWeekdays: ctx.organization.closed_weekdays || [],
+            locale,
+          }}
           labels={{
             timetable: t("miniTimetable"),
             occupied: t("occupied"),
             free: t("free"),
+            closed: t("clinicClosed"),
+            publicHoliday: t("publicHoliday"),
           }}
         />
       ) : null}

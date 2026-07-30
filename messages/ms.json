@@ -69,7 +69,9 @@
     "aiTitle": "Tips prestasi AI",
     "miniTimetable": "Jadual hari ini",
     "occupied": "Ditempah",
-    "free": "Kosong"
+    "free": "Kosong",
+    "clinicClosed": "Klinik tutup",
+    "publicHoliday": "Cuti umum"
   },
   "Customers": {
     "title": "Pelanggan",
@@ -119,6 +121,8 @@
     "timetable": "Jadual jam",
     "occupied": "Diambil",
     "free": "Kosong",
+    "clinicClosed": "Klinik tutup",
+    "publicHoliday": "Cuti umum",
     "activity": "Aktiviti temujanji"
   },
   "Inventory": {
@@ -265,7 +269,21 @@
     "rejectLink": "Tolak",
     "thisClinic": "klinik ini",
     "activity": "Log aktiviti admin & supervisor",
-    "activityHint": "Jejak tindakan staf yang boleh dilihat admin dan supervisor."
+    "activityHint": "Jejak tindakan staf yang boleh dilihat admin dan supervisor.",
+    "clinicHoursTitle": "Waktu operasi & cuti mingguan",
+    "clinicHoursHint": "Kawalan jam yang dipapar pada jadual Dashboard dan Temujanji. Jam terakhir = waktu tutup.",
+    "openHour": "Buka pada",
+    "closeHour": "Tutup pada (jam terakhir dipapar)",
+    "weeklyOff": "Hari cuti mingguan",
+    "mon": "Isn",
+    "tue": "Sel",
+    "wed": "Rab",
+    "thu": "Kha",
+    "fri": "Jum",
+    "sat": "Sab",
+    "sun": "Aha",
+    "holidayNote": "Cuti umum Malaysia digariskan secara automatik pada jadual supaya jururawat boleh semak terus.",
+    "saveHours": "Simpan waktu operasi"
   },
   "Accounting": {
     "title": "Perakaunan klinik",

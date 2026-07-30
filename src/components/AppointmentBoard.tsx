@@ -14,7 +14,7 @@ import {
   startOfWeek,
 } from "date-fns";
 import { updateAppointmentStatusAction, deleteAppointmentAction } from "@/app/actions";
-import { DayHourTimetable } from "@/components/DayHourTimetable";
+import { DayHourTimetable, type TimetableHours } from "@/components/DayHourTimetable";
 import { PatientName } from "@/components/PatientName";
 import type { AppointmentStatus } from "@/lib/types";
 
@@ -40,6 +40,7 @@ const STATUSES: AppointmentStatus[] = [
 export function AppointmentBoard({
   appointments,
   labels,
+  hoursConfig,
 }: {
   appointments: Appt[];
   labels: {
@@ -57,7 +58,10 @@ export function AppointmentBoard({
     timetable: string;
     occupied: string;
     free: string;
+    closed?: string;
+    publicHoliday?: string;
   };
+  hoursConfig?: TimetableHours;
 }) {
   const router = useRouter();
   const [view, setView] = useState<"calendar" | "list">("calendar");
@@ -200,10 +204,13 @@ export function AppointmentBoard({
             <DayHourTimetable
               date={selectedDay}
               appointments={dayAppts}
+              hoursConfig={hoursConfig}
               labels={{
                 timetable: labels.timetable,
                 occupied: labels.occupied,
                 free: labels.free,
+                closed: labels.closed,
+                publicHoliday: labels.publicHoliday,
               }}
             />
             <div className="surface" style={{ padding: "1rem" }}>

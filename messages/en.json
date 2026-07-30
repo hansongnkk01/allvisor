@@ -69,7 +69,9 @@
     "aiTitle": "AI performance tips",
     "miniTimetable": "Today timetable",
     "occupied": "Booked",
-    "free": "Free"
+    "free": "Free",
+    "clinicClosed": "Clinic closed",
+    "publicHoliday": "Public holiday"
   },
   "Customers": {
     "title": "Customers",
@@ -119,6 +121,8 @@
     "timetable": "Hour timetable",
     "occupied": "Occupied",
     "free": "Free",
+    "clinicClosed": "Clinic closed",
+    "publicHoliday": "Public holiday",
     "activity": "Appointment activity"
   },
   "Invoices": {
@@ -238,7 +242,21 @@
     "rejectLink": "Reject",
     "thisClinic": "this clinic",
     "activity": "Admin & supervisor activity log",
-    "activityHint": "Tracks staff actions visible to admins and supervisors."
+    "activityHint": "Tracks staff actions visible to admins and supervisors.",
+    "clinicHoursTitle": "Clinic hours & weekly off",
+    "clinicHoursHint": "Controls what hours appear on Dashboard and Appointments timetables. Last hour shown = closing hour.",
+    "openHour": "Opens at",
+    "closeHour": "Closes at (last hour shown)",
+    "weeklyOff": "Weekly off days",
+    "mon": "Mon",
+    "tue": "Tue",
+    "wed": "Wed",
+    "thu": "Thu",
+    "fri": "Fri",
+    "sat": "Sat",
+    "sun": "Sun",
+    "holidayNote": "Malaysian public holidays are auto-highlighted on the timetable for nurses to check.",
+    "saveHours": "Save clinic hours"
   },
   "Inventory": {
     "title": "Inventory",

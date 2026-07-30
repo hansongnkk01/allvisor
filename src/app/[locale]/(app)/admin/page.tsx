@@ -18,6 +18,7 @@ import {
   requestBranchLinkAction,
   respondBranchLinkAction,
   unlockAdminAction,
+  updateClinicHoursAction,
   upgradePlanAction,
   upsertBranchServiceCategoryAction,
   upsertBranchServiceItemAction,
@@ -280,6 +281,81 @@ export default async function AdminPage({
               />
               <button type="submit" className="btn btn-soft">
                 {t("changePassword")}
+              </button>
+            </ActionForm>
+          </div>
+
+          <div className="surface" style={{ padding: "1.25rem" }}>
+            <h3 style={{ marginTop: 0 }}>{t("clinicHoursTitle")}</h3>
+            <p className="muted">{t("clinicHoursHint")}</p>
+            <ActionForm action={updateClinicHoursAction} className="stack">
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+                  gap: "0.75rem",
+                }}
+              >
+                <div className="field">
+                  <label>{t("openHour")}</label>
+                  <select
+                    name="clinic_open_hour"
+                    className="select"
+                    defaultValue={String(org.clinic_open_hour ?? 0)}
+                  >
+                    {Array.from({ length: 24 }, (_, h) => (
+                      <option key={h} value={h}>
+                        {String(h).padStart(2, "0")}:00
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="field">
+                  <label>{t("closeHour")}</label>
+                  <select
+                    name="clinic_close_hour"
+                    className="select"
+                    defaultValue={String(org.clinic_close_hour ?? 23)}
+                  >
+                    {Array.from({ length: 24 }, (_, h) => (
+                      <option key={h} value={h}>
+                        {String(h).padStart(2, "0")}:00
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <strong style={{ fontSize: "0.9rem" }}>{t("weeklyOff")}</strong>
+                <div className="row" style={{ marginTop: 8 }}>
+                  {(
+                    [
+                      [1, t("mon")],
+                      [2, t("tue")],
+                      [3, t("wed")],
+                      [4, t("thu")],
+                      [5, t("fri")],
+                      [6, t("sat")],
+                      [0, t("sun")],
+                    ] as const
+                  ).map(([day, label]) => (
+                    <label key={day} className="row" style={{ gap: 6 }}>
+                      <input
+                        type="checkbox"
+                        name="closed_weekdays"
+                        value={day}
+                        defaultChecked={(org.closed_weekdays || []).includes(day)}
+                      />
+                      <span>{label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <p className="muted" style={{ fontSize: "0.85rem", margin: 0 }}>
+                {t("holidayNote")}
+              </p>
+              <button type="submit" className="btn btn-primary">
+                {t("saveHours")}
               </button>
             </ActionForm>
           </div>

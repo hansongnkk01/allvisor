@@ -132,25 +132,33 @@ export default async function AppointmentsPage({
               status: a.status as AppointmentStatus,
               notes: a.notes,
               reminder_sent: a.reminder_sent,
-            customers: a.customers,
-          }))}
-          labels={{
-            calendar: t("calendar"),
-            list: t("list"),
-            today: t("today"),
-            patient: t("patient"),
-            status: t("status"),
-            notes: t("notes"),
-            reminder: t("reminder"),
-            delete: t("delete"),
-            empty: t("empty"),
-            prev: t("prev"),
-            next: t("next"),
-            timetable: t("timetable"),
-            occupied: t("occupied"),
-            free: t("free"),
-          }}
-        />
+              customers: a.customers,
+            }))}
+            hoursConfig={{
+              openHour: ctx.organization.clinic_open_hour ?? 0,
+              closeHour: ctx.organization.clinic_close_hour ?? 23,
+              closedWeekdays: ctx.organization.closed_weekdays || [],
+              locale,
+            }}
+            labels={{
+              calendar: t("calendar"),
+              list: t("list"),
+              today: t("today"),
+              patient: t("patient"),
+              status: t("status"),
+              notes: t("notes"),
+              reminder: t("reminder"),
+              delete: t("delete"),
+              empty: t("empty"),
+              prev: t("prev"),
+              next: t("next"),
+              timetable: t("timetable"),
+              occupied: t("occupied"),
+              free: t("free"),
+              closed: t("clinicClosed"),
+              publicHoliday: t("publicHoliday"),
+            }}
+          />
         </div>
       </div>
 

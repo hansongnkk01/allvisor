@@ -1524,8 +1524,56 @@ export async function getDefaultAdminPasswordHint() {
   return defaultAdminPassword(ctx.organization.name, ctx.organization.created_at);
 }
 
+export async function updateClinicHoursAction(formData: FormData) {
+  const { supabase, organization, membership } = await requireMember();
+  if (!canManageStaff(membership.role) && membership.role !== "supervisor") {
+    return { error: "Forbidden" };
+  }
+  const unlocked = await isSectionUnlocked("admin");
+  if (!unlocked) return { error: "Admin unlock required" };
+
+  const openHour = Number(formData.get("clinic_open_hour") ?? 0);
+  const closeHour = Number(formData.get("clinic_close_hour") ?? 23);
+  const closedRaw = formData.getAll("closed_weekdays").map((v) => Number(v));
+  const closedWeekdays = closedRaw.filter((n) => n >= 0 && n <= 6);
+
+  if (
+    Number.isNaN(openHour) ||
+    Number.isNaN(closeHour) ||
+    openHour < 0 ||
+    openHour > 23 ||
+    closeHour < 0 ||
+    closeHour > 23
+  ) {
+    return { error: "Invalid hours" };
+  }
+
+  const { error } = await supabase
+    .from("organizations")
+    .update({
+      clinic_open_hour: openHour,
+      clinic_close_hour: closeHour,
+      closed_weekdays: closedWeekdays,
+    })
+    .eq("id", organization.id);
+
+  if (error) return { error: error.message };
+
+  await logActivity({
+    action: "admin.clinic_hours",
+    summary: `Updated clinic hours ${String(openHour).padStart(2, "0")}:00–${String(closeHour).padStart(2, "0")}:00`,
+    entityType: "organization",
+    entityId: organization.id,
+  });
+
+  revalidateApp("/admin", "/dashboard", "/appointments");
+  revalidateAppLayout();
+  return { success: true };
+}
+
 export async function signOutAction() {
   const supabase = await createClient();
   await supabase.auth.signOut();
-  revalidateApp("/dashboard", "/login");
+  const { redirect } = await import("next/navigation");
+  redirect("/");
 }
