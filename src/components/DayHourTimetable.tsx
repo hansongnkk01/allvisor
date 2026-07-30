@@ -153,13 +153,16 @@ export function DayHourTimetable({
     if (selectionEnd == null) {
       return minutes === selectionStart ? "start" : "none";
     }
-    const lo = Math.min(selectionStart, selectionEnd);
-    const hi = Math.max(selectionStart, selectionEnd);
-    if (minutes === selectionStart) return "start";
-    if (minutes === selectionEnd) return "end";
-    // range covers slots strictly between start and end (end is exclusive boundary)
-    if (minutes > lo && minutes < hi) return "range";
-    return "none";
+    // End is exclusive: 10:00→16:30 covers halves [10:00 … 16:00], not 16:30.
+    const start = Math.min(selectionStart, selectionEnd);
+    const end = Math.max(selectionStart, selectionEnd);
+    if (end <= start) return minutes === start ? "start" : "none";
+
+    const lastIncluded = end - 30;
+    if (minutes < start || minutes >= end) return "none";
+    if (minutes === start) return "start";
+    if (minutes === lastIncluded) return "end";
+    return "range";
   }
 
   function tipFor(kind: SlotKind, tip: string) {
@@ -211,11 +214,12 @@ export function DayHourTimetable({
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(24, minmax(28px, 1fr))",
-            gap: 3,
+            gridTemplateColumns: "repeat(24, minmax(14px, 1fr))",
+            gap: 2,
             width: "100%",
-            minWidth: 680,
-            minHeight: orientation === "horizontal" ? 36 : 48,
+            maxWidth: "50%",
+            minWidth: 360,
+            minHeight: orientation === "horizontal" ? 28 : 40,
           }}
           role={selectable ? "group" : "img"}
           aria-label={labels.timetable}
@@ -240,7 +244,7 @@ export function DayHourTimetable({
                     display: "grid",
                     gridTemplateColumns: "1fr 1fr",
                     flex: 1,
-                    minHeight: orientation === "horizontal" ? 28 : 44,
+                    minHeight: orientation === "horizontal" ? 22 : 36,
                     border: hourActive
                       ? "2px solid var(--accent-ink)"
                       : "1px solid rgba(28, 27, 25, 0.18)",
