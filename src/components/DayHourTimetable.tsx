@@ -25,11 +25,11 @@ const COLOR = {
   freeSeg: "#c5e4de", // light green
   bookedSeg: "#f0c9c4",
   closedSeg: "#ddd8d2",
-  selectedSeg: "rgba(239, 68, 68, 0.28)", // light red
-  tickHour: "#4a4540",
-  tickHalf: "#8a847c",
+  selectedSeg: "rgba(239, 68, 68, 0.28)", // light red selection fill
+  tickFree: "#2f9e8a", // green lines when free
+  tickBooked: "#e07070", // red lines when occupied
+  tickClosed: "#b8b2aa",
   tickSelected: "#c45c5c",
-  tickDisabled: "#cfc9c2",
 };
 
 /** Minutes from midnight for a half-hour slot: 0, 30, 60, … 1410 */
@@ -170,6 +170,14 @@ export function DayHourTimetable({
     const h = opts.tall ? opts.trackH : opts.halfH;
     const w = opts.tall ? 3 : 2;
 
+    const tickColor = selected
+      ? COLOR.tickSelected
+      : kind === "booked"
+        ? COLOR.tickBooked
+        : kind === "closed"
+          ? COLOR.tickClosed
+          : COLOR.tickFree;
+
     return (
       <button
         type="button"
@@ -193,16 +201,11 @@ export function DayHourTimetable({
           margin: 0,
           border: "none",
           borderRadius: 1,
-          background: selected
-            ? COLOR.tickSelected
-            : !clickable && selectable
-              ? COLOR.tickDisabled
-              : opts.tall
-                ? COLOR.tickHour
-                : COLOR.tickHalf,
+          background: tickColor,
           cursor: clickable ? "pointer" : selectable ? "not-allowed" : "default",
           appearance: "none",
           boxShadow: selected ? "0 0 0 2px rgba(196,92,92,0.25)" : undefined,
+          opacity: kind === "closed" ? 0.75 : 1,
         }}
       />
     );
