@@ -1215,7 +1215,9 @@ export async function createIncomeAction(formData: FormData) {
 
 export async function updateOrgSettingsAction(formData: FormData) {
   const { supabase, organization, membership } = await requireMember();
-  if (membership.role === "staff") return { error: "Forbidden" };
+  if (!canAccessSensitive(membership.role)) {
+    return { error: "Forbidden — only owner/admin/supervisor/manager can update settings." };
+  }
 
   const patch: Record<string, unknown> = {
     name: String(formData.get("name") || organization.name),
@@ -1237,18 +1239,28 @@ export async function updateOrgSettingsAction(formData: FormData) {
       : null;
   }
 
-  const { data, error } = await supabase
+  // Service role bypasses orgs_update RLS (owner/admin only) so supervisor/manager can save TIN.
+  const admin = await getServiceAdmin();
+  const db = admin ?? supabase;
+
+  const { data, error } = await db
     .from("organizations")
     .update(patch)
     .eq("id", organization.id)
     .select("id")
     .maybeSingle();
 
-  if (error) return { error: error.message };
+  if (error) {
+    if (/lhdn_brn|lhdn_intermediary/i.test(error.message)) {
+      return {
+        error:
+          "Database missing LHDN columns — run migration 012_lhdn_intermediary.sql in Supabase SQL Editor.",
+      };
+    }
+    return { error: error.message };
+  }
   if (!data) {
-    return {
-      error: "Could not save — only owner/admin can update organization settings (including TIN).",
-    };
+    return { error: "Could not save organization settings. Try again or contact support." };
   }
   revalidateApp("/settings", "/lhdn");
   revalidateAppLayout();
