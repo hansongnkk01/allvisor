@@ -299,7 +299,25 @@ export function InvoicesWorkspace({
                     ? "invoice-row-paid"
                     : "invoice-row-unpaid";
                 return (
-                  <tr key={inv.id} className={rowClass}>
+                  <tr
+                    key={inv.id}
+                    className={`${rowClass} invoice-row-clickable`}
+                    style={{ cursor: "pointer" }}
+                    onClick={() => {
+                      setPreviewId(inv.id);
+                      router.replace(`/invoices?preview=${inv.id}`);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setPreviewId(inv.id);
+                        router.replace(`/invoices?preview=${inv.id}`);
+                      }
+                    }}
+                    tabIndex={0}
+                    role="button"
+                    aria-label={`Open invoice ${inv.invoice_number}`}
+                  >
                     <td>
                       <div>{inv.title || inv.invoice_number}</div>
                       <div className="muted" style={{ fontSize: "0.8rem" }}>
@@ -322,30 +340,19 @@ export function InvoicesWorkspace({
                     <td>{formatCurrency(Number(inv.total))}</td>
                     <td>{formatCurrency(Number(inv.amount_paid))}</td>
                     <td>{formatDateTime(inv.created_at)}</td>
-                    <td>
-                      <div className="row" style={{ gap: "0.35rem" }}>
+                    <td onClick={(e) => e.stopPropagation()}>
+                      {!revoked ? (
                         <button
                           type="button"
-                          className="btn btn-soft"
+                          className="btn btn-delete-soft"
                           style={{ padding: "0.35rem 0.7rem" }}
-                          onClick={() => {
-                            setPreviewId(inv.id);
-                            router.replace(`/invoices?preview=${inv.id}`);
-                          }}
+                          onClick={() => onRevoke(inv.id)}
                         >
-                          {inv.status === "paid" ? labels.viewPrint : labels.view}
+                          {labels.revoke}
                         </button>
-                        {!revoked ? (
-                          <button
-                            type="button"
-                            className="btn btn-delete-soft"
-                            style={{ padding: "0.35rem 0.7rem" }}
-                            onClick={() => onRevoke(inv.id)}
-                          >
-                            {labels.revoke}
-                          </button>
-                        ) : null}
-                      </div>
+                      ) : (
+                        <span className="muted">—</span>
+                      )}
                     </td>
                   </tr>
                 );
