@@ -1749,14 +1749,23 @@ export async function submitInvoiceToLhdnAction(invoiceId: string) {
   if (!invoice) return { error: "Invoice not found" };
 
   const provider = getLhdnProvider();
+  const customer = invoice.customers as {
+    name?: string | null;
+    address?: string | null;
+    phone?: string | null;
+  } | null;
   const result = await provider.submitInvoice({
     invoiceNumber: invoice.invoice_number,
     issueDate: invoice.issue_date,
     supplierTin: organization.tin,
     supplierBrn: organization.lhdn_brn || null,
+    supplierSst: organization.sst_number || "NA",
     supplierName: organization.name,
-    buyerName: invoice.customers?.name || "Walk-in",
+    supplierAddress: organization.address || null,
+    supplierPhone: organization.phone || null,
+    buyerName: customer?.name || "General Public",
     buyerTin: null,
+    buyerAddress: customer?.address || null,
     total: Number(invoice.total),
     taxAmount: Number(invoice.tax_amount),
     lines: (invoice.invoice_lines || []).map(

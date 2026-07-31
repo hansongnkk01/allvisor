@@ -1,4 +1,5 @@
 import type { LhdnInvoicePayload, LhdnProvider, LhdnSubmitResult } from "./types";
+import { buildMyInvoisInvoiceDocument } from "./document";
 import { createHash } from "crypto";
 
 const IDENTITY_URL = {
@@ -108,73 +109,6 @@ async function getAccessToken(
   return json.access_token;
 }
 
-function buildMinimalInvoiceJson(payload: LhdnInvoicePayload) {
-  // Minimal UBL-inspired JSON document for MyInvois.
-  // Production orgs should replace with fully signed UBL once certificates are configured.
-  return {
-    _D: "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2",
-    _A: "urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2",
-    _B: "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2",
-    Invoice: [
-      {
-        ID: [{ _: payload.invoiceNumber }],
-        IssueDate: [{ _: payload.issueDate }],
-        IssueTime: [
-          {
-            _: new Date().toISOString().slice(11, 19) + "Z",
-          },
-        ],
-        InvoiceTypeCode: [{ _: "01" }],
-        DocumentCurrencyCode: [{ _: "MYR" }],
-        AccountingSupplierParty: [
-          {
-            Party: [
-              {
-                PartyLegalEntity: [
-                  {
-                    RegistrationName: [{ _: payload.supplierName }],
-                    CompanyID: [{ _: payload.supplierTin }],
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-        AccountingCustomerParty: [
-          {
-            Party: [
-              {
-                PartyLegalEntity: [
-                  {
-                    RegistrationName: [{ _: payload.buyerName }],
-                    ...(payload.buyerTin
-                      ? { CompanyID: [{ _: payload.buyerTin }] }
-                      : {}),
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-        LegalMonetaryTotal: [
-          {
-            TaxExclusiveAmount: [{ _: payload.total - payload.taxAmount }],
-            TaxInclusiveAmount: [{ _: payload.total }],
-            PayableAmount: [{ _: payload.total }],
-          },
-        ],
-        InvoiceLine: payload.lines.map((line, index) => ({
-          ID: [{ _: String(index + 1) }],
-          InvoicedQuantity: [{ _: line.quantity }],
-          LineExtensionAmount: [{ _: line.lineTotal }],
-          Item: [{ Description: [{ _: line.description }] }],
-          Price: [{ PriceAmount: [{ _: line.unitPrice }] }],
-        })),
-      },
-    ],
-  };
-}
-
 export class MyInvoisLiveProvider implements LhdnProvider {
   constructor(private env: "sandbox" | "production" = "sandbox") {}
 
@@ -195,7 +129,7 @@ export class MyInvoisLiveProvider implements LhdnProvider {
           : undefined;
 
       const token = await getAccessToken(this.env, onBehalfOf);
-      const documentObj = buildMinimalInvoiceJson(payload);
+      const documentObj = buildMyInvoisInvoiceDocument(payload);
       const documentRaw = JSON.stringify(documentObj);
       const documentBase64 = Buffer.from(documentRaw, "utf8").toString("base64");
       const documentHash = createHash("sha256").update(documentRaw).digest("hex");
