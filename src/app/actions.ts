@@ -1804,7 +1804,14 @@ export async function submitInvoiceToLhdnAction(invoiceId: string) {
   revalidateApp("/lhdn", "/invoices", "/staff");
   return result.success
     ? { success: true, uuid: result.uuid }
-    : { error: result.error || "LHDN submission failed" };
+    : {
+        error:
+          typeof result.error === "string"
+            ? result.error
+            : result.error
+              ? JSON.stringify(result.error)
+              : "LHDN submission failed",
+      };
 }
 
 /**

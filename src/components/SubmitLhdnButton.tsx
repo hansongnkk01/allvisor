@@ -4,6 +4,16 @@ import { useState, useTransition } from "react";
 import { useRouter } from "@/i18n/navigation";
 import { submitInvoiceToLhdnAction } from "@/app/actions";
 
+function asMessage(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (value == null) return "Unknown error";
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return "Submit failed";
+  }
+}
+
 export function SubmitLhdnButton({
   invoiceId,
   label,
@@ -49,14 +59,14 @@ export function SubmitLhdnButton({
             try {
               const result = await submitInvoiceToLhdnAction(invoiceId);
               if (result && "error" in result && result.error) {
-                setError(result.error);
+                setError(asMessage(result.error));
                 return;
               }
-              setOk(
-                result && "uuid" in result && result.uuid
-                  ? `Submitted (UUID: ${result.uuid})`
-                  : "Submitted to LHDN"
-              );
+              const uuid =
+                result && "uuid" in result && typeof result.uuid === "string"
+                  ? result.uuid
+                  : null;
+              setOk(uuid ? `Submitted (UUID: ${uuid})` : "Submitted to LHDN");
               router.refresh();
             } catch (err) {
               setError(err instanceof Error ? err.message : "Submit failed");
@@ -67,7 +77,15 @@ export function SubmitLhdnButton({
         {pending ? "Submitting…" : label}
       </button>
       {error ? (
-        <p style={{ color: "var(--danger)", margin: "0.5rem 0 0", fontSize: "0.9rem" }}>
+        <p
+          style={{
+            color: "var(--danger)",
+            margin: "0.5rem 0 0",
+            fontSize: "0.9rem",
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-word",
+          }}
+        >
           {error}
         </p>
       ) : null}

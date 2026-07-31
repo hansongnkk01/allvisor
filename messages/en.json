@@ -407,6 +407,7 @@
     "uuid": "UUID",
     "lockedPlan": "Your plan does not include e-Invoice. Upgrade in Admin to unlock.",
     "empty": "No submissions yet.",
+    "detail": "Detail",
     "liveConnected": "Live MyInvois credentials detected (taxpayer mode).",
     "intermediaryConnected": "Intermediary mode: {name} submits on behalf of each shop’s TIN via MyInvois.",
     "demoMode": "Demo mode: set LHDN_CLIENT_ID and LHDN_CLIENT_SECRET in env (platform intermediary credentials) to use real MyInvois.",

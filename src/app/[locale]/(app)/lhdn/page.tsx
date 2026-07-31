@@ -165,10 +165,20 @@ export default async function LhdnPage({
                   <th>{t("status")}</th>
                   <th>{t("uuid")}</th>
                   <th>Submitted</th>
+                  <th>{t("detail")}</th>
                 </tr>
               </thead>
               <tbody>
-                {(submissions || []).map((s) => (
+                {(submissions || []).map((s) => {
+                  const resp = (s.response || {}) as Record<string, unknown>;
+                  const detail =
+                    (typeof resp.message === "string" && resp.message) ||
+                    (typeof resp.error === "string" && resp.error) ||
+                    (Array.isArray(resp.rejectedDocuments)
+                      ? JSON.stringify(resp.rejectedDocuments).slice(0, 180)
+                      : null) ||
+                    "—";
+                  return (
                   <tr key={s.id}>
                     <td>{s.invoices?.invoice_number || "—"}</td>
                     <td>
@@ -178,11 +188,15 @@ export default async function LhdnPage({
                       {s.uuid || "—"}
                     </td>
                     <td>{s.submitted_at ? formatDateTime(s.submitted_at) : "—"}</td>
+                    <td style={{ fontSize: "0.8rem", maxWidth: 280, wordBreak: "break-word" }}>
+                      {detail}
+                    </td>
                   </tr>
-                ))}
+                  );
+                })}
                 {!submissions?.length ? (
                   <tr>
-                    <td colSpan={4} className="muted">
+                    <td colSpan={5} className="muted">
                       {t("empty")}
                     </td>
                   </tr>

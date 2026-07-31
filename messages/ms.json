@@ -407,6 +407,7 @@
     "uuid": "UUID",
     "lockedPlan": "Pelan anda tidak termasuk e-Invois. Naik taraf di Admin untuk membuka.",
     "empty": "Belum ada penghantaran.",
+    "detail": "Butiran",
     "liveConnected": "Kredensial MyInvois dikesan (mod taxpayer).",
     "intermediaryConnected": "Mod intermediary: {name} hantar bagi pihak TIN setiap kedai melalui MyInvois.",
     "demoMode": "Mod demo: tetapkan LHDN_CLIENT_ID dan LHDN_CLIENT_SECRET dalam env (kredensial intermediary platform) untuk MyInvois sebenar.",

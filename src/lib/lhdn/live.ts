@@ -11,6 +11,41 @@ const API_BASE = {
   production: "https://api.myinvois.hasil.gov.my",
 };
 
+function stringifyErr(value: unknown): string {
+  if (typeof value === "string" && value.trim()) return value;
+  if (value == null) return "";
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return "MyInvois error";
+  }
+}
+
+function extractMyInvoisError(
+  response: Record<string, unknown>,
+  httpStatus?: number
+): string {
+  const rejected = response.rejectedDocuments as
+    | Array<{ error?: unknown; message?: unknown; details?: unknown }>
+    | undefined;
+  if (rejected?.[0]) {
+    const first = rejected[0];
+    return (
+      stringifyErr(first.message) ||
+      stringifyErr(first.error) ||
+      stringifyErr(first.details) ||
+      "Document rejected by MyInvois"
+    );
+  }
+  return (
+    stringifyErr(response.message) ||
+    stringifyErr(response.error) ||
+    stringifyErr(response.title) ||
+    (httpStatus ? `MyInvois submit failed (${httpStatus})` : "MyInvois submit failed")
+  );
+}
+
 function lhdnMode(): "intermediary" | "taxpayer" {
   const mode = (process.env.LHDN_MODE || "intermediary").toLowerCase();
   return mode === "taxpayer" ? "taxpayer" : "intermediary";
@@ -84,6 +119,11 @@ function buildMinimalInvoiceJson(payload: LhdnInvoicePayload) {
       {
         ID: [{ _: payload.invoiceNumber }],
         IssueDate: [{ _: payload.issueDate }],
+        IssueTime: [
+          {
+            _: new Date().toISOString().slice(11, 19) + "Z",
+          },
+        ],
         InvoiceTypeCode: [{ _: "01" }],
         DocumentCurrencyCode: [{ _: "MYR" }],
         AccountingSupplierParty: [
@@ -197,17 +237,29 @@ export class MyInvoisLiveProvider implements LhdnProvider {
             httpStatus: res.status,
             ...response,
           },
-          error:
-            (response.message as string) ||
-            (response.error as string) ||
-            `MyInvois submit failed (${res.status})`,
+          error: extractMyInvoisError(response, res.status),
         };
       }
 
       const accepted = response.acceptedDocuments as
         | Array<{ uuid?: string }>
         | undefined;
+      const rejected = response.rejectedDocuments as unknown[] | undefined;
       const uuid = accepted?.[0]?.uuid;
+
+      if (rejected && rejected.length > 0 && !uuid) {
+        return {
+          success: false,
+          status: "rejected",
+          response: {
+            environment: this.env,
+            mode: lhdnMode(),
+            onBehalfOf: onBehalfOf || null,
+            ...response,
+          },
+          error: extractMyInvoisError(response, res.status),
+        };
+      }
 
       return {
         success: true,
