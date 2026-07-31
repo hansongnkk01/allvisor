@@ -56,6 +56,17 @@ export function buildMyInvoisInvoiceDocument(payload: LhdnInvoicePayload) {
   const buyerCity = (payload.buyerCity || supplierCity).trim();
   const buyerPostcode = (payload.buyerPostcode || supplierPostcode).trim();
   const buyerState = (payload.buyerStateCode || supplierState).trim();
+  const buyerPhoneRaw = (payload.buyerPhone || supplierPhone || "+60123456789").replace(
+    /\s/g,
+    ""
+  );
+  const buyerPhone = buyerPhoneRaw.startsWith("+")
+    ? buyerPhoneRaw
+    : buyerPhoneRaw.startsWith("0")
+      ? `+60${buyerPhoneRaw.slice(1)}`
+      : buyerPhoneRaw.startsWith("60")
+        ? `+${buyerPhoneRaw}`
+        : `+60${buyerPhoneRaw}`;
   const classification = (payload.itemClassification || "022").trim(); // 022 = healthcare services (CLASS)
 
   const taxCategoryId = taxAmount > 0 ? "02" : "06"; // 02 Service Tax / 06 Not Applicable
@@ -108,6 +119,7 @@ export function buildMyInvoisInvoiceDocument(payload: LhdnInvoicePayload) {
         },
       ],
       Price: [{ PriceAmount: money(unitPrice, currency) }],
+      ItemPriceExtension: [{ Amount: money(lineTotal, currency) }],
     };
   });
 
@@ -201,6 +213,7 @@ export function buildMyInvoisInvoiceDocument(payload: LhdnInvoicePayload) {
                   ...idScheme("NA", "SST"),
                   ...idScheme("NA", "TTX"),
                 ],
+                Contact: [{ Telephone: text(buyerPhone) }],
               },
             ],
           },

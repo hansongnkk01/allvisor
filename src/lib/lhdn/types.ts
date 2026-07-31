@@ -26,6 +26,7 @@ export type LhdnInvoicePayload = {
   buyerTin?: string | null;
   buyerBrn?: string | null;
   buyerAddress?: string | null;
+  buyerPhone?: string | null;
   buyerCity?: string | null;
   buyerPostcode?: string | null;
   buyerStateCode?: string | null;

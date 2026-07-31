@@ -1775,6 +1775,7 @@ export async function submitInvoiceToLhdnAction(invoiceId: string) {
     buyerName: customer?.name || "General Public",
     buyerTin: null,
     buyerAddress: customer?.address || null,
+    buyerPhone: customer?.phone || null,
     total: Number(invoice.total),
     taxAmount: Number(invoice.tax_amount),
     lines: (invoice.invoice_lines || []).map(
