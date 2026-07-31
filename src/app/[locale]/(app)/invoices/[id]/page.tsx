@@ -9,6 +9,9 @@ import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
 import { PrintInvoiceButton } from "@/components/PrintInvoiceButton";
 import { InvoiceCostPanel } from "@/components/InvoiceCostPanel";
 import { RecordPaymentForm } from "@/components/RecordPaymentForm";
+import { SubmitLhdnButton } from "@/components/SubmitLhdnButton";
+import { canUseLhdn } from "@/lib/subscription";
+import { canAccessSensitive } from "@/lib/roles";
 import type { InvoiceLineKind, InvoiceStatus } from "@/lib/types";
 
 export default async function InvoiceDetailPage({
@@ -283,6 +286,26 @@ export default async function InvoiceDetailPage({
             balanceDue: t("balanceDue"),
             pay: t("pay"),
           }}
+        />
+      ) : null}
+
+      {canAccessSensitive(ctx.membership.role) && invoice.status !== "void" ? (
+        <SubmitLhdnButton
+          invoiceId={invoice.id}
+          label={t("submitLhdn")}
+          hint={t("submitLhdnHint")}
+          disabledReason={
+            !canUseLhdn(
+              ctx.organization.subscription_plan,
+              ctx.organization.subscription_status
+            )
+              ? t("submitLhdnPlanLocked")
+              : !ctx.organization.tin
+                ? t("submitLhdnNeedTin")
+                : invoice.lhdn_status === "accepted"
+                  ? t("submitLhdnAlready", { status: invoice.lhdn_status })
+                  : null
+          }
         />
       ) : null}
 

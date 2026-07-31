@@ -224,7 +224,12 @@
     "recordPayment": "Record payment",
     "pay": "Paid",
     "exit": "Exit invoice",
-    "balanceDue": "Balance due"
+    "balanceDue": "Balance due",
+    "submitLhdn": "Submit to LHDN",
+    "submitLhdnHint": "Paid status only records payment in Allvisor. Press this to send the e-Invoice to MyInvois (sandbox or production per env).",
+    "submitLhdnPlanLocked": "Your plan does not include LHDN e-Invoice. Upgrade in Admin.",
+    "submitLhdnNeedTin": "Set your business TIN on the LHDN e-Invoice page first.",
+    "submitLhdnAlready": "Already submitted to LHDN ({status})."
   },
   "Admin": {
     "title": "Admin",
