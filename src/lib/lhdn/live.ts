@@ -1,5 +1,6 @@
 import type { LhdnInvoicePayload, LhdnProvider, LhdnSubmitResult } from "./types";
 import { buildMyInvoisInvoiceDocument } from "./document";
+import { buildOnBehalfOf } from "./tin";
 import { createHash } from "crypto";
 
 const IDENTITY_URL = {
@@ -47,17 +48,22 @@ function extractMyInvoisError(
   );
 }
 
+function enrichTinMismatchHint(error: string): string {
+  if (!/authenticated TIN and documents TIN is not matching/i.test(error)) {
+    return error;
+  }
+  return (
+    `${error}\n\n` +
+    "Meaning: API login TIN ≠ supplier TIN in the invoice.\n" +
+    "• For your own TIN test with ERP registered under the same TIN: set LHDN_MODE=taxpayer on Vercel.\n" +
+    "• For intermediary (multi-shop): keep LHDN_MODE=intermediary, use intermediary Client ID/Secret, " +
+    "and Allvisor Company TIN must be the shop TIN authorized in MyInvois."
+  );
+}
+
 function lhdnMode(): "intermediary" | "taxpayer" {
   const mode = (process.env.LHDN_MODE || "intermediary").toLowerCase();
   return mode === "taxpayer" ? "taxpayer" : "intermediary";
-}
-
-/** MyInvois onbehalfof: TIN, or TIN:BRN for sole prop with ROB. */
-export function buildOnBehalfOf(tin: string, brn?: string | null) {
-  const cleanTin = tin.trim();
-  const cleanBrn = brn?.trim();
-  if (cleanBrn) return `${cleanTin}:${cleanBrn}`;
-  return cleanTin;
 }
 
 async function getAccessToken(
@@ -171,7 +177,7 @@ export class MyInvoisLiveProvider implements LhdnProvider {
             httpStatus: res.status,
             ...response,
           },
-          error: extractMyInvoisError(response, res.status),
+          error: enrichTinMismatchHint(extractMyInvoisError(response, res.status)),
         };
       }
 
@@ -191,7 +197,7 @@ export class MyInvoisLiveProvider implements LhdnProvider {
             onBehalfOf: onBehalfOf || null,
             ...response,
           },
-          error: extractMyInvoisError(response, res.status),
+          error: enrichTinMismatchHint(extractMyInvoisError(response, res.status)),
         };
       }
 

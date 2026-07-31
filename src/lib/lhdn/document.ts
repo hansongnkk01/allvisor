@@ -1,4 +1,5 @@
 import type { LhdnInvoicePayload } from "./types";
+import { normalizeTin } from "./tin";
 
 function money(amount: number, currency = "MYR") {
   return [{ _: Number(amount.toFixed(2)), currencyID: currency }];
@@ -28,6 +29,7 @@ export function buildMyInvoisInvoiceDocument(payload: LhdnInvoicePayload) {
   const issueTime = `${String(now.getUTCHours()).padStart(2, "0")}:${String(now.getUTCMinutes()).padStart(2, "0")}:${String(now.getUTCSeconds()).padStart(2, "0")}Z`;
 
   const supplierBrn = (payload.supplierBrn || "NA").trim() || "NA";
+  const supplierTin = normalizeTin(payload.supplierTin);
   const supplierSst = (payload.supplierSst || "NA").trim() || "NA";
   const supplierPhone = (payload.supplierPhone || "+60000000000").replace(/\s/g, "");
   const supplierAddress = (payload.supplierAddress || "Malaysia").trim();
@@ -118,7 +120,7 @@ export function buildMyInvoisInvoiceDocument(payload: LhdnInvoicePayload) {
               {
                 IndustryClassificationCode: [{ _: msic, name: msicName }],
                 PartyIdentification: [
-                  ...idScheme(payload.supplierTin, "TIN"),
+                  ...idScheme(supplierTin, "TIN"),
                   ...idScheme(supplierBrn, "BRN"),
                   ...idScheme(supplierSst, "SST"),
                   ...idScheme("NA", "TTX"),
