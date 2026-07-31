@@ -10,6 +10,8 @@ export type LhdnInvoicePayload = {
   invoiceNumber: string;
   issueDate: string;
   supplierTin: string;
+  /** Optional ROB/ROC for MyInvois onbehalfof (TIN:BRN). */
+  supplierBrn?: string | null;
   supplierName: string;
   buyerName: string;
   buyerTin?: string | null;

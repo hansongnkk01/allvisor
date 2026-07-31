@@ -6,13 +6,23 @@ export type { LhdnInvoicePayload, LhdnProvider, LhdnSubmitResult } from "./types
 export { MyInvoisSandboxProvider } from "./sandbox";
 export { MyInvoisLiveProvider } from "./live";
 
+export function getLhdnMode(): "intermediary" | "taxpayer" | "demo" {
+  const hasCreds = Boolean(
+    process.env.LHDN_CLIENT_ID && process.env.LHDN_CLIENT_SECRET
+  );
+  if (!hasCreds) return "demo";
+  const mode = (process.env.LHDN_MODE || "intermediary").toLowerCase();
+  return mode === "taxpayer" ? "taxpayer" : "intermediary";
+}
+
 export function getLhdnProvider(): LhdnProvider {
   const env = (process.env.LHDN_ENV || "sandbox").toLowerCase();
   const hasCreds = Boolean(
     process.env.LHDN_CLIENT_ID && process.env.LHDN_CLIENT_SECRET
   );
 
-  // Real MyInvois API (sandbox or production) when credentials exist
+  // Real MyInvois API (sandbox or production) when platform credentials exist.
+  // Default LHDN_MODE=intermediary: token uses onbehalfof = shop TIN.
   if (hasCreds) {
     return new MyInvoisLiveProvider(env === "production" ? "production" : "sandbox");
   }

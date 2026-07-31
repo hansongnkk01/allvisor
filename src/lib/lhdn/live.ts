@@ -11,7 +11,23 @@ const API_BASE = {
   production: "https://api.myinvois.hasil.gov.my",
 };
 
-async function getAccessToken(env: "sandbox" | "production") {
+function lhdnMode(): "intermediary" | "taxpayer" {
+  const mode = (process.env.LHDN_MODE || "intermediary").toLowerCase();
+  return mode === "taxpayer" ? "taxpayer" : "intermediary";
+}
+
+/** MyInvois onbehalfof: TIN, or TIN:BRN for sole prop with ROB. */
+export function buildOnBehalfOf(tin: string, brn?: string | null) {
+  const cleanTin = tin.trim();
+  const cleanBrn = brn?.trim();
+  if (cleanBrn) return `${cleanTin}:${cleanBrn}`;
+  return cleanTin;
+}
+
+async function getAccessToken(
+  env: "sandbox" | "production",
+  onBehalfOf?: string
+) {
   const clientId = process.env.LHDN_CLIENT_ID;
   const clientSecret = process.env.LHDN_CLIENT_SECRET;
   if (!clientId || !clientSecret) {
@@ -25,9 +41,20 @@ async function getAccessToken(env: "sandbox" | "production") {
     scope: "InvoicingAPI",
   });
 
+  const headers: Record<string, string> = {
+    "Content-Type": "application/x-www-form-urlencoded",
+  };
+
+  if (lhdnMode() === "intermediary") {
+    if (!onBehalfOf) {
+      throw new Error("Intermediary mode requires taxpayer TIN (onbehalfof)");
+    }
+    headers.onbehalfof = onBehalfOf;
+  }
+
   const res = await fetch(IDENTITY_URL[env], {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    headers,
     body,
   });
 
@@ -122,7 +149,12 @@ export class MyInvoisLiveProvider implements LhdnProvider {
         };
       }
 
-      const token = await getAccessToken(this.env);
+      const onBehalfOf =
+        lhdnMode() === "intermediary"
+          ? buildOnBehalfOf(payload.supplierTin, payload.supplierBrn)
+          : undefined;
+
+      const token = await getAccessToken(this.env, onBehalfOf);
       const documentObj = buildMinimalInvoiceJson(payload);
       const documentRaw = JSON.stringify(documentObj);
       const documentBase64 = Buffer.from(documentRaw, "utf8").toString("base64");
@@ -160,6 +192,8 @@ export class MyInvoisLiveProvider implements LhdnProvider {
           status: "rejected",
           response: {
             environment: this.env,
+            mode: lhdnMode(),
+            onBehalfOf: onBehalfOf || null,
             httpStatus: res.status,
             ...response,
           },
@@ -181,6 +215,8 @@ export class MyInvoisLiveProvider implements LhdnProvider {
         status: uuid ? "accepted" : "pending",
         response: {
           environment: this.env,
+          mode: lhdnMode(),
+          onBehalfOf: onBehalfOf || null,
           ...response,
         },
       };
@@ -190,6 +226,7 @@ export class MyInvoisLiveProvider implements LhdnProvider {
         status: "rejected",
         response: {
           environment: this.env,
+          mode: lhdnMode(),
           message: error instanceof Error ? error.message : "Unknown error",
         },
         error: error instanceof Error ? error.message : "LHDN submit failed",

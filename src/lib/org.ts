@@ -28,7 +28,7 @@ export const getOrgContext = cache(async (): Promise<OrgContext | null> => {
   const { data: membership } = await supabase
     .from("memberships")
     .select(
-      "id, organization_id, user_id, role, created_at, organizations(id, name, niche, locale_default, tin, sst_number, address, phone, subscription_plan, subscription_status, trial_ends_at, admin_password_hash, clinic_open_hour, clinic_close_hour, closed_weekdays, service_charge_percent, created_at), profiles(id, full_name, email, locale, created_at)"
+      "id, organization_id, user_id, role, created_at, organizations(id, name, niche, locale_default, tin, sst_number, lhdn_brn, lhdn_intermediary_linked, lhdn_intermediary_linked_at, address, phone, subscription_plan, subscription_status, trial_ends_at, admin_password_hash, clinic_open_hour, clinic_close_hour, closed_weekdays, service_charge_percent, created_at), profiles(id, full_name, email, locale, created_at)"
     )
     .eq("user_id", user.id)
     .order("created_at", { ascending: true })

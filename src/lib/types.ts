@@ -41,6 +41,11 @@ export interface Organization {
   locale_default: string;
   tin: string | null;
   sst_number: string | null;
+  /** Optional ROB/ROC for MyInvois intermediary onbehalfof (TIN:BRN). */
+  lhdn_brn?: string | null;
+  /** Shop confirmed Allvisor is authorized as intermediary in MyInvois. */
+  lhdn_intermediary_linked?: boolean;
+  lhdn_intermediary_linked_at?: string | null;
   address: string | null;
   phone: string | null;
   subscription_plan: SubscriptionPlan;

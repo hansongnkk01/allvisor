@@ -32,13 +32,17 @@ export function ActionForm({
       action={(formData) => {
         setError(null);
         startTransition(async () => {
-          const result = await action(formData);
-          if (result && "error" in result && result.error) {
-            setError(result.error);
-            return;
+          try {
+            const result = await action(formData);
+            if (result && "error" in result && result.error) {
+              setError(result.error);
+              return;
+            }
+            router.refresh();
+            onSuccess?.();
+          } catch (err) {
+            setError(err instanceof Error ? err.message : "Something went wrong");
           }
-          router.refresh();
-          onSuccess?.();
         });
       }}
     >

@@ -12,6 +12,7 @@ import { canAccessSensitive } from "@/lib/roles";
 import { SectionLockGate } from "@/components/SectionLockGate";
 import { SectionActivityLog } from "@/components/SectionActivityLog";
 import { fetchSectionLogs } from "@/lib/section-logs";
+import { getLhdnMode } from "@/lib/lhdn";
 
 export default async function LhdnPage({
   params,
@@ -38,6 +39,9 @@ export default async function LhdnPage({
     ctx.organization.subscription_plan,
     ctx.organization.subscription_status
   );
+  const mode = getLhdnMode();
+  const platformName =
+    process.env.LHDN_INTERMEDIARY_NAME?.trim() || "Allvisor";
   const supabase = await createClient();
   const [{ data: submissions }, logs] = await Promise.all([
     supabase
@@ -48,15 +52,19 @@ export default async function LhdnPage({
     fetchSectionLogs(ctx.organization.id, ["lhdn"]),
   ]);
 
+  const linked = Boolean(ctx.organization.lhdn_intermediary_linked);
+
   return (
     <div className="stack" style={{ gap: "1.25rem" }}>
       <PageHeader title={t("title")} subtitle={t("subtitle")} />
 
       <div className="surface" style={{ padding: "1rem 1.25rem" }}>
         <p style={{ margin: 0 }}>
-          {process.env.LHDN_CLIENT_ID && process.env.LHDN_CLIENT_SECRET
-            ? t("liveConnected")
-            : t("demoMode")}
+          {mode === "demo"
+            ? t("demoMode")
+            : mode === "intermediary"
+              ? t("intermediaryConnected", { name: platformName })
+              : t("liveConnected")}
         </p>
       </div>
 
@@ -68,26 +76,82 @@ export default async function LhdnPage({
           </Link>
         </div>
       ) : (
-        <div className="surface" style={{ padding: "1.25rem" }}>
-          <ActionForm action={updateOrgSettingsAction} className="stack">
-            <input type="hidden" name="name" value={ctx.organization.name} />
-            <input type="hidden" name="phone" value={ctx.organization.phone || ""} />
-            <input type="hidden" name="address" value={ctx.organization.address || ""} />
-            <input type="hidden" name="sst_number" value={ctx.organization.sst_number || ""} />
-            <div className="field" style={{ maxWidth: 320 }}>
-              <label>{t("tin")}</label>
-              <input
-                name="tin"
-                className="input"
-                defaultValue={ctx.organization.tin || ""}
-                placeholder="C1234567890"
-              />
-            </div>
-            <button type="submit" className="btn btn-primary">
-              {t("saveSettings")}
-            </button>
-          </ActionForm>
-        </div>
+        <>
+          <div className="surface" style={{ padding: "1.25rem" }}>
+            <h3 style={{ marginTop: 0 }}>{t("howTitle")}</h3>
+            <ol style={{ margin: "0.5rem 0 0", paddingLeft: "1.25rem", lineHeight: 1.55 }}>
+              <li>{t("howStep1")}</li>
+              <li>{t("howStep2", { name: platformName })}</li>
+              <li>{t("howStep3", { name: platformName })}</li>
+              <li>{t("howStep4")}</li>
+            </ol>
+            <p className="muted" style={{ margin: "0.75rem 0 0", fontSize: "0.9rem" }}>
+              {t("howNote", { name: platformName })}
+            </p>
+          </div>
+
+          <div className="surface" style={{ padding: "1.25rem" }}>
+            <ActionForm action={updateOrgSettingsAction} className="stack">
+              <input type="hidden" name="name" value={ctx.organization.name} />
+              <input type="hidden" name="phone" value={ctx.organization.phone || ""} />
+              <input type="hidden" name="address" value={ctx.organization.address || ""} />
+              <input type="hidden" name="sst_number" value={ctx.organization.sst_number || ""} />
+              <input type="hidden" name="lhdn_link_present" value="1" />
+              <div className="field" style={{ maxWidth: 320 }}>
+                <label>{t("tin")}</label>
+                <input
+                  name="tin"
+                  className="input"
+                  defaultValue={ctx.organization.tin || ""}
+                  placeholder="C1234567890"
+                  required
+                />
+              </div>
+              <div className="field" style={{ maxWidth: 320 }}>
+                <label>{t("brn")}</label>
+                <input
+                  name="lhdn_brn"
+                  className="input"
+                  defaultValue={ctx.organization.lhdn_brn || ""}
+                  placeholder={t("brnPlaceholder")}
+                />
+                <p className="muted" style={{ margin: "0.35rem 0 0", fontSize: "0.85rem" }}>
+                  {t("brnHelp")}
+                </p>
+              </div>
+              <label
+                style={{
+                  display: "flex",
+                  gap: "0.6rem",
+                  alignItems: "flex-start",
+                  maxWidth: 520,
+                  cursor: "pointer",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  name="lhdn_intermediary_linked"
+                  value="1"
+                  defaultChecked={linked}
+                  style={{ marginTop: "0.2rem" }}
+                />
+                <span>
+                  {t("linkedConfirm", { name: platformName })}
+                  {linked && ctx.organization.lhdn_intermediary_linked_at ? (
+                    <span className="muted" style={{ display: "block", fontSize: "0.85rem" }}>
+                      {t("linkedAt", {
+                        date: formatDateTime(ctx.organization.lhdn_intermediary_linked_at),
+                      })}
+                    </span>
+                  ) : null}
+                </span>
+              </label>
+              <button type="submit" className="btn btn-primary">
+                {t("saveSettings")}
+              </button>
+            </ActionForm>
+          </div>
+        </>
       )}
 
       <div className="fluid-grid">

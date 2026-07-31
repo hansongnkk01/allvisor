@@ -1217,18 +1217,39 @@ export async function updateOrgSettingsAction(formData: FormData) {
   const { supabase, organization, membership } = await requireMember();
   if (membership.role === "staff") return { error: "Forbidden" };
 
-  const { error } = await supabase
+  const patch: Record<string, unknown> = {
+    name: String(formData.get("name") || organization.name),
+    phone: String(formData.get("phone") || "") || null,
+    address: String(formData.get("address") || "") || null,
+    tin: String(formData.get("tin") || "") || null,
+    sst_number: String(formData.get("sst_number") || "") || null,
+  };
+
+  if (formData.has("lhdn_brn")) {
+    patch.lhdn_brn = String(formData.get("lhdn_brn") || "").trim() || null;
+  }
+
+  if (formData.get("lhdn_link_present")) {
+    const linked = formData.get("lhdn_intermediary_linked") === "1";
+    patch.lhdn_intermediary_linked = linked;
+    patch.lhdn_intermediary_linked_at = linked
+      ? organization.lhdn_intermediary_linked_at || new Date().toISOString()
+      : null;
+  }
+
+  const { data, error } = await supabase
     .from("organizations")
-    .update({
-      name: String(formData.get("name") || organization.name),
-      phone: String(formData.get("phone") || "") || null,
-      address: String(formData.get("address") || "") || null,
-      tin: String(formData.get("tin") || "") || null,
-      sst_number: String(formData.get("sst_number") || "") || null,
-    })
-    .eq("id", organization.id);
+    .update(patch)
+    .eq("id", organization.id)
+    .select("id")
+    .maybeSingle();
 
   if (error) return { error: error.message };
+  if (!data) {
+    return {
+      error: "Could not save — only owner/admin can update organization settings (including TIN).",
+    };
+  }
   revalidateApp("/settings", "/lhdn");
   revalidateAppLayout();
   return { success: true };
@@ -1690,7 +1711,22 @@ export async function submitInvoiceToLhdnAction(invoiceId: string) {
   if (!canUseLhdn(organization.subscription_plan, organization.subscription_status)) {
     return { error: "Plan does not include LHDN e-Invoice" };
   }
-  if (!organization.tin) return { error: "Set company TIN in settings first" };
+  if (!organization.tin) return { error: "Set company TIN in LHDN settings first" };
+
+  const mode = (process.env.LHDN_MODE || "intermediary").toLowerCase();
+  const hasCreds = Boolean(
+    process.env.LHDN_CLIENT_ID && process.env.LHDN_CLIENT_SECRET
+  );
+  if (
+    hasCreds &&
+    mode !== "taxpayer" &&
+    !organization.lhdn_intermediary_linked
+  ) {
+    return {
+      error:
+        "Authorize Allvisor as intermediary in MyInvois, then tick the confirmation on the LHDN page.",
+    };
+  }
 
   const { data: invoice } = await supabase
     .from("invoices")
@@ -1705,6 +1741,7 @@ export async function submitInvoiceToLhdnAction(invoiceId: string) {
     invoiceNumber: invoice.invoice_number,
     issueDate: invoice.issue_date,
     supplierTin: organization.tin,
+    supplierBrn: organization.lhdn_brn || null,
     supplierName: organization.name,
     buyerName: invoice.customers?.name || "Walk-in",
     buyerTin: null,
