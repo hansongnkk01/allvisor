@@ -24,7 +24,7 @@ export default async function InventoryPage({
       .select("*")
       .eq("organization_id", ctx.organization.id)
       .order("created_at", { ascending: false }),
-    fetchSectionLogs(ctx.organization.id, ["inventory"]),
+    fetchSectionLogs(ctx.organization.id, ["inventory"], 50),
   ]);
 
   const isClinic = ctx.organization.niche === "clinic";
@@ -108,7 +108,7 @@ export default async function InventoryPage({
         />
       </div>
 
-      <SectionActivityLog title={t("activity")} logs={logs} />
+      <SectionActivityLog title={t("activity")} logs={logs} pageSize={5} />
     </div>
   );
 }

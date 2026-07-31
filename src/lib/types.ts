@@ -56,6 +56,8 @@ export interface Organization {
   clinic_close_hour?: number;
   closed_weekdays?: number[];
   service_charge_percent?: number;
+  invoice_prefix?: string | null;
+  invoice_next_seq?: number | null;
   created_at: string;
 }
 

@@ -6,7 +6,7 @@ import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { Link } from "@/i18n/navigation";
 import { DayHourTimetable } from "@/components/DayHourTimetable";
 import { DashboardAiPanel } from "@/components/DashboardAiPanel";
-import { PatientName } from "@/components/PatientName";
+import { DashboardRecentInvoices, DashboardUpcomingAppointments } from "@/components/DashboardLists";
 import { dayBoundsMY } from "@/lib/datetime-my";
 
 export default async function DashboardPage({
@@ -47,7 +47,7 @@ export default async function DashboardPage({
       .select("*, customers(name)")
       .eq("organization_id", orgId)
       .order("created_at", { ascending: false })
-      .limit(5),
+      .limit(25),
     supabase.from("ledger_entries").select("entry_type, amount").eq("organization_id", orgId),
     supabase
       .from("invoices")
@@ -84,7 +84,7 @@ export default async function DashboardPage({
       .eq("organization_id", orgId)
       .gte("starts_at", now.toISOString())
       .order("starts_at", { ascending: true })
-      .limit(5);
+      .limit(30);
     upcoming = (data || []).map((a) => ({
       ...a,
       customers: Array.isArray(a.customers) ? a.customers[0] || null : a.customers,
@@ -235,64 +235,23 @@ export default async function DashboardPage({
       ) : null}
 
       <div className="fluid-grid">
-        <div className="surface" style={{ padding: "1.25rem" }}>
-          <h3 style={{ marginTop: 0 }}>{t("recentInvoices")}</h3>
-          <div className="table-wrap">
-            <table className="data">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Status</th>
-                  <th>Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(recentInvoices || []).map((inv) => (
-                  <tr key={inv.id}>
-                    <td>
-                      <div>{inv.title || inv.invoice_number}</div>
-                      <div className="muted" style={{ fontSize: "0.8rem" }}>
-                        {formatDateTime(inv.created_at)}
-                      </div>
-                    </td>
-                    <td>
-                      <span className="badge">{inv.status}</span>
-                    </td>
-                    <td>{formatCurrency(Number(inv.total))}</td>
-                  </tr>
-                ))}
-                {!recentInvoices?.length ? (
-                  <tr>
-                    <td colSpan={3} className="muted">
-                      —
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <DashboardRecentInvoices
+          title={t("recentInvoices")}
+          invoices={(recentInvoices || []).map((inv) => ({
+            id: inv.id,
+            title: inv.title,
+            invoice_number: inv.invoice_number,
+            status: inv.status,
+            total: Number(inv.total),
+            created_at: inv.created_at,
+          }))}
+        />
 
         {niche === "clinic" ? (
-          <div className="surface" style={{ padding: "1.25rem" }}>
-            <h3 style={{ marginTop: 0 }}>{t("upcomingAppointments")}</h3>
-            <div className="stack" style={{ gap: "0.75rem" }}>
-              {upcoming.map((a) => (
-                <div key={a.id} style={{ borderBottom: "1px solid var(--line)", paddingBottom: 8 }}>
-                  <strong>{a.title}</strong>
-                  <div className="muted" style={{ fontSize: "0.9rem" }}>
-                    {a.customers?.name ? (
-                      <PatientName name={a.customers.name} risk={a.customers.risk_level} />
-                    ) : (
-                      "—"
-                    )}{" "}
-                    · {formatDateTime(a.starts_at)}
-                  </div>
-                </div>
-              ))}
-              {!upcoming.length ? <p className="muted">—</p> : null}
-            </div>
-          </div>
+          <DashboardUpcomingAppointments
+            title={t("upcomingAppointments")}
+            items={upcoming}
+          />
         ) : null}
       </div>
     </div>

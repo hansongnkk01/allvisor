@@ -23,11 +23,14 @@ import {
   upgradePlanAction,
   upsertBranchServiceCategoryAction,
   upsertBranchServiceItemAction,
+  updateOrgSettingsAction,
   upsertServiceCategoryAction,
   upsertServiceItemAction,
 } from "@/app/actions";
 import { DataImportPanel } from "@/components/DataImportPanel";
-import { formatCurrency, formatDateTime } from "@/lib/utils";
+import { AdminActivityLog } from "@/components/AdminActivityLog";
+import { FilterableRows } from "@/components/FilterableRows";
+import { formatCurrency } from "@/lib/utils";
 import { PLAN_LIMITS } from "@/lib/subscription";
 import { defaultAdminPassword } from "@/lib/admin-lock";
 import { canAccessAdmin, canManageStaff } from "@/lib/roles";
@@ -313,6 +316,82 @@ export default async function AdminPage({
           </div>
 
           <div className="surface" style={{ padding: "1.25rem" }}>
+            <h3 style={{ marginTop: 0 }}>{t("businessSettings")}</h3>
+            <p className="muted">{t("businessSettingsHint")}</p>
+            <ActionForm action={updateOrgSettingsAction} className="stack">
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                  gap: "0.75rem",
+                }}
+              >
+                <div className="field">
+                  <label>{t("bizName")}</label>
+                  <input name="name" className="input" defaultValue={org.name} required />
+                </div>
+                <div className="field">
+                  <label>{t("bizPhone")}</label>
+                  <input name="phone" className="input" defaultValue={org.phone || ""} />
+                </div>
+                <div className="field">
+                  <label>{t("bizTin")}</label>
+                  <input name="tin" className="input" defaultValue={org.tin || ""} />
+                </div>
+                <div className="field">
+                  <label>{t("bizSst")}</label>
+                  <input name="sst_number" className="input" defaultValue={org.sst_number || ""} />
+                </div>
+              </div>
+              <div className="field">
+                <label>{t("bizAddress")}</label>
+                <textarea name="address" className="textarea" defaultValue={org.address || ""} />
+              </div>
+              <button type="submit" className="btn btn-primary">
+                {t("saveBusiness")}
+              </button>
+            </ActionForm>
+          </div>
+
+          <div className="surface" style={{ padding: "1.25rem" }}>
+            <h3 style={{ marginTop: 0 }}>{t("invoiceFormatTitle")}</h3>
+            <p className="muted">{t("invoiceFormatHint")}</p>
+            <ActionForm action={updateOrgSettingsAction} className="stack">
+              <input type="hidden" name="name" value={org.name} />
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+                  gap: "0.75rem",
+                }}
+              >
+                <div className="field">
+                  <label>{t("invoicePrefix")}</label>
+                  <input
+                    name="invoice_prefix"
+                    className="input"
+                    defaultValue={org.invoice_prefix || "INV"}
+                    placeholder="INV"
+                  />
+                </div>
+                <div className="field">
+                  <label>{t("invoiceNextSeq")}</label>
+                  <input
+                    name="invoice_next_seq"
+                    type="number"
+                    min={1}
+                    className="input"
+                    defaultValue={String(org.invoice_next_seq || 1)}
+                  />
+                </div>
+              </div>
+              <button type="submit" className="btn btn-soft">
+                {t("saveInvoiceFormat")}
+              </button>
+            </ActionForm>
+          </div>
+
+          <div className="surface" style={{ padding: "1.25rem" }}>
             <h3 style={{ marginTop: 0 }}>{t("clinicHoursTitle")}</h3>
             <p className="muted">{t("clinicHoursHint")}</p>
             <ActionForm action={updateServiceChargeAction} className="stack" style={{ marginBottom: "1.25rem" }}>
@@ -542,36 +621,35 @@ export default async function AdminPage({
                   {t("addCategory")}
                 </button>
               </ActionForm>
-              <div className="table-wrap" style={{ marginTop: 8 }}>
-                <table className="data">
-                  <tbody>
-                    {(branch.categories || []).map((c) => (
-                      <tr key={c.id}>
-                        <td>
-                          <span className="badge">{c.name}</span>
-                        </td>
-                        <td>{c.description || "—"}</td>
-                        {branch.id === orgId ? (
-                          <td>
-                            <form
-                              action={async () => {
-                                "use server";
-                                await deleteServiceCategoryAction(c.id);
-                              }}
-                            >
-                              <button type="submit" className="btn btn-ghost">
-                                {t("delete")}
-                              </button>
-                            </form>
-                          </td>
-                        ) : (
-                          <td />
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <FilterableRows placeholder={t("searchCategories")}>
+                {(branch.categories || []).map((c) => (
+                  <tr
+                    key={c.id}
+                    data-search={`${c.name} ${c.description || ""}`.toLowerCase()}
+                  >
+                    <td>
+                      <span className="badge">{c.name}</span>
+                    </td>
+                    <td>{c.description || "—"}</td>
+                    {branch.id === orgId ? (
+                      <td>
+                        <form
+                          action={async () => {
+                            "use server";
+                            await deleteServiceCategoryAction(c.id);
+                          }}
+                        >
+                          <button type="submit" className="btn btn-ghost">
+                            {t("delete")}
+                          </button>
+                        </form>
+                      </td>
+                    ) : (
+                      <td />
+                    )}
+                  </tr>
+                ))}
+              </FilterableRows>
             </ExpandSection>
 
             <ExpandSection title={t("servicesTitle")}>
@@ -625,39 +703,39 @@ export default async function AdminPage({
                   {t("addService")}
                 </button>
               </ActionForm>
-              <div className="table-wrap" style={{ marginTop: 8 }}>
-                <table className="data">
-                  <tbody>
-                    {(branch.services || []).map((s) => (
-                      <tr key={s.id}>
-                        <td>{s.name}</td>
-                        <td>{s.service_categories?.name || s.category}</td>
-                        <td>{formatCurrency(Number(s.unit_price || 0))}</td>
-                        {branch.id === orgId ? (
-                          <td>
-                            <form
-                              action={async () => {
-                                "use server";
-                                await deleteServiceItemAction(s.id);
-                              }}
-                            >
-                              <button type="submit" className="btn btn-ghost">
-                                {t("delete")}
-                              </button>
-                            </form>
-                          </td>
-                        ) : (
-                          <td />
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <FilterableRows placeholder={t("searchServices")}>
+                {(branch.services || []).map((s) => (
+                  <tr
+                    key={s.id}
+                    data-search={`${s.name} ${s.service_categories?.name || s.category || ""}`.toLowerCase()}
+                  >
+                    <td>{s.name}</td>
+                    <td>{s.service_categories?.name || s.category}</td>
+                    <td>{formatCurrency(Number(s.unit_price || 0))}</td>
+                    {branch.id === orgId ? (
+                      <td>
+                        <form
+                          action={async () => {
+                            "use server";
+                            await deleteServiceItemAction(s.id);
+                          }}
+                        >
+                          <button type="submit" className="btn btn-ghost">
+                            {t("delete")}
+                          </button>
+                        </form>
+                      </td>
+                    ) : (
+                      <td />
+                    )}
+                  </tr>
+                ))}
+              </FilterableRows>
             </ExpandSection>
 
             {isAdmin ? (
               <ExpandSection title={t("staffTitle")}>
+                <p className="muted">{t("addMemberHint")}</p>
                 <ActionForm
                   action={branch.id === orgId ? addStaffAction : addBranchStaffAction}
                   className="stack"
@@ -673,16 +751,18 @@ export default async function AdminPage({
                     }}
                   >
                     <div className="field">
+                      <label>{t("staffUsername")}</label>
+                      <input
+                        name="username"
+                        type="email"
+                        required
+                        className="input"
+                        placeholder="member@email.com"
+                      />
+                    </div>
+                    <div className="field">
                       <label>{t("staffName")}</label>
                       <input name="full_name" className="input" />
-                    </div>
-                    <div className="field">
-                      <label>{t("staffEmail")}</label>
-                      <input name="email" type="email" required className="input" />
-                    </div>
-                    <div className="field">
-                      <label>{t("staffPassword")}</label>
-                      <input name="password" type="password" className="input" />
                     </div>
                     <div className="field">
                       <label>{t("staffRole")}</label>
@@ -759,25 +839,16 @@ export default async function AdminPage({
         </BranchGroup>
       ))}
 
-      <div className="surface" style={{ padding: "1.25rem" }}>
-        <h3 style={{ marginTop: 0 }}>{t("activity")}</h3>
-        <p className="muted">{t("activityHint")}</p>
-        <div className="stack" style={{ gap: "0.55rem" }}>
-          {(activities || []).map((a) => (
-            <div
-              key={a.id}
-              style={{ borderBottom: "1px solid var(--line)", paddingBottom: 6 }}
-            >
-              <strong>{a.actor_name || "Staff"}</strong>
-              <span className="muted"> · {a.summary}</span>
-              <div className="muted" style={{ fontSize: "0.8rem" }}>
-                {formatDateTime(a.created_at)}
-              </div>
-            </div>
-          ))}
-          {!activities?.length ? <p className="muted">—</p> : null}
-        </div>
-      </div>
+      <AdminActivityLog
+        title={t("activity")}
+        hint={t("activityHint")}
+        logs={(activities || []).map((a) => ({
+          id: a.id,
+          actor_name: a.actor_name,
+          summary: a.summary,
+          created_at: a.created_at,
+        }))}
+      />
     </div>
   );
 }

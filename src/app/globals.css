@@ -344,6 +344,111 @@ table.data th {
   gap: 1rem;
 }
 
+/* Light yellow-orange zone for record / history tracking */
+.history-zone {
+  background: rgba(255, 237, 213, 0.72) !important;
+  border-color: rgba(251, 191, 36, 0.35) !important;
+  box-shadow: none !important;
+}
+
+.btn-tick {
+  background: #d1fae5;
+  color: #065f46;
+  border-color: rgba(6, 95, 70, 0.15);
+  min-width: 2.4rem;
+  padding: 0.4rem 0.65rem;
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.btn-edit-soft {
+  background: #fef9c3;
+  color: #854d0e;
+  border-color: rgba(133, 77, 14, 0.15);
+}
+
+.btn-delete-soft {
+  background: #fee2e2;
+  color: #991b1b;
+  border-color: rgba(153, 27, 27, 0.15);
+}
+
+.appt-card-scheduled {
+  background: #fefce8 !important;
+}
+.appt-card-confirmed {
+  background: #eff6ff !important;
+}
+.appt-card-completed {
+  background: #ecfdf5 !important;
+}
+.appt-card-cancelled {
+  background: #f3f4f6 !important;
+}
+.appt-card-no_show {
+  background: #fef2f2 !important;
+}
+
+.invoice-row-unpaid td {
+  background: #ffedd5;
+}
+.invoice-row-paid td {
+  background: #dcfce7;
+}
+.invoice-row-revoked td {
+  background: #e5e7eb;
+  text-decoration: line-through;
+  color: #6b7280;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 180;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.modal-panel {
+  background: var(--bg);
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  max-width: min(920px, 100%);
+  max-height: min(92vh, 100%);
+  width: 100%;
+  overflow: auto;
+  padding: 1.25rem;
+}
+
+.pager {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  margin-top: 0.85rem;
+}
+
+.pager button {
+  min-width: 2rem;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.85rem;
+}
+
+.pager button.is-active {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  border-color: transparent;
+}
+
+.scroll-cap-5 {
+  max-height: 17.5rem;
+  overflow-y: auto;
+}
+
 .fluid-grid-kpi {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));

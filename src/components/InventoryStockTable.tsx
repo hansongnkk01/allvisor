@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "@/i18n/navigation";
 import { ActionForm } from "@/components/ActionForm";
 import { adjustStockAction, bulkAdjustStockAction } from "@/app/actions";
+import { ListPager, SearchField, useClientPager } from "@/components/ListControls";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
 
@@ -36,13 +37,23 @@ export function InventoryStockTable({
   };
 }) {
   const router = useRouter();
+  const [q, setQ] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkType, setBulkType] = useState<"in" | "out">("in");
   const [bulkQty, setBulkQty] = useState(1);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  const allIds = useMemo(() => products.map((p) => p.id), [products]);
+  const filtered = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    if (!needle) return products;
+    return products.filter((p) =>
+      [p.name, p.sku].filter(Boolean).join(" ").toLowerCase().includes(needle)
+    );
+  }, [products, q]);
+  const pager = useClientPager(filtered, 10);
+
+  const allIds = useMemo(() => pager.slice.map((p) => p.id), [pager.slice]);
   const allSelected = allIds.length > 0 && allIds.every((id) => selected.has(id));
 
   function toggleOne(id: string) {
@@ -85,6 +96,14 @@ export function InventoryStockTable({
   return (
     <div className="stack" style={{ gap: "0.85rem" }}>
       <LoadingOverlay show={pending} label="Updating stock…" />
+      <SearchField
+        value={q}
+        onChange={(v) => {
+          setQ(v);
+          pager.setPage(1);
+        }}
+        placeholder="Search item…"
+      />
       <div
         className="row"
         style={{ flexWrap: "wrap", gap: "0.55rem", alignItems: "center" }}
@@ -137,7 +156,7 @@ export function InventoryStockTable({
             </tr>
           </thead>
           <tbody>
-            {products.map((p) => (
+            {pager.slice.map((p) => (
               <tr key={p.id}>
                 <td>
                   <input
@@ -183,7 +202,7 @@ export function InventoryStockTable({
                 </td>
               </tr>
             ))}
-            {!products.length ? (
+            {!filtered.length ? (
               <tr>
                 <td colSpan={7} className="muted">
                   {labels.empty}
@@ -193,6 +212,7 @@ export function InventoryStockTable({
           </tbody>
         </table>
       </div>
+      <ListPager page={pager.page} totalPages={pager.totalPages} onPage={pager.setPage} />
     </div>
   );
 }

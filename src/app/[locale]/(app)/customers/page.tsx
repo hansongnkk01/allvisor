@@ -3,7 +3,7 @@ import { requireOrg } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { ActionForm } from "@/components/ActionForm";
-import { CustomerRow } from "@/components/CustomerRow";
+import { PatientsList } from "@/components/PatientsList";
 import { SectionActivityLog } from "@/components/SectionActivityLog";
 import { upsertCustomerAction } from "@/app/actions";
 import { fetchSectionLogs } from "@/lib/section-logs";
@@ -18,6 +18,7 @@ export default async function CustomersPage({
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("Customers");
+  const tc = await getTranslations("Common");
   const ctx = await requireOrg(locale);
   const supabase = await createClient();
 
@@ -33,7 +34,7 @@ export default async function CustomersPage({
       .eq("organization_id", ctx.organization.id)
       .order("created_at", { ascending: false })
       .limit(30),
-    fetchSectionLogs(ctx.organization.id, ["customer"]),
+    fetchSectionLogs(ctx.organization.id, ["customer"], 50),
   ]);
 
   const title = ctx.organization.niche === "clinic" ? t("titleClinic") : t("title");
@@ -107,38 +108,16 @@ export default async function CustomersPage({
       </div>
 
       <div className="surface" style={{ padding: "1.25rem" }}>
-        <div className="table-wrap">
-          <table className="data">
-            <thead>
-              <tr>
-                <th>{t("name")}</th>
-                <th>{t("risk")}</th>
-                <th>{t("ic")}</th>
-                <th>{t("address")}</th>
-                <th>{t("phone")}</th>
-                <th>{t("email")}</th>
-                <th>{t("addedBy")}</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {(customers || []).map((c) => (
-                <CustomerRow key={c.id} customer={c as Customer} labels={rowLabels} />
-              ))}
-              {!customers?.length ? (
-                <tr>
-                  <td colSpan={8} className="muted">
-                    {t("empty")}
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
+        <PatientsList
+          customers={(customers || []) as Customer[]}
+          labels={rowLabels}
+          empty={t("empty")}
+          searchPlaceholder={tc("search")}
+        />
       </div>
 
       <div className="fluid-grid">
-        <div className="surface" style={{ padding: "1.25rem" }}>
+        <div className="surface history-zone" style={{ padding: "1.25rem" }}>
           <h3 style={{ marginTop: 0 }}>{t("deletedTitle")}</h3>
           <p className="muted">{t("deletedHint")}</p>
           <div className="table-wrap">
@@ -169,7 +148,7 @@ export default async function CustomersPage({
             </table>
           </div>
         </div>
-        <SectionActivityLog title={t("activity")} logs={logs} />
+        <SectionActivityLog title={t("activity")} logs={logs} pageSize={5} />
       </div>
     </div>
   );

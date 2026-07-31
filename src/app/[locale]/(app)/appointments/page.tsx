@@ -40,7 +40,7 @@ export default async function AppointmentsPage({
         .select("id, name")
         .eq("organization_id", ctx.organization.id)
         .order("name"),
-      fetchSectionLogs(ctx.organization.id, ["appointment"]),
+      fetchSectionLogs(ctx.organization.id, ["appointment"], 50),
     ]);
 
   return (
@@ -112,7 +112,7 @@ export default async function AppointmentsPage({
         />
       </div>
 
-      <SectionActivityLog title={t("activity")} logs={logs} />
+      <SectionActivityLog title={t("activity")} logs={logs} pageSize={5} />
     </div>
   );
 }

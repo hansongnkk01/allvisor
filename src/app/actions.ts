@@ -751,11 +751,19 @@ export async function completeAppointmentWithInvoiceAction(appointmentId: string
   }
 
   const year = new Date().getFullYear();
+  const prefix =
+    String((organization as { invoice_prefix?: string | null }).invoice_prefix || "INV")
+      .replace(/[^A-Za-z0-9_-]/g, "")
+      .slice(0, 12) || "INV";
+  const startSeq = Number(
+    (organization as { invoice_next_seq?: number | null }).invoice_next_seq || 1
+  );
   const { count } = await supabase
     .from("invoices")
     .select("*", { count: "exact", head: true })
     .eq("organization_id", organization.id);
-  const invoiceNumber = `INV-${year}-${String((count || 0) + 1).padStart(5, "0")}`;
+  const seq = Math.max(startSeq, (count || 0) + 1);
+  const invoiceNumber = `${prefix}-${year}-${String(seq).padStart(5, "0")}`;
 
   const unitPrice = 0;
   const lineTotal = 0;
@@ -1227,6 +1235,17 @@ export async function updateOrgSettingsAction(formData: FormData) {
     sst_number: String(formData.get("sst_number") || "") || null,
   };
 
+  if (formData.has("invoice_prefix")) {
+    const prefix = String(formData.get("invoice_prefix") || "INV")
+      .replace(/[^A-Za-z0-9_-]/g, "")
+      .slice(0, 12);
+    patch.invoice_prefix = prefix || "INV";
+  }
+  if (formData.has("invoice_next_seq")) {
+    const seq = Math.max(1, Math.floor(Number(formData.get("invoice_next_seq")) || 1));
+    patch.invoice_next_seq = seq;
+  }
+
   if (formData.has("lhdn_brn")) {
     patch.lhdn_brn = String(formData.get("lhdn_brn") || "").trim() || null;
   }
@@ -1257,12 +1276,18 @@ export async function updateOrgSettingsAction(formData: FormData) {
           "Database missing LHDN columns — run migration 012_lhdn_intermediary.sql in Supabase SQL Editor.",
       };
     }
+    if (/invoice_prefix|invoice_next_seq/i.test(error.message)) {
+      return {
+        error:
+          "Database missing invoice format columns — run migration 014_invoice_number_settings.sql in Supabase SQL Editor.",
+      };
+    }
     return { error: error.message };
   }
   if (!data) {
     return { error: "Could not save organization settings. Try again or contact support." };
   }
-  revalidateApp("/settings", "/lhdn");
+  revalidateApp("/settings", "/lhdn", "/admin", "/invoices");
   revalidateAppLayout();
   return { success: true };
 }
@@ -1300,7 +1325,9 @@ export async function addStaffAction(formData: FormData) {
   const { supabase, organization, membership, profile } = await requireMember();
   if (!canManageStaff(membership.role)) return { error: "Only admin can add staff" };
 
-  const email = String(formData.get("email") || "").trim().toLowerCase();
+  const email = String(formData.get("username") || formData.get("email") || "")
+    .trim()
+    .toLowerCase();
   const fullName = String(formData.get("full_name") || "").trim();
   const password = String(formData.get("password") || "");
   const role = String(formData.get("role") || "staff") as MembershipRole;
@@ -1308,7 +1335,7 @@ export async function addStaffAction(formData: FormData) {
 
   const allowedRoles: MembershipRole[] = ["admin", "supervisor", "manager", "staff"];
   if (!allowedRoles.includes(role)) return { error: "Invalid role" };
-  if (!email) return { error: "Email required" };
+  if (!email) return { error: "Username (registered email) required" };
 
   const admin = await getServiceAdmin();
   if (!admin) {
@@ -1332,42 +1359,41 @@ export async function addStaffAction(formData: FormData) {
       await admin.from("profiles").update({ full_name: fullName, email }).eq("id", userId);
     }
   } else {
-    if (!password || password.length < 6) {
-      return { error: "Password (min 6) required for new staff accounts" };
-    }
-    const { data: created, error: createError } = await admin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: {
-        full_name: fullName,
-        locale: organization.locale_default,
-        account_type: "allvisor-staff",
-      },
-    });
-
-    if (createError || !created.user) {
-      // Email may exist in auth but not profiles yet — try list
-      const { data: listed } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
-      const found = listed?.users?.find(
-        (u) => (u.email || "").toLowerCase() === email
-      );
-      if (!found) {
-        return { error: createError?.message || "Failed to create staff user" };
-      }
+    // Prefer linking an already-registered Allvisor account (username = email).
+    const { data: listed } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
+    const found = listed?.users?.find((u) => (u.email || "").toLowerCase() === email);
+    if (found) {
       userId = found.id;
       await admin.from("profiles").upsert({
         id: found.id,
         email,
         full_name: fullName || found.user_metadata?.full_name || null,
       });
-    } else {
+    } else if (password && password.length >= 6) {
+      const { data: created, error: createError } = await admin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: {
+          full_name: fullName,
+          locale: organization.locale_default,
+          account_type: "allvisor-staff",
+        },
+      });
+      if (createError || !created.user) {
+        return { error: createError?.message || "Failed to create staff user" };
+      }
       userId = created.user.id;
       await admin.from("profiles").upsert({
         id: created.user.id,
         email,
         full_name: fullName || null,
       });
+    } else {
+      return {
+        error:
+          "No Allvisor account found for this username. Ask them to register first, then add their username here.",
+      };
     }
   }
 
@@ -1382,6 +1408,18 @@ export async function addStaffAction(formData: FormData) {
 
   if (existingMembership) {
     return { error: "This user is already a member of this clinic" };
+  }
+
+  // One Allvisor account → one shop dashboard only
+  const { count: shopCount } = await admin
+    .from("memberships")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", userId);
+  if ((shopCount || 0) > 0) {
+    return {
+      error:
+        "This account is already linked to another shop dashboard. One account can only join one shop.",
+    };
   }
 
   const { error } = await supabase.from("memberships").insert({
@@ -1618,16 +1656,16 @@ export async function upsertBranchServiceItemAction(formData: FormData) {
 export async function addBranchStaffAction(formData: FormData) {
   const { membership } = await requireMember();
   if (!canManageStaff(membership.role)) return { error: "Only admin" };
-  // reuse same org targeting via target_org_id by temporarily switching insert org
   const targetOrgId = String(formData.get("target_org_id") || "");
   if (!targetOrgId) return { error: "Missing branch" };
 
-  // Force organization_id in form by cloning into addStaff with service role membership insert
-  const email = String(formData.get("email") || "").trim().toLowerCase();
+  const email = String(formData.get("username") || formData.get("email") || "")
+    .trim()
+    .toLowerCase();
   const fullName = String(formData.get("full_name") || "").trim();
-  const password = String(formData.get("password") || "");
   const role = String(formData.get("role") || "staff") as MembershipRole;
   const jobTitle = String(formData.get("job_title") || "").trim() || null;
+  if (!email) return { error: "Username (registered email) required" };
 
   const ctx = await requireMember();
   const linked =
@@ -1653,22 +1691,45 @@ export async function addBranchStaffAction(formData: FormData) {
     .maybeSingle();
   if (existingProfile?.id) {
     userId = existingProfile.id;
-  } else {
-    if (!password || password.length < 6) return { error: "Password required for new user" };
-    const { data: created, error: createError } = await admin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: { full_name: fullName, account_type: "allvisor-staff" },
-    });
-    if (createError || !created.user) {
-      const { data: listed } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
-      const found = listed?.users?.find((u) => (u.email || "").toLowerCase() === email);
-      if (!found) return { error: createError?.message || "Create failed" };
-      userId = found.id;
-    } else {
-      userId = created.user.id;
+    if (fullName) {
+      await admin.from("profiles").update({ full_name: fullName }).eq("id", userId);
     }
+  } else {
+    const { data: listed } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
+    const found = listed?.users?.find((u) => (u.email || "").toLowerCase() === email);
+    if (!found) {
+      return {
+        error:
+          "No Allvisor account found for this username. Ask them to register first, then add their username here.",
+      };
+    }
+    userId = found.id;
+    await admin.from("profiles").upsert({
+      id: found.id,
+      email,
+      full_name: fullName || found.user_metadata?.full_name || null,
+    });
+  }
+
+  if (!userId) return { error: "Could not resolve staff user" };
+
+  const { data: alreadyHere } = await admin
+    .from("memberships")
+    .select("id")
+    .eq("organization_id", targetOrgId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (alreadyHere) return { error: "This user is already a member of this clinic" };
+
+  const { count: shopCount } = await admin
+    .from("memberships")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", userId);
+  if ((shopCount || 0) > 0) {
+    return {
+      error:
+        "This account is already linked to another shop dashboard. One account can only join one shop.",
+    };
   }
 
   const { error } = await admin.from("memberships").insert({
@@ -2064,6 +2125,124 @@ export async function cancelInvoiceLhdnAction(invoiceId: string, reason?: string
     uuid: result.uuid,
     myinvoisStatus: "Cancelled",
   };
+}
+
+export async function getInvoicePreviewAction(invoiceId: string) {
+  const { supabase, organization } = await requireMember();
+  const [{ data: invoice }, { data: lines }, { data: payments }, { data: latestLhdn }] =
+    await Promise.all([
+      supabase
+        .from("invoices")
+        .select("*, customers(name, phone, email, address, risk_level)")
+        .eq("id", invoiceId)
+        .eq("organization_id", organization.id)
+        .maybeSingle(),
+      supabase
+        .from("invoice_lines")
+        .select("*")
+        .eq("invoice_id", invoiceId)
+        .order("id"),
+      supabase
+        .from("payments")
+        .select("id, amount, method, paid_at")
+        .eq("invoice_id", invoiceId)
+        .order("paid_at", { ascending: false }),
+      supabase
+        .from("lhdn_submissions")
+        .select("uuid, status, response")
+        .eq("invoice_id", invoiceId)
+        .eq("organization_id", organization.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]);
+
+  if (!invoice) return { error: "Invoice not found" };
+
+  const customer = invoice.customers as {
+    name?: string;
+    phone?: string | null;
+    email?: string | null;
+    address?: string | null;
+  } | null;
+
+  return {
+    data: {
+      invoice: {
+        id: invoice.id,
+        invoice_number: invoice.invoice_number,
+        title: invoice.title,
+        status: invoice.status,
+        total: Number(invoice.total),
+        amount_paid: Number(invoice.amount_paid),
+        created_at: invoice.created_at,
+        issue_date: invoice.issue_date,
+        lhdn_status: invoice.lhdn_status,
+        tax_amount: Number(invoice.tax_amount || 0),
+        subtotal: Number(invoice.subtotal || 0),
+        customers: invoice.customers,
+      },
+      lines: (lines || []).map((l) => ({
+        id: l.id,
+        description: l.description,
+        quantity: Number(l.quantity),
+        unit_price: Number(l.unit_price),
+        line_total: Number(l.line_total),
+        line_kind: (l.line_kind || "service") as
+          | "service"
+          | "medicine"
+          | "additional"
+          | "service_charge",
+      })),
+      payments: payments || [],
+      latestLhdn: latestLhdn
+        ? {
+            uuid: latestLhdn.uuid,
+            status: latestLhdn.status,
+            myinvoisStatus: (
+              (latestLhdn.response || {}) as { myinvoisStatus?: string }
+            ).myinvoisStatus,
+          }
+        : null,
+      orgName: organization.name,
+      orgAddress: organization.address,
+      orgPhone: organization.phone,
+      serviceChargePercent: Number(organization.service_charge_percent ?? 0),
+      customer,
+    },
+  };
+}
+
+/** In-place revoke: mark invoice void so list shows grey + strikethrough. */
+export async function revokeInvoiceAction(invoiceId: string) {
+  const { supabase, organization, membership } = await requireMember();
+  if (!canAccessSensitive(membership.role)) return { error: "Forbidden" };
+  if (!invoiceId) return { error: "Missing invoice" };
+
+  const { data: invoice } = await supabase
+    .from("invoices")
+    .select("id, invoice_number, status")
+    .eq("id", invoiceId)
+    .eq("organization_id", organization.id)
+    .maybeSingle();
+  if (!invoice) return { error: "Invoice not found" };
+  if (invoice.status === "void") return { success: true };
+
+  const { error } = await supabase
+    .from("invoices")
+    .update({ status: "void" })
+    .eq("id", invoiceId);
+  if (error) return { error: error.message };
+
+  await logActivity({
+    action: "invoice.revoke",
+    summary: `Revoked invoice ${invoice.invoice_number}`,
+    entityType: "invoice",
+    entityId: invoiceId,
+  });
+
+  revalidateApp("/invoices", "/dashboard", "/lhdn", "/staff");
+  return { success: true };
 }
 
 /**

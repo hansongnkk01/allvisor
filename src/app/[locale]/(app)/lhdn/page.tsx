@@ -13,7 +13,7 @@ import { SectionLockGate } from "@/components/SectionLockGate";
 import { SectionActivityLog } from "@/components/SectionActivityLog";
 import { fetchSectionLogs } from "@/lib/section-logs";
 import { displayLhdnStatus, getLhdnMode } from "@/lib/lhdn";
-import { RefreshLhdnStatusButton } from "@/components/RefreshLhdnStatusButton";
+import { LhdnSubmissionsTable } from "@/components/LhdnSubmissionsTable";
 
 export default async function LhdnPage({
   params,
@@ -50,7 +50,7 @@ export default async function LhdnPage({
       .select("*, invoices(invoice_number)")
       .eq("organization_id", ctx.organization.id)
       .order("created_at", { ascending: false }),
-    fetchSectionLogs(ctx.organization.id, ["lhdn"]),
+    fetchSectionLogs(ctx.organization.id, ["lhdn"], 50),
   ]);
 
   const linked = Boolean(ctx.organization.lhdn_intermediary_linked);
@@ -155,69 +155,45 @@ export default async function LhdnPage({
         </>
       )}
 
-      <div className="fluid-grid">
-        <div className="surface" style={{ padding: "1.25rem" }}>
-          <h3 style={{ marginTop: 0 }}>{t("submissions")}</h3>
-          <div className="table-wrap">
-            <table className="data">
-              <thead>
-                <tr>
-                  <th>Invoice</th>
-                  <th>{t("status")}</th>
-                  <th>{t("uuid")}</th>
-                  <th>Submitted</th>
-                  <th>{t("detail")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(submissions || []).map((s) => {
-                  const resp = (s.response || {}) as Record<string, unknown>;
-                  const myStatus = typeof resp.myinvoisStatus === "string" ? resp.myinvoisStatus : null;
-                  const detail =
-                    (typeof resp.validationSummary === "string" && resp.validationSummary) ||
-                    (typeof resp.message === "string" && resp.message) ||
-                    (typeof resp.error === "string" && resp.error) ||
-                    (Array.isArray(resp.rejectedDocuments)
-                      ? JSON.stringify(resp.rejectedDocuments).slice(0, 180)
-                      : null) ||
-                    "—";
-                  return (
-                  <tr key={s.id}>
-                    <td>{s.invoices?.invoice_number || "—"}</td>
-                    <td>
-                      <span className="badge">
-                        {displayLhdnStatus(s.status, myStatus)}
-                      </span>
-                      {s.invoice_id && s.uuid ? (
-                        <RefreshLhdnStatusButton
-                          invoiceId={s.invoice_id}
-                          label={t("refreshStatus")}
-                        />
-                      ) : null}
-                    </td>
-                    <td style={{ fontFamily: "monospace", fontSize: "0.8rem" }}>
-                      {s.uuid || "—"}
-                    </td>
-                    <td>{s.submitted_at ? formatDateTime(s.submitted_at) : "—"}</td>
-                    <td style={{ fontSize: "0.8rem", maxWidth: 280, wordBreak: "break-word" }}>
-                      {detail}
-                    </td>
-                  </tr>
-                  );
-                })}
-                {!submissions?.length ? (
-                  <tr>
-                    <td colSpan={5} className="muted">
-                      {t("empty")}
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
-        </div>
-        <SectionActivityLog title={t("activity")} logs={logs} />
+      <div className="surface" style={{ padding: "1.25rem" }}>
+        <h3 style={{ marginTop: 0 }}>{t("submissions")}</h3>
+        <LhdnSubmissionsTable
+          empty={t("empty")}
+          refreshLabel={t("refreshStatus")}
+          columns={{
+            invoice: "Invoice",
+            status: t("status"),
+            uuid: t("uuid"),
+            submitted: "Submitted",
+            detail: t("detail"),
+          }}
+          rows={(submissions || []).map((s) => {
+            const resp = (s.response || {}) as Record<string, unknown>;
+            const myStatus =
+              typeof resp.myinvoisStatus === "string" ? resp.myinvoisStatus : null;
+            const detail =
+              (typeof resp.validationSummary === "string" && resp.validationSummary) ||
+              (typeof resp.message === "string" && resp.message) ||
+              (typeof resp.error === "string" && resp.error) ||
+              (Array.isArray(resp.rejectedDocuments)
+                ? JSON.stringify(resp.rejectedDocuments).slice(0, 180)
+                : null) ||
+              "—";
+            return {
+              id: s.id,
+              invoiceLabel: s.invoices?.invoice_number || "—",
+              statusLabel: displayLhdnStatus(s.status, myStatus),
+              uuid: s.uuid,
+              submittedAt: s.submitted_at ? formatDateTime(s.submitted_at) : "—",
+              detail,
+              invoiceId: s.invoice_id,
+              canRefresh: Boolean(s.invoice_id && s.uuid),
+            };
+          })}
+        />
       </div>
+
+      <SectionActivityLog title={t("activity")} logs={logs} pageSize={5} />
     </div>
   );
 }

@@ -30,6 +30,7 @@ export function SubmitLhdnButton({
   cancelHint,
   cancelPrompt,
   canCancel,
+  inline = false,
 }: {
   invoiceId: string;
   label: string;
@@ -42,15 +43,20 @@ export function SubmitLhdnButton({
   cancelHint?: string;
   cancelPrompt?: string;
   canCancel?: boolean;
+  /** Compact layout for modal header (no outer surface card). */
+  inline?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
 
+  const wrapClass = inline ? "no-print" : "surface no-print";
+  const wrapStyle = inline ? undefined : { padding: "1.25rem" };
+
   if (disabledReason && !hasUuid) {
     return (
-      <div className="surface no-print" style={{ padding: "1.25rem" }}>
+      <div className={wrapClass} style={wrapStyle}>
         <p className="muted" style={{ margin: 0 }}>
           {disabledReason}
         </p>
@@ -59,9 +65,9 @@ export function SubmitLhdnButton({
   }
 
   return (
-    <div className="surface no-print" style={{ padding: "1.25rem" }}>
-      <h3 style={{ marginTop: 0 }}>{label}</h3>
-      {hint ? (
+    <div className={wrapClass} style={wrapStyle}>
+      {!inline ? <h3 style={{ marginTop: 0 }}>{label}</h3> : null}
+      {!inline && hint ? (
         <p className="muted" style={{ marginTop: 0 }}>
           {hint}
         </p>

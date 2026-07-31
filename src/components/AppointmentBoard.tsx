@@ -48,6 +48,22 @@ const STATUSES: AppointmentStatus[] = [
   "no_show",
 ];
 
+/** Statuses shown in the dropdown (completed uses the tick button). */
+const DROPDOWN_STATUSES: AppointmentStatus[] = [
+  "scheduled",
+  "confirmed",
+  "cancelled",
+  "no_show",
+];
+
+function apptCardClass(status: AppointmentStatus) {
+  if (status === "completed") return "appt-card-completed";
+  if (status === "confirmed") return "appt-card-confirmed";
+  if (status === "cancelled") return "appt-card-cancelled";
+  if (status === "no_show") return "appt-card-no_show";
+  return "appt-card-scheduled";
+}
+
 function toLocalInput(iso: string) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
@@ -282,53 +298,48 @@ export function AppointmentBoard({
     setEndSlot(minutes);
   }
 
+  const completeAppointment = async (id: string) => {
+    const ok = await confirm({
+      title: "Allvisor",
+      message: labels.completeConfirm1 || "Confirm Completed?",
+      confirmLabel: "Yes",
+      cancelLabel: "Cancel",
+    });
+    if (!ok) return;
+    await new Promise((r) => window.setTimeout(r, 0));
+    startTransition(async () => {
+      try {
+        const result = await completeAppointmentWithInvoiceAction(id);
+        if (result?.error) {
+          await confirm({
+            title: "Allvisor",
+            message: result.error,
+            confirmLabel: "OK",
+            hideCancel: true,
+          });
+          return;
+        }
+        router.refresh();
+      } catch (e) {
+        await confirm({
+          title: "Allvisor",
+          message: e instanceof Error ? e.message : "Failed to complete appointment",
+          confirmLabel: "OK",
+          hideCancel: true,
+        });
+      }
+    });
+  };
+
   const listHandlers = {
     onStatus: async (id: string, status: AppointmentStatus) => {
       if (status === "completed") {
-        // Single confirm — avoid double-dialog races; run action outside startTransition
-        const ok = await confirm({
-          title: "Allvisor",
-          message: `${labels.completeConfirm1}\n\n${labels.completeConfirm2}`,
-          confirmLabel: "Confirm",
-          cancelLabel: "Cancel",
-        });
-        if (!ok) return;
-
-        // Yield so confirm close can paint before the server action (reduces INP freeze)
-        await new Promise((r) => window.setTimeout(r, 0));
-        startTransition(async () => {
-          try {
-            const result = await completeAppointmentWithInvoiceAction(id);
-            if (result?.error) {
-              await confirm({
-                title: "Allvisor",
-                message: result.error,
-                confirmLabel: "OK",
-                hideCancel: true,
-              });
-              return;
-            }
-            router.refresh();
-            await confirm({
-              title: "Allvisor",
-              message:
-                "Appointment marked completed. A pending invoice was added under Invoices — open it there to review service cost and add medicine/additional if needed.",
-              confirmLabel: "OK",
-              hideCancel: true,
-            });
-          } catch (e) {
-            await confirm({
-              title: "Allvisor",
-              message: e instanceof Error ? e.message : "Failed to complete appointment",
-              confirmLabel: "OK",
-              hideCancel: true,
-            });
-          }
-        });
+        await completeAppointment(id);
         return;
       }
       refreshAfter(() => updateAppointmentStatusAction(id, status));
     },
+    onComplete: completeAppointment,
     onDelete: async (id: string) => {
       const ok = await confirm({
         title: "Allvisor",
@@ -346,21 +357,14 @@ export function AppointmentBoard({
       if (nextStatus === "completed" && apptId) {
         const ok = await confirm({
           title: "Allvisor",
-          message: `${labels.completeConfirm1}\n\n${labels.completeConfirm2}`,
-          confirmLabel: "Confirm",
+          message: labels.completeConfirm1 || "Confirm Completed?",
+          confirmLabel: "Yes",
           cancelLabel: "Cancel",
         });
         if (!ok) return { error: "Cancelled" };
         const result = await completeAppointmentWithInvoiceAction(apptId);
         if (result?.error) return result;
         router.refresh();
-        await confirm({
-          title: "Allvisor",
-          message:
-            "Appointment marked completed. A pending invoice was added under Invoices — open it there to review service cost and add medicine/additional if needed.",
-          confirmLabel: "OK",
-          hideCancel: true,
-        });
         return result;
       }
       const result = await updateAppointmentAction(formData);
@@ -369,7 +373,6 @@ export function AppointmentBoard({
       return result;
     },
   };
-
   // Always position relative to last cursor point; when end is picked,
   // mousemove stops so the panel freezes — clamp keeps it inside the viewport.
   const { left: floatLeft, top: floatTop } = clampFloatPosition(
@@ -673,6 +676,7 @@ function AppointmentList({
   items,
   labels,
   onStatus,
+  onComplete,
   onDelete,
   onSave,
 }: {
@@ -691,6 +695,7 @@ function AppointmentList({
     endsAt: string;
   };
   onStatus: (id: string, status: AppointmentStatus) => void | Promise<void>;
+  onComplete: (id: string) => void | Promise<void>;
   onDelete: (id: string) => void | Promise<void>;
   onSave: (formData: FormData) => Promise<{ error?: string; success?: boolean } | void>;
 }) {
@@ -715,18 +720,19 @@ function AppointmentList({
         return (
           <div
             key={a.id}
-            className="surface"
+            className={`surface ${apptCardClass(a.status)}`}
             style={{ padding: "0.9rem 1rem", boxShadow: "none" }}
           >
             <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <strong>{a.title}</strong>
-                <div className="muted" style={{ fontSize: "0.85rem" }}>
+                <strong>
                   <PatientName
                     name={a.customers?.name || "—"}
                     risk={a.customers?.risk_level}
-                  />{" "}
-                  · {start.toLocaleString()} –{" "}
+                  />
+                </strong>
+                <div className="muted" style={{ fontSize: "0.85rem" }}>
+                  {a.title} · {start.toLocaleString()} –{" "}
                   {endDisplay.toLocaleTimeString([], {
                     hour: "2-digit",
                     minute: "2-digit",
@@ -749,10 +755,14 @@ function AppointmentList({
                     <select
                       className="select"
                       style={{ width: 140 }}
-                      value={a.status}
+                      value={a.status === "completed" ? "completed" : a.status}
+                      disabled={a.status === "completed"}
                       onChange={(e) => onStatus(a.id, e.target.value as AppointmentStatus)}
                     >
-                      {STATUSES.map((s) => (
+                      {a.status === "completed" ? (
+                        <option value="completed">completed</option>
+                      ) : null}
+                      {DROPDOWN_STATUSES.map((s) => (
                         <option key={s} value={s}>
                           {s}
                         </option>
@@ -760,7 +770,16 @@ function AppointmentList({
                     </select>
                     <button
                       type="button"
-                      className="btn btn-soft"
+                      className="btn btn-tick"
+                      title="Completed"
+                      disabled={a.status === "completed"}
+                      onClick={() => onComplete(a.id)}
+                    >
+                      ✓
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-edit-soft"
                       style={{ padding: "0.4rem 0.7rem" }}
                       onClick={() => {
                         setError(null);
@@ -771,7 +790,7 @@ function AppointmentList({
                     </button>
                     <button
                       type="button"
-                      className="btn btn-ghost"
+                      className="btn btn-delete-soft"
                       style={{ padding: "0.4rem 0.7rem" }}
                       onClick={() => onDelete(a.id)}
                     >
@@ -835,7 +854,10 @@ function AppointmentList({
                   <div className="field">
                     <label>{labels.status}</label>
                     <select name="status" className="select" defaultValue={a.status}>
-                      {STATUSES.map((s) => (
+                      {a.status === "completed" ? (
+                        <option value="completed">completed</option>
+                      ) : null}
+                      {DROPDOWN_STATUSES.map((s) => (
                         <option key={s} value={s}>
                           {s}
                         </option>
