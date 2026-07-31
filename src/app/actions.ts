@@ -1763,6 +1763,17 @@ export async function submitInvoiceToLhdnAction(invoiceId: string) {
     address?: string | null;
     phone?: string | null;
   } | null;
+
+  // Skip zero-amount service_charge lines (MyInvois still validates them if sent).
+  const billLines = (invoice.invoice_lines || []).filter(
+    (line: { line_kind?: string | null; line_total?: number | string }) => {
+      const kind = line.line_kind || "service";
+      const amt = Number(line.line_total || 0);
+      if (kind === "service_charge" && amt === 0) return false;
+      return true;
+    }
+  );
+
   const result = await provider.submitInvoice({
     invoiceNumber: invoice.invoice_number,
     issueDate: invoice.issue_date,
@@ -1772,13 +1783,15 @@ export async function submitInvoiceToLhdnAction(invoiceId: string) {
     supplierName: organization.name,
     supplierAddress: organization.address || null,
     supplierPhone: organization.phone || null,
+    // No buyer TIN yet → general public TIN (requires CLASS 004 in document builder)
     buyerName: customer?.name || "General Public",
-    buyerTin: null,
+    buyerTin: "EI00000000010",
     buyerAddress: customer?.address || null,
-    buyerPhone: customer?.phone || null,
+    buyerPhone: customer?.phone || organization.phone || null,
+    itemClassification: "004",
     total: Number(invoice.total),
     taxAmount: Number(invoice.tax_amount),
-    lines: (invoice.invoice_lines || []).map(
+    lines: billLines.map(
       (line: {
         description: string;
         quantity: number;

@@ -50,7 +50,8 @@ export function buildMyInvoisInvoiceDocument(payload: LhdnInvoicePayload) {
     (payload.supplierMsicName || process.env.LHDN_MSIC_NAME || "Medical and dental practice activities").trim();
 
   // General public / walk-in buyer without TIN (LHDN general TIN)
-  const buyerTin = (payload.buyerTin || "EI00000000010").trim();
+  const buyerTin = normalizeTin(payload.buyerTin || "EI00000000010");
+  const isGeneralPublicTin = buyerTin === "EI00000000010";
   const buyerBrn = (payload.buyerBrn || "NA").trim() || "NA";
   const buyerAddress = (payload.buyerAddress || supplierAddress).trim();
   const buyerCity = (payload.buyerCity || supplierCity).trim();
@@ -67,7 +68,10 @@ export function buildMyInvoisInvoiceDocument(payload: LhdnInvoicePayload) {
       : buyerPhoneRaw.startsWith("60")
         ? `+${buyerPhoneRaw}`
         : `+60${buyerPhoneRaw}`;
-  const classification = (payload.itemClassification || "022").trim(); // 022 = healthcare services (CLASS)
+  // ERR236: General TIN EI00000000010 + ID NA requires classification 004 (consolidated).
+  const classification = (
+    payload.itemClassification || (isGeneralPublicTin ? "004" : "022")
+  ).trim();
 
   const taxCategoryId = taxAmount > 0 ? "02" : "06"; // 02 Service Tax / 06 Not Applicable
 
