@@ -254,7 +254,12 @@
     "recordPayment": "Rekod bayaran",
     "pay": "Paid",
     "exit": "Keluar invois",
-    "balanceDue": "Baki perlu bayar"
+    "balanceDue": "Baki perlu bayar",
+    "submitLhdn": "Hantar ke LHDN",
+    "submitLhdnHint": "Status berbayar hanya rekod dalam Allvisor. Tekan ini untuk hantar e-Invois ke MyInvois (sandbox atau production ikut env).",
+    "submitLhdnPlanLocked": "Pelan anda tidak termasuk e-Invois LHDN. Naik taraf di Admin.",
+    "submitLhdnNeedTin": "Tetapkan TIN bisnes di halaman e-Invois LHDN dahulu.",
+    "submitLhdnAlready": "Sudah dihantar ke LHDN ({status})."
   },
   "Admin": {
     "title": "Admin",
