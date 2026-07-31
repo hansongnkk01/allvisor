@@ -1,6 +1,6 @@
 import type { LhdnInvoicePayload, LhdnProvider, LhdnSubmitResult } from "./types";
 import { buildMyInvoisInvoiceDocument } from "./document";
-import { buildOnBehalfOf } from "./tin";
+import { buildOnBehalfOf, normalizeTin } from "./tin";
 import { createHash } from "crypto";
 
 const IDENTITY_URL = {
@@ -48,22 +48,67 @@ function extractMyInvoisError(
   );
 }
 
-function enrichTinMismatchHint(error: string): string {
+function enrichTinMismatchHint(
+  error: string,
+  authTin: string | null,
+  docTin: string
+): string {
   if (!/authenticated TIN and documents TIN is not matching/i.test(error)) {
     return error;
   }
   return (
     `${error}\n\n` +
-    "Meaning: API login TIN ≠ supplier TIN in the invoice.\n" +
-    "• For your own TIN test with ERP registered under the same TIN: set LHDN_MODE=taxpayer on Vercel.\n" +
-    "• For intermediary (multi-shop): keep LHDN_MODE=intermediary, use intermediary Client ID/Secret, " +
-    "and Allvisor Company TIN must be the shop TIN authorized in MyInvois."
+    `API token TIN: ${authTin || "(unknown from token)"}\n` +
+    `Document supplier TIN: ${docTin}\n\n` +
+    "• Client ID/Secret must be from the SAME MyInvois taxpayer that owns that TIN.\n" +
+    "• For IG (individual) TIN: fill NRIC in LHDN settings (MyInvois ID Number), not leave BRN empty.\n" +
+    "• Preprod ERP must be registered under that same preprod taxpayer profile."
   );
 }
 
 function lhdnMode(): "intermediary" | "taxpayer" {
   const mode = (process.env.LHDN_MODE || "intermediary").toLowerCase();
   return mode === "taxpayer" ? "taxpayer" : "intermediary";
+}
+
+function peekTokenClaims(token: string): Record<string, unknown> {
+  try {
+    const part = token.split(".")[1];
+    if (!part) return {};
+    const json = Buffer.from(
+      part.replace(/-/g, "+").replace(/_/g, "/"),
+      "base64"
+    ).toString("utf8");
+    return JSON.parse(json) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
+}
+
+function authenticatedTinFromToken(token: string): string | null {
+  const claims = peekTokenClaims(token);
+  const candidates = [
+    claims.tin,
+    claims.TIN,
+    claims.taxpayerTIN,
+    claims.TaxpayerTIN,
+    claims.TaxPayerTIN,
+    claims.preferred_username,
+    claims.name,
+  ];
+  for (const c of candidates) {
+    if (typeof c === "string" && /[A-Z]{1,2}\d+/i.test(c)) {
+      return c.replace(/\s+/g, "").toUpperCase();
+    }
+  }
+  const nested = claims.taxpayer || claims.Taxpayer;
+  if (nested && typeof nested === "object") {
+    const t =
+      (nested as Record<string, unknown>).tin ||
+      (nested as Record<string, unknown>).TIN;
+    if (typeof t === "string") return t.replace(/\s+/g, "").toUpperCase();
+  }
+  return null;
 }
 
 async function getAccessToken(
@@ -135,10 +180,12 @@ export class MyInvoisLiveProvider implements LhdnProvider {
           : undefined;
 
       const token = await getAccessToken(this.env, onBehalfOf);
+      const authTin = authenticatedTinFromToken(token);
       const documentObj = buildMyInvoisInvoiceDocument(payload);
       const documentRaw = JSON.stringify(documentObj);
       const documentBase64 = Buffer.from(documentRaw, "utf8").toString("base64");
       const documentHash = createHash("sha256").update(documentRaw).digest("hex");
+      const docTin = normalizeTin(payload.supplierTin);
 
       const res = await fetch(
         `${API_BASE[this.env]}/api/v1.0/documentsubmissions/`,
@@ -174,10 +221,16 @@ export class MyInvoisLiveProvider implements LhdnProvider {
             environment: this.env,
             mode: lhdnMode(),
             onBehalfOf: onBehalfOf || null,
+            authenticatedTin: authTin,
+            documentTin: docTin,
             httpStatus: res.status,
             ...response,
           },
-          error: enrichTinMismatchHint(extractMyInvoisError(response, res.status)),
+          error: enrichTinMismatchHint(
+            extractMyInvoisError(response, res.status),
+            authTin,
+            docTin
+          ),
         };
       }
 
@@ -195,9 +248,15 @@ export class MyInvoisLiveProvider implements LhdnProvider {
             environment: this.env,
             mode: lhdnMode(),
             onBehalfOf: onBehalfOf || null,
+            authenticatedTin: authTin,
+            documentTin: docTin,
             ...response,
           },
-          error: enrichTinMismatchHint(extractMyInvoisError(response, res.status)),
+          error: enrichTinMismatchHint(
+            extractMyInvoisError(response, res.status),
+            authTin,
+            docTin
+          ),
         };
       }
 

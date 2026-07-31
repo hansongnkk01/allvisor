@@ -28,8 +28,17 @@ export function buildMyInvoisInvoiceDocument(payload: LhdnInvoicePayload) {
   const now = new Date();
   const issueTime = `${String(now.getUTCHours()).padStart(2, "0")}:${String(now.getUTCMinutes()).padStart(2, "0")}:${String(now.getUTCSeconds()).padStart(2, "0")}Z`;
 
-  const supplierBrn = (payload.supplierBrn || "NA").trim() || "NA";
+  const supplierIdValue = (payload.supplierBrn || "").replace(/\s+/g, "").trim();
   const supplierTin = normalizeTin(payload.supplierTin);
+  const isIndividualTin = supplierTin.startsWith("IG");
+  // IG sole prop: MyInvois uses NRIC (often same as profile ID Number), not BRN "NA".
+  const supplierIdScheme = isIndividualTin ? "NRIC" : "BRN";
+  const supplierId =
+    supplierIdValue && supplierIdValue.toUpperCase() !== "NA"
+      ? supplierIdValue
+      : isIndividualTin
+        ? ""
+        : "NA";
   const supplierSst = (payload.supplierSst || "NA").trim() || "NA";
   const supplierPhone = (payload.supplierPhone || "+60000000000").replace(/\s/g, "");
   const supplierAddress = (payload.supplierAddress || "Malaysia").trim();
@@ -121,7 +130,9 @@ export function buildMyInvoisInvoiceDocument(payload: LhdnInvoicePayload) {
                 IndustryClassificationCode: [{ _: msic, name: msicName }],
                 PartyIdentification: [
                   ...idScheme(supplierTin, "TIN"),
-                  ...idScheme(supplierBrn, "BRN"),
+                  ...(supplierId
+                    ? idScheme(supplierId, supplierIdScheme)
+                    : []),
                   ...idScheme(supplierSst, "SST"),
                   ...idScheme("NA", "TTX"),
                 ],

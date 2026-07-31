@@ -1725,6 +1725,15 @@ export async function submitInvoiceToLhdnAction(invoiceId: string) {
   }
   if (!organization.tin) return { error: "Set company TIN in LHDN settings first" };
 
+  const tinNorm = String(organization.tin).replace(/\s+/g, "").toUpperCase();
+  const idValue = String(organization.lhdn_brn || "").replace(/\s+/g, "").trim();
+  if (tinNorm.startsWith("IG") && (!idValue || idValue.toUpperCase() === "NA")) {
+    return {
+      error:
+        "IG TIN requires your NRIC in LHDN settings (MyInvois ID Number, e.g. 011216100769). Save it then submit again.",
+    };
+  }
+
   const mode = (process.env.LHDN_MODE || "intermediary").toLowerCase();
   const hasCreds = Boolean(
     process.env.LHDN_CLIENT_ID && process.env.LHDN_CLIENT_SECRET
