@@ -5,9 +5,12 @@ import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { ActionForm } from "@/components/ActionForm";
 import { MultiLineInvoiceForm } from "@/components/MultiLineInvoiceForm";
+import { InvoiceLhdnRowActions } from "@/components/InvoiceLhdnRowActions";
 import { createInvoiceAction, recordPaymentAction } from "@/app/actions";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
-import { canEditInvoiceIdentity } from "@/lib/roles";
+import { canAccessSensitive, canEditInvoiceIdentity } from "@/lib/roles";
+import { canUseLhdn } from "@/lib/subscription";
+import { displayLhdnStatus } from "@/lib/lhdn";
 import { SectionActivityLog } from "@/components/SectionActivityLog";
 import { PatientName } from "@/components/PatientName";
 import { fetchSectionLogs } from "@/lib/section-logs";
@@ -44,6 +47,37 @@ export default async function InvoicesPage({
         .order("name"),
       fetchSectionLogs(ctx.organization.id, ["invoice", "pos"]),
     ]);
+
+  const showLhdnActions = canAccessSensitive(ctx.membership.role);
+  const lhdnPlanOk = canUseLhdn(
+    ctx.organization.subscription_plan,
+    ctx.organization.subscription_status
+  );
+  const hasTin = Boolean(ctx.organization.tin);
+
+  const invoiceIds = (invoices || []).map((inv) => inv.id);
+  const lhdnByInvoice = new Map<
+    string,
+    { uuid: string | null; status: string | null; myinvoisStatus?: string | null }
+  >();
+  if (showLhdnActions && invoiceIds.length) {
+    const { data: submissions } = await supabase
+      .from("lhdn_submissions")
+      .select("invoice_id, uuid, status, response, created_at")
+      .eq("organization_id", ctx.organization.id)
+      .in("invoice_id", invoiceIds)
+      .order("created_at", { ascending: false });
+    for (const row of submissions || []) {
+      if (lhdnByInvoice.has(row.invoice_id)) continue;
+      lhdnByInvoice.set(row.invoice_id, {
+        uuid: row.uuid,
+        status: row.status,
+        myinvoisStatus: (
+          (row.response || {}) as { myinvoisStatus?: string }
+        ).myinvoisStatus,
+      });
+    }
+  }
 
   return (
     <div className="stack" style={{ gap: "1.25rem" }}>
@@ -140,13 +174,53 @@ export default async function InvoicesPage({
                   <td>{formatCurrency(Number(inv.amount_paid))}</td>
                   <td>{formatDateTime(inv.created_at)}</td>
                   <td>
-                    <Link
-                      href={`/invoices/${inv.id}`}
-                      className="btn btn-soft"
-                      style={{ padding: "0.35rem 0.7rem" }}
-                    >
-                      {inv.status === "paid" ? t("viewPrint") : t("view")}
-                    </Link>
+                    <div className="stack" style={{ gap: "0.45rem", alignItems: "flex-start" }}>
+                      <Link
+                        href={`/invoices/${inv.id}`}
+                        className="btn btn-soft"
+                        style={{ padding: "0.35rem 0.7rem" }}
+                      >
+                        {inv.status === "paid" ? t("viewPrint") : t("view")}
+                      </Link>
+                      {showLhdnActions ? (
+                        (() => {
+                          const sub = lhdnByInvoice.get(inv.id);
+                          const lhdnStatus =
+                            inv.lhdn_status || sub?.status || "not_submitted";
+                          const isCancelled =
+                            lhdnStatus === "cancelled" || sub?.status === "cancelled";
+                          const isValid = lhdnStatus === "accepted";
+                          const hasUuid = Boolean(sub?.uuid);
+                          const label =
+                            lhdnStatus && lhdnStatus !== "not_submitted"
+                              ? displayLhdnStatus(lhdnStatus, sub?.myinvoisStatus)
+                              : null;
+                          return (
+                            <InvoiceLhdnRowActions
+                              invoiceId={inv.id}
+                              canSubmit={
+                                lhdnPlanOk &&
+                                hasTin &&
+                                inv.status !== "void" &&
+                                !isValid &&
+                                !isCancelled
+                              }
+                              canCancel={
+                                lhdnPlanOk && hasTin && hasUuid && !isCancelled
+                              }
+                              lhdnLabel={label}
+                              labels={{
+                                submit: t("submitLhdn"),
+                                cancel: t("cancelLhdn"),
+                                cancelPrompt: t("cancelLhdnPrompt"),
+                                submitting: t("submittingLhdn"),
+                                cancelling: t("cancellingLhdn"),
+                              }}
+                            />
+                          );
+                        })()
+                      ) : null}
+                    </div>
                   </td>
                   <td>
                     {inv.status !== "paid" && inv.status !== "void" ? (

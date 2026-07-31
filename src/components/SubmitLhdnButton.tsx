@@ -2,7 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "@/i18n/navigation";
-import { submitInvoiceToLhdnAction } from "@/app/actions";
+import {
+  cancelInvoiceLhdnAction,
+  submitInvoiceToLhdnAction,
+} from "@/app/actions";
 import { RefreshLhdnStatusButton } from "@/components/RefreshLhdnStatusButton";
 
 function asMessage(value: unknown): string {
@@ -23,6 +26,10 @@ export function SubmitLhdnButton({
   refreshLabel,
   hasUuid,
   currentStatusLabel,
+  cancelLabel,
+  cancelHint,
+  cancelPrompt,
+  canCancel,
 }: {
   invoiceId: string;
   label: string;
@@ -31,6 +38,10 @@ export function SubmitLhdnButton({
   refreshLabel?: string;
   hasUuid?: boolean;
   currentStatusLabel?: string | null;
+  cancelLabel?: string;
+  cancelHint?: string;
+  cancelPrompt?: string;
+  canCancel?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -60,54 +71,96 @@ export function SubmitLhdnButton({
           {currentStatusLabel}
         </p>
       ) : null}
-      {!disabledReason ? (
-        <button
-          type="button"
-          className="btn btn-primary"
-          disabled={pending}
-          onClick={() => {
-            setError(null);
-            setOk(null);
-            startTransition(async () => {
-              try {
-                const result = await submitInvoiceToLhdnAction(invoiceId);
-                if (result && "error" in result && result.error) {
-                  setError(asMessage(result.error));
-                  return;
+      <div className="row" style={{ gap: "0.5rem", flexWrap: "wrap" }}>
+        {!disabledReason ? (
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={pending}
+            onClick={() => {
+              setError(null);
+              setOk(null);
+              startTransition(async () => {
+                try {
+                  const result = await submitInvoiceToLhdnAction(invoiceId);
+                  if (result && "error" in result && result.error) {
+                    setError(asMessage(result.error));
+                    return;
+                  }
+                  const uuid =
+                    result && "uuid" in result && typeof result.uuid === "string"
+                      ? result.uuid
+                      : null;
+                  const my =
+                    result && "myinvoisStatus" in result && result.myinvoisStatus
+                      ? String(result.myinvoisStatus)
+                      : "Submitted";
+                  const summary =
+                    result &&
+                    "validationSummary" in result &&
+                    result.validationSummary
+                      ? `\n${result.validationSummary}`
+                      : "";
+                  setOk(
+                    uuid
+                      ? `${my} (UUID: ${uuid})${summary}`
+                      : `${my}${summary}`
+                  );
+                  router.refresh();
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : "Submit failed");
                 }
-                const uuid =
-                  result && "uuid" in result && typeof result.uuid === "string"
-                    ? result.uuid
-                    : null;
-                const my =
-                  result && "myinvoisStatus" in result && result.myinvoisStatus
-                    ? String(result.myinvoisStatus)
-                    : "Submitted";
-                const summary =
-                  result &&
-                  "validationSummary" in result &&
-                  result.validationSummary
-                    ? `\n${result.validationSummary}`
-                    : "";
-                setOk(
-                  uuid
-                    ? `${my} (UUID: ${uuid})${summary}`
-                    : `${my}${summary}`
-                );
-                router.refresh();
-              } catch (err) {
-                setError(err instanceof Error ? err.message : "Submit failed");
-              }
-            });
-          }}
-        >
-          {pending ? "Submitting & checking status…" : label}
-        </button>
-      ) : (
-        <p className="muted" style={{ margin: 0, fontSize: "0.9rem" }}>
-          {disabledReason}
+              });
+            }}
+          >
+            {pending ? "Submitting & checking status…" : label}
+          </button>
+        ) : (
+          <p className="muted" style={{ margin: 0, fontSize: "0.9rem" }}>
+            {disabledReason}
+          </p>
+        )}
+        {canCancel && cancelLabel ? (
+          <button
+            type="button"
+            className="btn btn-ghost"
+            style={{ color: "var(--danger)" }}
+            disabled={pending}
+            onClick={() => {
+              const reason = window.prompt(
+                cancelPrompt || "Cancel reason (required):",
+                ""
+              );
+              if (reason === null) return;
+              setError(null);
+              setOk(null);
+              startTransition(async () => {
+                try {
+                  const result = await cancelInvoiceLhdnAction(
+                    invoiceId,
+                    reason || undefined
+                  );
+                  if (result && "error" in result && result.error) {
+                    setError(asMessage(result.error));
+                    return;
+                  }
+                  setOk("Cancelled on MyInvois");
+                  router.refresh();
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : "Cancel failed");
+                }
+              });
+            }}
+          >
+            {pending ? "Cancelling…" : cancelLabel}
+          </button>
+        ) : null}
+      </div>
+      {canCancel && cancelHint ? (
+        <p className="muted" style={{ margin: "0.5rem 0 0", fontSize: "0.85rem" }}>
+          {cancelHint}
         </p>
-      )}
+      ) : null}
       {hasUuid && refreshLabel ? (
         <RefreshLhdnStatusButton
           invoiceId={invoiceId}

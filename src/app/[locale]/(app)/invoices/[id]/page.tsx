@@ -306,6 +306,14 @@ export default async function InvoiceDetailPage({
           hint={t("submitLhdnHint")}
           refreshLabel={t("refreshLhdnStatus")}
           hasUuid={Boolean(latestLhdn?.uuid)}
+          cancelLabel={t("cancelLhdn")}
+          cancelHint={t("cancelLhdnHint")}
+          cancelPrompt={t("cancelLhdnPrompt")}
+          canCancel={
+            Boolean(latestLhdn?.uuid) &&
+            invoice.lhdn_status !== "cancelled" &&
+            latestLhdn?.status !== "cancelled"
+          }
           currentStatusLabel={
             invoice.lhdn_status && invoice.lhdn_status !== "not_submitted"
               ? t("lhdnStatusLine", {
@@ -333,7 +341,9 @@ export default async function InvoiceDetailPage({
                           .myinvoisStatus
                       ),
                     })
-                  : null
+                  : invoice.lhdn_status === "cancelled"
+                    ? t("lhdnStatusLine", { status: "Cancelled" })
+                    : null
           }
         />
       ) : null}

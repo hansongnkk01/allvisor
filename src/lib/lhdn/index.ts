@@ -10,6 +10,7 @@ export {
   fetchMyInvoisDocumentDetails,
   pollMyInvoisDocumentStatus,
 } from "./status";
+export { cancelMyInvoisDocument } from "./cancel";
 
 export function getLhdnMode(): "intermediary" | "taxpayer" | "demo" {
   const hasCreds = Boolean(

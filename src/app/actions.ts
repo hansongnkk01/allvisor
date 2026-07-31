@@ -1978,6 +1978,94 @@ export async function refreshLhdnDocumentStatusAction(invoiceId: string) {
   };
 }
 
+export async function cancelInvoiceLhdnAction(invoiceId: string, reason?: string) {
+  const { supabase, organization, membership } = await requireMember();
+  if (!canAccessSensitive(membership.role)) return { error: "Forbidden" };
+
+  if (!canUseLhdn(organization.subscription_plan, organization.subscription_status)) {
+    return { error: "Plan does not include LHDN e-Invoice" };
+  }
+  if (!organization.tin) return { error: "Set company TIN in LHDN settings first" };
+  if (!process.env.LHDN_CLIENT_ID || !process.env.LHDN_CLIENT_SECRET) {
+    return { error: "LHDN credentials not configured" };
+  }
+
+  const { data: invoice } = await supabase
+    .from("invoices")
+    .select("id, invoice_number, lhdn_status")
+    .eq("id", invoiceId)
+    .eq("organization_id", organization.id)
+    .maybeSingle();
+  if (!invoice) return { error: "Invoice not found" };
+
+  const { data: submission } = await supabase
+    .from("lhdn_submissions")
+    .select("id, uuid, response, status")
+    .eq("organization_id", organization.id)
+    .eq("invoice_id", invoiceId)
+    .not("uuid", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!submission?.uuid) {
+    return { error: "No LHDN UUID to cancel — submit first." };
+  }
+  if (invoice.lhdn_status === "cancelled" || submission.status === "cancelled") {
+    return { error: "This e-Invoice is already cancelled." };
+  }
+
+  const cancelReason =
+    (reason || "").trim().slice(0, 300) || "Cancelled from Allvisor invoice list";
+
+  const { cancelMyInvoisDocument } = await import("@/lib/lhdn/cancel");
+  const result = await cancelMyInvoisDocument({
+    uuid: submission.uuid,
+    reason: cancelReason,
+    supplierTin: organization.tin,
+    supplierBrn: organization.lhdn_brn || null,
+  });
+
+  if (!result.success) {
+    return { error: result.error || "Cancel failed" };
+  }
+
+  const mergedResponse = {
+    ...((submission.response as Record<string, unknown>) || {}),
+    myinvoisStatus: "Cancelled",
+    cancelledAt: new Date().toISOString(),
+    cancelReason,
+    cancelResponse: result.response,
+  };
+
+  await supabase
+    .from("lhdn_submissions")
+    .update({
+      status: "cancelled",
+      response: mergedResponse,
+    })
+    .eq("id", submission.id);
+
+  await supabase
+    .from("invoices")
+    .update({ lhdn_status: "cancelled" })
+    .eq("id", invoiceId);
+
+  await logActivity({
+    action: "lhdn.cancel",
+    summary: `Cancelled LHDN e-Invoice for ${invoice.invoice_number}`,
+    entityType: "invoice",
+    entityId: invoiceId,
+  });
+
+  revalidateApp("/lhdn", "/invoices", "/staff");
+  return {
+    success: true,
+    uuid: result.uuid,
+    myinvoisStatus: "Cancelled",
+  };
+}
+
 /**
  * Status change adds a NEW invoice list row (same name/title) with the new status,
  * instead of only mutating the original. Invoice numbers stay unique via suffix.

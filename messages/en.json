@@ -156,6 +156,10 @@
     "qty": "Qty",
     "unitPrice": "Unit price",
     "submitLhdn": "Submit to LHDN",
+    "cancelLhdn": "Cancel submission to LHDN",
+    "cancelLhdnPrompt": "Reason for cancelling this e-Invoice on MyInvois (required):",
+    "submittingLhdn": "Submitting…",
+    "cancellingLhdn": "Cancelling…",
     "tax": "Tax",
     "addLine": "Add line",
     "removeLine": "Remove",
@@ -231,7 +235,11 @@
     "submitLhdnNeedTin": "Set your business TIN on the LHDN e-Invoice page first.",
     "submitLhdnAlready": "Already Valid on MyInvois ({status}). Use refresh if you need the latest status.",
     "refreshLhdnStatus": "Refresh MyInvois status",
-    "lhdnStatusLine": "MyInvois status: {status}"
+    "lhdnStatusLine": "MyInvois status: {status}",
+    "cancelLhdn": "Cancel submission to LHDN",
+    "cancelLhdnHint": "Cancel this e-Invoice on MyInvois (usually within 72 hours after Valid). Reason is required.",
+    "cancelLhdnPrompt": "Reason for cancelling this e-Invoice on MyInvois (required):",
+    "cancellingLhdn": "Cancelling…"
   },
   "Admin": {
     "title": "Admin",
