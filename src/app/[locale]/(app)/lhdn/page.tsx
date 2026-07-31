@@ -12,7 +12,8 @@ import { canAccessSensitive } from "@/lib/roles";
 import { SectionLockGate } from "@/components/SectionLockGate";
 import { SectionActivityLog } from "@/components/SectionActivityLog";
 import { fetchSectionLogs } from "@/lib/section-logs";
-import { getLhdnMode } from "@/lib/lhdn";
+import { displayLhdnStatus, getLhdnMode } from "@/lib/lhdn";
+import { RefreshLhdnStatusButton } from "@/components/RefreshLhdnStatusButton";
 
 export default async function LhdnPage({
   params,
@@ -171,7 +172,9 @@ export default async function LhdnPage({
               <tbody>
                 {(submissions || []).map((s) => {
                   const resp = (s.response || {}) as Record<string, unknown>;
+                  const myStatus = typeof resp.myinvoisStatus === "string" ? resp.myinvoisStatus : null;
                   const detail =
+                    (typeof resp.validationSummary === "string" && resp.validationSummary) ||
                     (typeof resp.message === "string" && resp.message) ||
                     (typeof resp.error === "string" && resp.error) ||
                     (Array.isArray(resp.rejectedDocuments)
@@ -182,7 +185,15 @@ export default async function LhdnPage({
                   <tr key={s.id}>
                     <td>{s.invoices?.invoice_number || "—"}</td>
                     <td>
-                      <span className="badge">{s.status}</span>
+                      <span className="badge">
+                        {displayLhdnStatus(s.status, myStatus)}
+                      </span>
+                      {s.invoice_id && s.uuid ? (
+                        <RefreshLhdnStatusButton
+                          invoiceId={s.invoice_id}
+                          label={t("refreshStatus")}
+                        />
+                      ) : null}
                     </td>
                     <td style={{ fontFamily: "monospace", fontSize: "0.8rem" }}>
                       {s.uuid || "—"}

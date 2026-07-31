@@ -1808,34 +1808,90 @@ export async function submitInvoiceToLhdnAction(invoiceId: string) {
 
   const status = result.success ? result.status : "rejected";
 
-  await supabase.from("lhdn_submissions").insert({
-    organization_id: organization.id,
-    invoice_id: invoiceId,
-    status,
-    uuid: result.uuid || null,
-    payload: {
-      invoiceNumber: invoice.invoice_number,
-      total: invoice.total,
-    },
-    response: result.response,
-    submitted_at: new Date().toISOString(),
-  });
+  const { data: submissionRow } = await supabase
+    .from("lhdn_submissions")
+    .insert({
+      organization_id: organization.id,
+      invoice_id: invoiceId,
+      status,
+      uuid: result.uuid || null,
+      payload: {
+        invoiceNumber: invoice.invoice_number,
+        total: invoice.total,
+      },
+      response: result.response,
+      submitted_at: new Date().toISOString(),
+    })
+    .select("id")
+    .maybeSingle();
 
   await supabase
     .from("invoices")
     .update({ lhdn_status: status })
     .eq("id", invoiceId);
 
+  let finalStatus: import("@/lib/types").LhdnStatus = status;
+  let finalMyinvois = "Submitted";
+  let validationSummary: string | null = null;
+
+  // Poll Get Document Details until Valid/Invalid (or timeout).
+  if (result.success && result.uuid && process.env.LHDN_CLIENT_ID) {
+    const { pollMyInvoisDocumentStatus } = await import("@/lib/lhdn/status");
+    const details = await pollMyInvoisDocumentStatus({
+      uuid: result.uuid,
+      supplierTin: organization.tin,
+      supplierBrn: organization.lhdn_brn || null,
+      attempts: 5,
+      delayMs: 2500,
+    });
+
+    if (details.success) {
+      finalStatus = details.status;
+      finalMyinvois = details.myinvoisStatus;
+      validationSummary = details.validationSummary || null;
+
+      const mergedResponse = {
+        ...(result.response || {}),
+        myinvoisStatus: details.myinvoisStatus,
+        longId: details.longId,
+        submissionUid: details.submissionUid,
+        validationSummary: details.validationSummary,
+        documentDetails: details.response,
+      };
+
+      if (submissionRow?.id) {
+        await supabase
+          .from("lhdn_submissions")
+          .update({
+            status: finalStatus,
+            response: mergedResponse,
+          })
+          .eq("id", submissionRow.id);
+      }
+
+      await supabase
+        .from("invoices")
+        .update({ lhdn_status: finalStatus })
+        .eq("id", invoiceId);
+    }
+  }
+
   await logActivity({
     action: "lhdn.submit",
-    summary: `Submitted ${invoice.invoice_number} to LHDN (${status})`,
+    summary: `Submitted ${invoice.invoice_number} to LHDN (${finalMyinvois || finalStatus})`,
     entityType: "invoice",
     entityId: invoiceId,
   });
 
   revalidateApp("/lhdn", "/invoices", "/staff");
   return result.success
-    ? { success: true, uuid: result.uuid }
+    ? {
+        success: true,
+        uuid: result.uuid,
+        status: finalStatus,
+        myinvoisStatus: finalMyinvois,
+        validationSummary,
+      }
     : {
         error:
           typeof result.error === "string"
@@ -1844,6 +1900,82 @@ export async function submitInvoiceToLhdnAction(invoiceId: string) {
               ? JSON.stringify(result.error)
               : "LHDN submission failed",
       };
+}
+
+export async function refreshLhdnDocumentStatusAction(invoiceId: string) {
+  const { supabase, organization } = await requireMember();
+
+  if (!canUseLhdn(organization.subscription_plan, organization.subscription_status)) {
+    return { error: "Plan does not include LHDN e-Invoice" };
+  }
+  if (!organization.tin) return { error: "Set company TIN in LHDN settings first" };
+  if (!process.env.LHDN_CLIENT_ID || !process.env.LHDN_CLIENT_SECRET) {
+    return { error: "LHDN credentials not configured" };
+  }
+
+  const { data: submission } = await supabase
+    .from("lhdn_submissions")
+    .select("id, uuid, response, status")
+    .eq("organization_id", organization.id)
+    .eq("invoice_id", invoiceId)
+    .not("uuid", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!submission?.uuid) {
+    return { error: "No LHDN UUID found for this invoice — submit first." };
+  }
+
+  const { fetchMyInvoisDocumentDetails } = await import("@/lib/lhdn/status");
+  const details = await fetchMyInvoisDocumentDetails({
+    uuid: submission.uuid,
+    supplierTin: organization.tin,
+    supplierBrn: organization.lhdn_brn || null,
+  });
+
+  if (!details.success) {
+    return { error: details.error || "Could not refresh status from MyInvois" };
+  }
+
+  const mergedResponse = {
+    ...((submission.response as Record<string, unknown>) || {}),
+    myinvoisStatus: details.myinvoisStatus,
+    longId: details.longId,
+    submissionUid: details.submissionUid,
+    validationSummary: details.validationSummary,
+    documentDetails: details.response,
+    refreshedAt: new Date().toISOString(),
+  };
+
+  await supabase
+    .from("lhdn_submissions")
+    .update({
+      status: details.status,
+      response: mergedResponse,
+    })
+    .eq("id", submission.id);
+
+  await supabase
+    .from("invoices")
+    .update({ lhdn_status: details.status })
+    .eq("id", invoiceId);
+
+  await logActivity({
+    action: "lhdn.refresh_status",
+    summary: `Refreshed LHDN status → ${details.myinvoisStatus}`,
+    entityType: "invoice",
+    entityId: invoiceId,
+  });
+
+  revalidateApp("/lhdn", "/invoices", "/staff");
+  return {
+    success: true,
+    status: details.status,
+    myinvoisStatus: details.myinvoisStatus,
+    validationSummary: details.validationSummary,
+    uuid: details.uuid,
+  };
 }
 
 /**

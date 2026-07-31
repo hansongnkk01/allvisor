@@ -5,6 +5,11 @@ import { MyInvoisLiveProvider } from "./live";
 export type { LhdnInvoicePayload, LhdnProvider, LhdnSubmitResult } from "./types";
 export { MyInvoisSandboxProvider } from "./sandbox";
 export { MyInvoisLiveProvider } from "./live";
+export {
+  displayLhdnStatus,
+  fetchMyInvoisDocumentDetails,
+  pollMyInvoisDocumentStatus,
+} from "./status";
 
 export function getLhdnMode(): "intermediary" | "taxpayer" | "demo" {
   const hasCreds = Boolean(

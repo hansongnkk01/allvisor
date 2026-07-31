@@ -259,7 +259,9 @@
     "submitLhdnHint": "Status berbayar hanya rekod dalam Allvisor. Tekan ini untuk hantar e-Invois ke MyInvois (sandbox atau production ikut env).",
     "submitLhdnPlanLocked": "Pelan anda tidak termasuk e-Invois LHDN. Naik taraf di Admin.",
     "submitLhdnNeedTin": "Tetapkan TIN bisnes di halaman e-Invois LHDN dahulu.",
-    "submitLhdnAlready": "Sudah dihantar ke LHDN ({status})."
+    "submitLhdnAlready": "Sudah Valid di MyInvois ({status}). Guna refresh untuk status terkini.",
+    "refreshLhdnStatus": "Refresh status MyInvois",
+    "lhdnStatusLine": "Status MyInvois: {status}"
   },
   "Admin": {
     "title": "Admin",
@@ -408,6 +410,7 @@
     "lockedPlan": "Pelan anda tidak termasuk e-Invois. Naik taraf di Admin untuk membuka.",
     "empty": "Belum ada penghantaran.",
     "detail": "Butiran",
+    "refreshStatus": "Refresh status",
     "liveConnected": "Kredensial MyInvois dikesan (mod taxpayer).",
     "intermediaryConnected": "Mod intermediary: {name} hantar bagi pihak TIN setiap kedai melalui MyInvois.",
     "demoMode": "Mod demo: tetapkan LHDN_CLIENT_ID dan LHDN_CLIENT_SECRET dalam env (kredensial intermediary platform) untuk MyInvois sebenar.",

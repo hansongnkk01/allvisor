@@ -229,7 +229,9 @@
     "submitLhdnHint": "Paid status only records payment in Allvisor. Press this to send the e-Invoice to MyInvois (sandbox or production per env).",
     "submitLhdnPlanLocked": "Your plan does not include LHDN e-Invoice. Upgrade in Admin.",
     "submitLhdnNeedTin": "Set your business TIN on the LHDN e-Invoice page first.",
-    "submitLhdnAlready": "Already submitted to LHDN ({status})."
+    "submitLhdnAlready": "Already Valid on MyInvois ({status}). Use refresh if you need the latest status.",
+    "refreshLhdnStatus": "Refresh MyInvois status",
+    "lhdnStatusLine": "MyInvois status: {status}"
   },
   "Admin": {
     "title": "Admin",
@@ -408,6 +410,7 @@
     "lockedPlan": "Your plan does not include e-Invoice. Upgrade in Admin to unlock.",
     "empty": "No submissions yet.",
     "detail": "Detail",
+    "refreshStatus": "Refresh status",
     "liveConnected": "Live MyInvois credentials detected (taxpayer mode).",
     "intermediaryConnected": "Intermediary mode: {name} submits on behalf of each shop’s TIN via MyInvois.",
     "demoMode": "Demo mode: set LHDN_CLIENT_ID and LHDN_CLIENT_SECRET in env (platform intermediary credentials) to use real MyInvois.",

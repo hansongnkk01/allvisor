@@ -12,6 +12,7 @@ import { RecordPaymentForm } from "@/components/RecordPaymentForm";
 import { SubmitLhdnButton } from "@/components/SubmitLhdnButton";
 import { canUseLhdn } from "@/lib/subscription";
 import { canAccessSensitive } from "@/lib/roles";
+import { displayLhdnStatus } from "@/lib/lhdn";
 import type { InvoiceLineKind, InvoiceStatus } from "@/lib/types";
 
 export default async function InvoiceDetailPage({
@@ -26,7 +27,8 @@ export default async function InvoiceDetailPage({
   const supabase = await createClient();
   const pct = Number(ctx.organization.service_charge_percent ?? 0);
 
-  const [{ data: invoice }, { data: linesRaw }, { data: payments }] = await Promise.all([
+  const [{ data: invoice }, { data: linesRaw }, { data: payments }, { data: latestLhdn }] =
+    await Promise.all([
     supabase
       .from("invoices")
       .select("*, customers(name, phone, email, address)")
@@ -43,6 +45,14 @@ export default async function InvoiceDetailPage({
       .select("*")
       .eq("invoice_id", id)
       .order("paid_at", { ascending: false }),
+    supabase
+      .from("lhdn_submissions")
+      .select("uuid, status, response")
+      .eq("invoice_id", id)
+      .eq("organization_id", ctx.organization.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   if (!invoice) {
@@ -294,6 +304,19 @@ export default async function InvoiceDetailPage({
           invoiceId={invoice.id}
           label={t("submitLhdn")}
           hint={t("submitLhdnHint")}
+          refreshLabel={t("refreshLhdnStatus")}
+          hasUuid={Boolean(latestLhdn?.uuid)}
+          currentStatusLabel={
+            invoice.lhdn_status && invoice.lhdn_status !== "not_submitted"
+              ? t("lhdnStatusLine", {
+                  status: displayLhdnStatus(
+                    invoice.lhdn_status,
+                    ((latestLhdn?.response || {}) as { myinvoisStatus?: string })
+                      .myinvoisStatus
+                  ),
+                })
+              : null
+          }
           disabledReason={
             !canUseLhdn(
               ctx.organization.subscription_plan,
@@ -303,7 +326,13 @@ export default async function InvoiceDetailPage({
               : !ctx.organization.tin
                 ? t("submitLhdnNeedTin")
                 : invoice.lhdn_status === "accepted"
-                  ? t("submitLhdnAlready", { status: invoice.lhdn_status })
+                  ? t("submitLhdnAlready", {
+                      status: displayLhdnStatus(
+                        invoice.lhdn_status,
+                        ((latestLhdn?.response || {}) as { myinvoisStatus?: string })
+                          .myinvoisStatus
+                      ),
+                    })
                   : null
           }
         />

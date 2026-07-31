@@ -1,7 +1,7 @@
 export type LhdnSubmitResult = {
   success: boolean;
   uuid?: string;
-  status: "pending" | "accepted" | "rejected";
+  status: "pending" | "accepted" | "rejected" | "cancelled";
   response: Record<string, unknown>;
   error?: string;
 };
