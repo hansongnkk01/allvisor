@@ -904,7 +904,11 @@ export async function addInvoiceCostAction(formData: FormData) {
 
   if (kind === "medicine") {
     const productId = String(formData.get("product_id") || "").trim();
-    const quantity = Number(formData.get("quantity") || formData.get("amount") || 0);
+    const qtyRaw = formData.get("quantity") ?? formData.get("amount");
+    const quantity =
+      qtyRaw === null || String(qtyRaw).trim() === ""
+        ? 1
+        : Number(qtyRaw);
     if (!productId) return { error: "Select an inventory item" };
     if (!(quantity > 0) || !Number.isFinite(quantity)) {
       return { error: "Quantity must be greater than 0" };

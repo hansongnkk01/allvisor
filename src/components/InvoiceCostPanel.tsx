@@ -63,7 +63,7 @@ export function InvoiceCostPanel({
   const [kind, setKind] = useState<"medicine" | "additional">("medicine");
   const [productId, setProductId] = useState("");
   const [description, setDescription] = useState("");
-  const [amount, setAmount] = useState("");
+  const [amount, setAmount] = useState("1");
   const [error, setError] = useState<string | null>(null);
 
   const inStock = useMemo(
@@ -108,7 +108,7 @@ export function InvoiceCostPanel({
       }
       setProductId("");
       setDescription("");
-      setAmount("");
+      setAmount(kind === "medicine" ? "1" : "");
       onUpdated?.();
       router.refresh();
     });
@@ -214,10 +214,11 @@ export function InvoiceCostPanel({
                 className="select"
                 value={kind}
                 onChange={(e) => {
-                  setKind(e.target.value as "medicine" | "additional");
+                  const next = e.target.value as "medicine" | "additional";
+                  setKind(next);
                   setProductId("");
                   setDescription("");
-                  setAmount("");
+                  setAmount(next === "medicine" ? "1" : "");
                   setError(null);
                 }}
               >
