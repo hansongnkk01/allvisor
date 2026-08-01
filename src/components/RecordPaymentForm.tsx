@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { ActionForm } from "@/components/ActionForm";
 import { recordPaymentAction } from "@/app/actions";
 import { formatCurrency } from "@/lib/utils";
 
-const COMPACT_CTRL: React.CSSProperties = {
+const COMPACT_CTRL: CSSProperties = {
   height: 40,
   padding: "0 0.75rem",
   fontSize: "0.9rem",
