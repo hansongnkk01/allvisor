@@ -5,6 +5,13 @@ import { ActionForm } from "@/components/ActionForm";
 import { recordPaymentAction } from "@/app/actions";
 import { formatCurrency } from "@/lib/utils";
 
+const COMPACT_CTRL: React.CSSProperties = {
+  height: 40,
+  padding: "0 0.75rem",
+  fontSize: "0.9rem",
+  boxSizing: "border-box",
+};
+
 /** Keeps payment amount in sync with the latest balance due. */
 export function RecordPaymentForm({
   invoiceId,
@@ -33,23 +40,24 @@ export function RecordPaymentForm({
   if (compact) {
     return (
       <div
-        className="surface no-print"
+        className="no-print"
         style={{
-          padding: "0.45rem 0.55rem",
-          boxShadow: "none",
           display: "flex",
           flexDirection: "column",
-          gap: 6,
-          maxWidth: 320,
+          gap: 4,
+          minWidth: 0,
         }}
       >
-        <div className="muted" style={{ fontSize: "0.78rem", margin: 0, lineHeight: 1.2 }}>
+        <div
+          className="muted"
+          style={{ fontSize: "0.78rem", margin: 0, lineHeight: 1.2, paddingLeft: 2 }}
+        >
           {labels.balanceDue}: {formatCurrency(balance)}
         </div>
         <ActionForm
           action={recordPaymentAction}
           className="row"
-          style={{ gap: 6, margin: 0, flexWrap: "nowrap" }}
+          style={{ gap: 6, margin: 0, flexWrap: "nowrap", alignItems: "center" }}
           onSuccess={() => onSuccess?.()}
         >
           <input type="hidden" name="invoice_id" value={invoiceId} />
@@ -59,16 +67,18 @@ export function RecordPaymentForm({
             step="0.01"
             min={0}
             className="input"
-            style={{ width: 78, padding: "0.35rem 0.45rem", fontSize: "0.85rem" }}
+            style={{ ...COMPACT_CTRL, width: 84 }}
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             key={`amount-${balance}`}
+            aria-label={labels.balanceDue}
           />
           <select
             name="method"
             className="select"
-            style={{ width: 88, padding: "0.35rem 0.4rem", fontSize: "0.85rem" }}
+            style={{ ...COMPACT_CTRL, width: 96 }}
             defaultValue="cash"
+            aria-label="Payment method"
           >
             <option value="cash">cash</option>
             <option value="card">card</option>
@@ -78,7 +88,14 @@ export function RecordPaymentForm({
           <button
             type="submit"
             className="btn btn-primary"
-            style={{ padding: "0.35rem 0.7rem", fontSize: "0.85rem", whiteSpace: "nowrap" }}
+            style={{
+              ...COMPACT_CTRL,
+              minWidth: 88,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              whiteSpace: "nowrap",
+            }}
           >
             {labels.pay}
           </button>

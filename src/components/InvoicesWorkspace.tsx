@@ -649,9 +649,9 @@ function InvoicePreviewBody({
         <div
           className="row no-print"
           style={{
-            alignItems: "stretch",
+            alignItems: "flex-end",
             flexWrap: "wrap",
-            gap: 8,
+            gap: 10,
             justifyContent: "flex-end",
           }}
         >
@@ -660,6 +660,20 @@ function InvoicePreviewBody({
               {labels.lhdnStatusLine.replace("{status}", myStatus || lhdnStatus)}
             </span>
           ) : null}
+          <PrintInvoiceButton
+            label={labels.print}
+            invoiceId={invoice.id}
+            style={{
+              height: 40,
+              padding: "0 0.9rem",
+              fontSize: "0.9rem",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              whiteSpace: "nowrap",
+              boxSizing: "border-box",
+            }}
+          />
           {editable && balance > 0 ? (
             <RecordPaymentForm
               compact
@@ -673,9 +687,6 @@ function InvoicePreviewBody({
               onSuccess={onSubmitted}
             />
           ) : null}
-          <div style={{ alignSelf: "center" }}>
-            <PrintInvoiceButton label={labels.print} invoiceId={invoice.id} />
-          </div>
         </div>
       </div>
 
