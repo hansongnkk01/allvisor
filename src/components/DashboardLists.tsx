@@ -76,7 +76,7 @@ export function DashboardUpcomingAppointments({
   return (
     <div className="surface" style={{ padding: "1.25rem" }}>
       <h3 style={{ marginTop: 0 }}>{title}</h3>
-      <div className="stack" style={{ gap: "0.75rem" }}>
+      <div className="stack scroll-cap-7" style={{ gap: "0.75rem" }}>
         {items.map((a) => (
           <div key={a.id} style={{ borderBottom: "1px solid var(--line)", paddingBottom: 8 }}>
             <strong>{a.title}</strong>
