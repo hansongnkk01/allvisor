@@ -11,7 +11,6 @@ import {
 import { ListPager, SearchField, useClientPager } from "@/components/ListControls";
 import { PatientName } from "@/components/PatientName";
 import { RecordPaymentForm } from "@/components/RecordPaymentForm";
-import { SubmitLhdnButton } from "@/components/SubmitLhdnButton";
 import { PrintInvoiceButton } from "@/components/PrintInvoiceButton";
 import { ActionForm } from "@/components/ActionForm";
 import { InvoiceCostPanel } from "@/components/InvoiceCostPanel";
@@ -91,7 +90,7 @@ function dayKey(iso: string) {
 
 export function InvoicesWorkspace({
   invoices,
-  canLhdn,
+  canLhdn: _canLhdn,
   loadPreview,
   labels,
   initialPreviewId,
@@ -335,7 +334,6 @@ export function InvoicesWorkspace({
               {preview ? (
                 <InvoicePreviewBody
                   data={preview}
-                  canLhdn={canLhdn}
                   labels={labels}
                   onSubmitted={reloadPreview}
                 />
@@ -604,12 +602,10 @@ type PreviewLabels = {
 
 function InvoicePreviewBody({
   data,
-  canLhdn,
   labels,
   onSubmitted,
 }: {
   data: PreviewPayload;
-  canLhdn: boolean;
   labels: PreviewLabels;
   onSubmitted: () => void;
 }) {
@@ -643,40 +639,10 @@ function InvoicePreviewBody({
           </div>
         </div>
         <div className="row">
-          {canLhdn && invoice.status !== "void" ? (
-            <SubmitLhdnButton
-              inline
-              invoiceId={invoice.id}
-              label={labels.submitLhdn}
-              hint={labels.submitLhdnHint}
-              refreshLabel={labels.refreshLhdnStatus}
-              hasUuid={Boolean(data.latestLhdn?.uuid)}
-              cancelLabel={labels.cancelLhdn}
-              cancelHint={labels.cancelLhdnHint}
-              cancelPrompt={labels.cancelLhdnPrompt}
-              canCancel={
-                Boolean(data.latestLhdn?.uuid) &&
-                lhdnStatus !== "cancelled" &&
-                data.latestLhdn?.status !== "cancelled"
-              }
-              currentStatusLabel={
-                lhdnStatus && lhdnStatus !== "not_submitted"
-                  ? labels.lhdnStatusLine.replace("{status}", myStatus || lhdnStatus)
-                  : null
-              }
-              disabledReason={
-                labels.planLocked
-                  ? labels.submitLhdnPlanLocked
-                  : labels.needTin
-                    ? labels.submitLhdnNeedTin
-                    : lhdnStatus === "accepted"
-                      ? labels.submitLhdnAlready.replace(
-                          "{status}",
-                          myStatus || "Valid"
-                        )
-                      : null
-              }
-            />
+          {lhdnStatus && lhdnStatus !== "not_submitted" ? (
+            <span className="badge" title={myStatus || lhdnStatus}>
+              {labels.lhdnStatusLine.replace("{status}", myStatus || lhdnStatus)}
+            </span>
           ) : null}
           <PrintInvoiceButton label={labels.print} invoiceId={invoice.id} />
         </div>
