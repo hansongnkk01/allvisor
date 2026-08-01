@@ -94,10 +94,12 @@ export default async function DashboardPage({
       .select("entry_type, amount")
       .eq("organization_id", orgId)
       .gte("entry_date", monthStart),
+    // Only paid invoices awaiting MyInvois confirmation (auto-submit on Pay)
     supabase
       .from("invoices")
       .select("id", { count: "exact", head: true })
       .eq("organization_id", orgId)
+      .eq("status", "paid")
       .in("lhdn_status", ["not_submitted", "pending", "rejected"]),
     niche === "clinic"
       ? supabase

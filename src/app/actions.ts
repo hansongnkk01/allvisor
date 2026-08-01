@@ -596,9 +596,18 @@ export async function recordPaymentAction(formData: FormData) {
   if (amountPaid >= Number(invoice.total)) status = "paid";
   else if (amountPaid <= 0) status = "unpaid";
 
+  const titleNext =
+    status === "paid" && typeof invoice.title === "string"
+      ? invoice.title.replace(/\s*·\s*pending\s*$/i, " · paid")
+      : invoice.title;
+
   await supabase
     .from("invoices")
-    .update({ amount_paid: amountPaid, status })
+    .update({
+      amount_paid: amountPaid,
+      status,
+      ...(titleNext !== invoice.title ? { title: titleNext } : {}),
+    })
     .eq("id", invoiceId);
 
   if (invoice.status !== status) {
@@ -631,12 +640,16 @@ export async function recordPaymentAction(formData: FormData) {
     entityId: invoiceId,
   });
 
-  // Fully paid → auto-submit to LHDN (non-fatal if plan/TIN blocks it)
+  // Fully paid → auto-submit to LHDN (errors returned as object, not thrown)
   if (status === "paid") {
-    try {
-      await submitInvoiceToLhdnAction(invoiceId);
-    } catch {
-      /* payment already saved */
+    const lhdn = await submitInvoiceToLhdnAction(invoiceId);
+    if (lhdn && "error" in lhdn && lhdn.error) {
+      await logActivity({
+        action: "invoice.lhdn_auto_failed",
+        summary: `Auto LHDN after payment failed for ${invoice.invoice_number}: ${lhdn.error}`,
+        entityType: "invoice",
+        entityId: invoiceId,
+      });
     }
   }
 
