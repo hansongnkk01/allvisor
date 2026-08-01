@@ -25,8 +25,12 @@ export function buildMyInvoisInvoiceDocument(payload: LhdnInvoicePayload) {
   const lineSum = payload.lines.reduce((s, l) => s + Number(l.lineTotal || 0), 0);
   const taxExclusive = Number((total - taxAmount).toFixed(2));
   const taxableBase = lineSum > 0 ? lineSum : taxExclusive;
-  const now = new Date();
-  const issueTime = `${String(now.getUTCHours()).padStart(2, "0")}:${String(now.getUTCMinutes()).padStart(2, "0")}:${String(now.getUTCSeconds()).padStart(2, "0")}Z`;
+  // MyInvois combines IssueDate + IssueTime as one UTC instant.
+  // Never mix MY calendar date with UTC clock — that makes DatetimeIssued "in the future" (CF321).
+  // Small buffer avoids LHDN server clock skew rejecting near-now timestamps.
+  const issued = new Date(Date.now() - 2 * 60 * 1000);
+  const issueDate = issued.toISOString().slice(0, 10);
+  const issueTime = `${issued.toISOString().slice(11, 19)}Z`;
 
   const supplierIdValue = (payload.supplierBrn || "").replace(/\s+/g, "").trim();
   const supplierTin = normalizeTin(payload.supplierTin);
@@ -134,7 +138,7 @@ export function buildMyInvoisInvoiceDocument(payload: LhdnInvoicePayload) {
     Invoice: [
       {
         ID: text(payload.invoiceNumber),
-        IssueDate: text(payload.issueDate),
+        IssueDate: text(issueDate),
         IssueTime: text(issueTime),
         InvoiceTypeCode: [{ _: "01", listVersionID: "1.0" }],
         DocumentCurrencyCode: text(currency),
