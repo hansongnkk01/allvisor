@@ -4,10 +4,11 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "@/i18n/navigation";
 import {
+  logInvoiceEarlyExitAction,
   revokeInvoiceAction,
   updateInvoiceStatusAction,
 } from "@/app/actions";
-import { ListPager, useClientPager } from "@/components/ListControls";
+import { ListPager, SearchField, useClientPager } from "@/components/ListControls";
 import { PatientName } from "@/components/PatientName";
 import { RecordPaymentForm } from "@/components/RecordPaymentForm";
 import { SubmitLhdnButton } from "@/components/SubmitLhdnButton";
@@ -156,6 +157,11 @@ export function InvoicesWorkspace({
     noInventory: string;
     extrasHint: string;
     exitWarn: string;
+    exitReasonTitle: string;
+    exitReasonHint: string;
+    exitReasonPlaceholder: string;
+    exitConfirm: string;
+    searchPlaceholder: string;
     needTin: boolean;
     planLocked: boolean;
   };
@@ -163,11 +169,16 @@ export function InvoicesWorkspace({
   const router = useRouter();
   const confirm = useConfirm();
   const [day, setDay] = useState("");
+  const [q, setQ] = useState("");
   const [previewId, setPreviewId] = useState<string | null>(initialPreviewId || null);
   const [preview, setPreview] = useState<PreviewPayload | null>(null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [mounted, setMounted] = useState(false);
+  const [exitOpen, setExitOpen] = useState(false);
+  const [exitReason, setExitReason] = useState("");
+  const [exitError, setExitError] = useState<string | null>(null);
+  const [exitPending, startExit] = useTransition();
 
   useEffect(() => setMounted(true), []);
 
@@ -177,11 +188,34 @@ export function InvoicesWorkspace({
   }, [invoices]);
 
   const filtered = useMemo(() => {
-    if (!day) return invoices;
-    return invoices.filter((i) => dayKey(i.created_at) === day);
-  }, [invoices, day]);
+    const needle = q.trim().toLowerCase();
+    return invoices.filter((i) => {
+      if (day && dayKey(i.created_at) !== day) return false;
+      if (!needle) return true;
+      const notes = displayInvoiceNotes(i.notes) || "";
+      const hay = [
+        i.invoice_number,
+        i.title || "",
+        notes,
+        i.customers?.name || "",
+        i.status,
+      ]
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(needle);
+    });
+  }, [invoices, day, q]);
 
   const pager = useClientPager(filtered, 10);
+
+  function isFullyPaid(inv: InvoiceListRow | undefined | null) {
+    if (!inv) return false;
+    if (inv.status === "void") return true;
+    return (
+      inv.status === "paid" ||
+      Number(inv.amount_paid || 0) + 0.001 >= Number(inv.total || 0)
+    );
+  }
 
   useEffect(() => {
     if (!previewId) {
@@ -205,19 +239,49 @@ export function InvoicesWorkspace({
     };
   }, [previewId, loadPreview]);
 
-  async function closePreview(force = false) {
-    if (!force) {
-      const ok = await confirm({
-        title: "Allvisor",
-        message: labels.exitWarn,
-        confirmLabel: "Confirm",
-        cancelLabel: "Cancel",
-      });
-      if (!ok) return;
-    }
+  function doClosePreview() {
+    setExitOpen(false);
+    setExitReason("");
+    setExitError(null);
     setPreviewId(null);
     setPreview(null);
     router.replace("/invoices");
+  }
+
+  function requestClosePreview() {
+    const inv = preview?.invoice;
+    if (isFullyPaid(inv)) {
+      doClosePreview();
+      return;
+    }
+    setExitReason("");
+    setExitError(null);
+    setExitOpen(true);
+  }
+
+  function confirmEarlyExit() {
+    const inv = preview?.invoice;
+    const reason = exitReason.trim();
+    if (!reason) {
+      setExitError("Please enter a reason");
+      return;
+    }
+    if (!inv) {
+      doClosePreview();
+      return;
+    }
+    startExit(async () => {
+      const fd = new FormData();
+      fd.set("invoice_id", inv.id);
+      fd.set("reason", reason);
+      const result = await logInvoiceEarlyExitAction(fd);
+      if (result && "error" in result && result.error) {
+        setExitError(result.error);
+        return;
+      }
+      doClosePreview();
+      router.refresh();
+    });
   }
 
   async function onRevoke(id: string) {
@@ -242,12 +306,22 @@ export function InvoicesWorkspace({
     router.refresh();
   }
 
+  const reloadPreview = () => {
+    const id = previewId;
+    if (!id) return;
+    startTransition(async () => {
+      const res = await loadPreview(id);
+      if (res.data) setPreview(res.data);
+      router.refresh();
+    });
+  };
+
   const modal =
     previewId && mounted
       ? createPortal(
           <div
             className="modal-backdrop no-print"
-            onClick={() => closePreview(false)}
+            onClick={() => requestClosePreview()}
             role="presentation"
           >
             <div
@@ -263,18 +337,75 @@ export function InvoicesWorkspace({
                   data={preview}
                   canLhdn={canLhdn}
                   labels={labels}
-                  onSubmitted={() => {
-                    const id = previewId;
-                    if (!id) return;
-                    startTransition(async () => {
-                      const res = await loadPreview(id);
-                      if (res.data) setPreview(res.data);
-                      router.refresh();
-                    });
-                  }}
+                  onSubmitted={reloadPreview}
                 />
               ) : null}
             </div>
+
+            {exitOpen ? (
+              <div
+                role="dialog"
+                aria-modal="true"
+                style={{
+                  position: "fixed",
+                  inset: 0,
+                  zIndex: 10000,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: 16,
+                  background: "rgba(28, 27, 25, 0.5)",
+                }}
+                onClick={() => setExitOpen(false)}
+              >
+                <div
+                  className="surface"
+                  style={{
+                    width: "min(440px, 100%)",
+                    padding: "1.25rem 1.35rem",
+                    background: "#fff",
+                    boxShadow: "0 24px 60px rgba(28,27,25,0.28)",
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="display" style={{ fontSize: "1.25rem", marginBottom: 8 }}>
+                    {labels.exitReasonTitle}
+                  </div>
+                  <p style={{ margin: "0 0 0.85rem", lineHeight: 1.5 }}>
+                    {labels.exitReasonHint}
+                  </p>
+                  <textarea
+                    className="textarea"
+                    rows={3}
+                    value={exitReason}
+                    onChange={(e) => setExitReason(e.target.value)}
+                    placeholder={labels.exitReasonPlaceholder}
+                    autoFocus
+                  />
+                  {exitError ? (
+                    <p style={{ color: "var(--danger)", margin: "0.5rem 0 0" }}>{exitError}</p>
+                  ) : null}
+                  <div className="row" style={{ justifyContent: "flex-end", marginTop: 12 }}>
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      disabled={exitPending}
+                      onClick={() => setExitOpen(false)}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      disabled={exitPending}
+                      onClick={confirmEarlyExit}
+                    >
+                      {labels.exitConfirm}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </div>,
           document.body
         )
@@ -283,8 +414,8 @@ export function InvoicesWorkspace({
   return (
     <>
       <div className="surface" style={{ padding: "1.25rem" }}>
-        <div className="row" style={{ marginBottom: "0.75rem" }}>
-          <div className="field" style={{ minWidth: 220 }}>
+        <div className="row" style={{ marginBottom: "0.75rem", flexWrap: "wrap", gap: 12 }}>
+          <div className="field" style={{ minWidth: 220, flex: "1 1 220px", margin: 0 }}>
             <label>{labels.filterDay}</label>
             <select
               className="select"
@@ -301,6 +432,17 @@ export function InvoicesWorkspace({
                 </option>
               ))}
             </select>
+          </div>
+          <div className="field" style={{ minWidth: 260, flex: "2 1 280px", margin: 0 }}>
+            <label>&nbsp;</label>
+            <SearchField
+              value={q}
+              onChange={(v) => {
+                setQ(v);
+                pager.setPage(1);
+              }}
+              placeholder={labels.searchPlaceholder}
+            />
           </div>
         </div>
         <div className="table-wrap">
@@ -451,6 +593,11 @@ type PreviewLabels = {
   costQty: string;
   noInventory: string;
   extrasHint: string;
+  exitReasonTitle: string;
+  exitReasonHint: string;
+  exitReasonPlaceholder: string;
+  exitConfirm: string;
+  searchPlaceholder: string;
   needTin: boolean;
   planLocked: boolean;
 };
@@ -615,38 +762,19 @@ function InvoicePreviewBody({
             balanceDue: labels.balanceDue,
             pay: labels.pay,
           }}
+          onSuccess={onSubmitted}
         />
       ) : null}
 
-      <div className="surface" style={{ padding: "1.1rem", boxShadow: "none" }}>
-        <h3 style={{ marginTop: 0 }}>{labels.editStatus}</h3>
-        <p className="muted">{labels.editStatusHint}</p>
-        <ActionForm
-          action={updateInvoiceStatusAction}
-          className="row"
-          onSuccess={() => onSubmitted()}
-        >
-          <input type="hidden" name="invoice_id" value={invoice.id} />
-          <select name="status" className="select" style={{ width: 160 }} defaultValue={invoice.status}>
-            {(["draft", "unpaid", "partial", "paid", "void"] as InvoiceStatus[]).map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-          <input
-            name="note"
-            className="input"
-            placeholder={labels.statusNote}
-            style={{ minWidth: 180 }}
-          />
-          <button type="submit" className="btn btn-soft">
-            {labels.saveStatus}
-          </button>
-        </ActionForm>
-      </div>
-
-      <div className="surface" style={{ padding: "1.1rem", boxShadow: "none" }}>
+      <div
+        className="surface"
+        style={{
+          padding: "1.1rem",
+          boxShadow: "none",
+          background: "#fff7ed",
+          borderColor: "rgba(194, 120, 40, 0.22)",
+        }}
+      >
         <h3 style={{ marginTop: 0 }}>{labels.payments}</h3>
         <div className="table-wrap">
           <table className="data">
@@ -675,6 +803,42 @@ function InvoicePreviewBody({
             </tbody>
           </table>
         </div>
+      </div>
+
+      <div
+        className="surface"
+        style={{
+          padding: "1.1rem",
+          boxShadow: "none",
+          background: "#fef2f2",
+          borderColor: "rgba(185, 28, 28, 0.18)",
+        }}
+      >
+        <h3 style={{ marginTop: 0 }}>{labels.editStatus}</h3>
+        <p className="muted">{labels.editStatusHint}</p>
+        <ActionForm
+          action={updateInvoiceStatusAction}
+          className="row"
+          onSuccess={() => onSubmitted()}
+        >
+          <input type="hidden" name="invoice_id" value={invoice.id} />
+          <select name="status" className="select" style={{ width: 160 }} defaultValue={invoice.status}>
+            {(["draft", "unpaid", "partial", "paid", "void"] as InvoiceStatus[]).map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+          <input
+            name="note"
+            className="input"
+            placeholder={labels.statusNote}
+            style={{ minWidth: 180 }}
+          />
+          <button type="submit" className="btn btn-soft">
+            {labels.saveStatus}
+          </button>
+        </ActionForm>
       </div>
     </div>
   );

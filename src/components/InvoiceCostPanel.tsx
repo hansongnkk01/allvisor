@@ -28,7 +28,7 @@ export function InvoiceCostPanel({
   lines,
   products = [],
   editable,
-  serviceChargePercent,
+  serviceChargePercent: _serviceChargePercent,
   labels,
   onUpdated,
 }: {
@@ -197,10 +197,7 @@ export function InvoiceCostPanel({
 
       {editable ? (
         <div className="surface no-print" style={{ padding: "1rem", boxShadow: "none" }}>
-          <h3 style={{ marginTop: 0, marginBottom: 6 }}>{labels.addCost}</h3>
-          <p className="muted" style={{ marginTop: 0 }}>
-            {labels.extrasHint} · {labels.serviceCharge}: {serviceChargePercent}%
-          </p>
+          <h3 style={{ marginTop: 0, marginBottom: 10 }}>{labels.addCost}</h3>
           <div
             style={{
               display: "grid",

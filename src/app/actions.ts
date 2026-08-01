@@ -631,7 +631,44 @@ export async function recordPaymentAction(formData: FormData) {
     entityId: invoiceId,
   });
 
-  revalidateApp("/invoices", "/dashboard", "/accounting", "/staff");
+  // Fully paid → auto-submit to LHDN (non-fatal if plan/TIN blocks it)
+  if (status === "paid") {
+    try {
+      await submitInvoiceToLhdnAction(invoiceId);
+    } catch {
+      /* payment already saved */
+    }
+  }
+
+  revalidateApp("/invoices", "/dashboard", "/accounting", "/staff", "/lhdn");
+  return { success: true, fullyPaid: status === "paid" };
+}
+
+/** Log reason when user leaves invoice preview without full payment. */
+export async function logInvoiceEarlyExitAction(formData: FormData) {
+  const { supabase, organization } = await requireMember();
+  const invoiceId = String(formData.get("invoice_id") || "");
+  const reason = String(formData.get("reason") || "").trim();
+  if (!invoiceId) return { error: "Missing invoice" };
+  if (!reason) return { error: "Please enter a reason" };
+
+  const { data: invoice } = await supabase
+    .from("invoices")
+    .select("id, invoice_number")
+    .eq("id", invoiceId)
+    .eq("organization_id", organization.id)
+    .maybeSingle();
+  if (!invoice) return { error: "Invoice not found" };
+
+  await logActivity({
+    action: "invoice.exit_unpaid",
+    summary: `Exited invoice ${invoice.invoice_number} without full payment — reason: ${reason}`,
+    entityType: "invoice",
+    entityId: invoiceId,
+    meta: { reason },
+  });
+
+  revalidateApp("/invoices");
   return { success: true };
 }
 

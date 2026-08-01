@@ -125,6 +125,11 @@ export default async function InvoicesPage({
           noInventory: td("noInventory"),
           extrasHint: td("extrasHint"),
           exitWarn: t("exitWarn"),
+          exitReasonTitle: t("exitReasonTitle"),
+          exitReasonHint: t("exitReasonHint"),
+          exitReasonPlaceholder: t("exitReasonPlaceholder"),
+          exitConfirm: t("exitConfirm"),
+          searchPlaceholder: t("searchPlaceholder"),
           needTin,
           planLocked,
         }}

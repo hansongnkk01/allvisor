@@ -10,6 +10,7 @@ export function RecordPaymentForm({
   invoiceId,
   balance,
   labels,
+  onSuccess,
 }: {
   invoiceId: string;
   balance: number;
@@ -18,6 +19,7 @@ export function RecordPaymentForm({
     balanceDue: string;
     pay: string;
   };
+  onSuccess?: () => void;
 }) {
   const [amount, setAmount] = useState(String(Number(balance.toFixed(2))));
 
@@ -31,7 +33,11 @@ export function RecordPaymentForm({
       <p className="muted">
         {labels.balanceDue}: {formatCurrency(balance)}
       </p>
-      <ActionForm action={recordPaymentAction} className="row">
+      <ActionForm
+        action={recordPaymentAction}
+        className="row"
+        onSuccess={() => onSuccess?.()}
+      >
         <input type="hidden" name="invoice_id" value={invoiceId} />
         <input
           name="amount"
