@@ -76,6 +76,12 @@ type PreviewPayload = {
     email?: string | null;
     address?: string | null;
   } | null;
+  products: Array<{
+    id: string;
+    name: string;
+    unit_price: number;
+    quantity: number;
+  }>;
 };
 
 function dayKey(iso: string) {
@@ -145,6 +151,9 @@ export function InvoicesWorkspace({
     costKind: string;
     costDesc: string;
     costAmount: string;
+    costItem: string;
+    costQty: string;
+    noInventory: string;
     extrasHint: string;
     exitWarn: string;
     needTin: boolean;
@@ -254,7 +263,15 @@ export function InvoicesWorkspace({
                   data={preview}
                   canLhdn={canLhdn}
                   labels={labels}
-                  onSubmitted={() => router.refresh()}
+                  onSubmitted={() => {
+                    const id = previewId;
+                    if (!id) return;
+                    startTransition(async () => {
+                      const res = await loadPreview(id);
+                      if (res.data) setPreview(res.data);
+                      router.refresh();
+                    });
+                  }}
                 />
               ) : null}
             </div>
@@ -430,6 +447,9 @@ type PreviewLabels = {
   costKind: string;
   costDesc: string;
   costAmount: string;
+  costItem: string;
+  costQty: string;
+  noInventory: string;
   extrasHint: string;
   needTin: boolean;
   planLocked: boolean;
@@ -548,6 +568,8 @@ function InvoicePreviewBody({
           editable={editable}
           serviceChargePercent={pct}
           lines={data.lines}
+          products={data.products || []}
+          onUpdated={onSubmitted}
           labels={{
             description: labels.description,
             qty: labels.qty,
@@ -562,6 +584,9 @@ function InvoicePreviewBody({
             costKind: labels.costKind,
             costDesc: labels.costDesc,
             costAmount: labels.costAmount,
+            costItem: labels.costItem,
+            costQty: labels.costQty,
+            noInventory: labels.noInventory,
             extrasHint: labels.extrasHint,
           }}
         />

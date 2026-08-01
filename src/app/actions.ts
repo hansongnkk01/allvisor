@@ -883,21 +883,17 @@ export async function completeAppointmentWithInvoiceAction(appointmentId: string
 
 /** Add an optional medicine or additional cost line on a pending invoice. */
 export async function addInvoiceCostAction(formData: FormData) {
-  const { supabase, organization } = await requireMember();
+  const { supabase, organization, profile } = await requireMember();
   const invoiceId = String(formData.get("invoice_id") || "");
   const kindRaw = String(formData.get("cost_kind") || "medicine");
   const kind: InvoiceLineKind =
     kindRaw === "additional" ? "additional" : "medicine";
-  const description = String(formData.get("description") || "").trim();
-  const amount = Number(formData.get("amount") || 0);
 
   if (!invoiceId) return { error: "Missing invoice" };
-  if (!description) return { error: "Description required" };
-  if (!(amount > 0)) return { error: "Amount must be greater than 0" };
 
   const { data: invoice } = await supabase
     .from("invoices")
-    .select("id, status")
+    .select("id, status, invoice_number")
     .eq("id", invoiceId)
     .eq("organization_id", organization.id)
     .maybeSingle();
@@ -906,15 +902,79 @@ export async function addInvoiceCostAction(formData: FormData) {
     return { error: "Cannot edit a paid/void invoice" };
   }
 
-  const label = kind === "medicine" ? "Medicine" : "Additional";
+  if (kind === "medicine") {
+    const productId = String(formData.get("product_id") || "").trim();
+    const quantity = Number(formData.get("quantity") || formData.get("amount") || 0);
+    if (!productId) return { error: "Select an inventory item" };
+    if (!(quantity > 0) || !Number.isFinite(quantity)) {
+      return { error: "Quantity must be greater than 0" };
+    }
+
+    const { data: product } = await supabase
+      .from("products")
+      .select("id, name, unit_price, quantity")
+      .eq("id", productId)
+      .eq("organization_id", organization.id)
+      .maybeSingle();
+    if (!product) return { error: "Inventory item not found" };
+    if (Number(product.quantity) < quantity) {
+      return { error: `Insufficient stock (available: ${product.quantity})` };
+    }
+
+    const unitPrice = Number(product.unit_price || 0);
+    const lineTotal = unitPrice * quantity;
+    const { error } = await supabase.from("invoice_lines").insert({
+      invoice_id: invoiceId,
+      organization_id: organization.id,
+      product_id: product.id,
+      description: product.name,
+      quantity,
+      unit_price: unitPrice,
+      line_total: lineTotal,
+      line_kind: "medicine",
+    });
+    if (error) return { error: error.message };
+
+    await supabase.from("stock_movements").insert({
+      organization_id: organization.id,
+      product_id: product.id,
+      type: "sale",
+      quantity,
+      note: `Invoice ${invoice.invoice_number}`,
+      created_by: profile.id,
+    });
+    await supabase
+      .from("products")
+      .update({ quantity: Number(product.quantity) - quantity })
+      .eq("id", product.id);
+
+    const pct = Number(organization.service_charge_percent ?? 0);
+    await syncInvoiceChargeAndTotals(supabase, organization.id, invoiceId, pct);
+
+    await logActivity({
+      action: "invoice.add_cost",
+      summary: `Added medicine: ${product.name} × ${quantity} (RM ${lineTotal.toFixed(2)})`,
+      entityType: "invoice",
+      entityId: invoiceId,
+    });
+
+    revalidateApp("/invoices", "/inventory");
+    return { success: true };
+  }
+
+  const description = String(formData.get("description") || "").trim();
+  const amount = Number(formData.get("amount") || 0);
+  if (!description) return { error: "Description required" };
+  if (!(amount > 0)) return { error: "Amount must be greater than 0" };
+
   const { error } = await supabase.from("invoice_lines").insert({
     invoice_id: invoiceId,
     organization_id: organization.id,
-    description: `${label} (${description})`,
+    description: `Additional (${description})`,
     quantity: 1,
     unit_price: amount,
     line_total: amount,
-    line_kind: kind,
+    line_kind: "additional",
   });
   if (error) return { error: error.message };
 
@@ -923,19 +983,18 @@ export async function addInvoiceCostAction(formData: FormData) {
 
   await logActivity({
     action: "invoice.add_cost",
-    summary: `Added ${kind} cost: ${description} (RM ${amount.toFixed(2)})`,
+    summary: `Added additional cost: ${description} (RM ${amount.toFixed(2)})`,
     entityType: "invoice",
     entityId: invoiceId,
   });
 
-  // Narrow revalidate keeps Add cost clicks snappy
   revalidateApp("/invoices");
   return { success: true };
 }
 
 /** Remove a medicine/additional cost line (not product/service or service charge). */
 export async function removeInvoiceLineAction(formData: FormData) {
-  const { supabase, organization } = await requireMember();
+  const { supabase, organization, profile } = await requireMember();
   const invoiceId = String(formData.get("invoice_id") || "");
   const lineId = String(formData.get("line_id") || "");
   if (!invoiceId || !lineId) return { error: "Missing invoice/line" };
@@ -953,7 +1012,7 @@ export async function removeInvoiceLineAction(formData: FormData) {
 
   const { data: line } = await supabase
     .from("invoice_lines")
-    .select("id, line_kind, description")
+    .select("id, line_kind, description, product_id, quantity")
     .eq("id", lineId)
     .eq("invoice_id", invoiceId)
     .maybeSingle();
@@ -965,6 +1024,33 @@ export async function removeInvoiceLineAction(formData: FormData) {
   const { error } = await supabase.from("invoice_lines").delete().eq("id", lineId);
   if (error) return { error: error.message };
 
+  // Restore inventory when removing a medicine line tied to a product
+  if (line.line_kind === "medicine" && line.product_id) {
+    const qty = Number(line.quantity || 0);
+    if (qty > 0) {
+      const { data: product } = await supabase
+        .from("products")
+        .select("id, quantity")
+        .eq("id", line.product_id)
+        .eq("organization_id", organization.id)
+        .maybeSingle();
+      if (product) {
+        await supabase
+          .from("products")
+          .update({ quantity: Number(product.quantity) + qty })
+          .eq("id", product.id);
+        await supabase.from("stock_movements").insert({
+          organization_id: organization.id,
+          product_id: product.id,
+          type: "adjust",
+          quantity: qty,
+          note: `Restored from removed invoice line`,
+          created_by: profile.id,
+        });
+      }
+    }
+  }
+
   const pct = Number(organization.service_charge_percent ?? 0);
   await syncInvoiceChargeAndTotals(supabase, organization.id, invoiceId, pct);
 
@@ -975,7 +1061,7 @@ export async function removeInvoiceLineAction(formData: FormData) {
     entityId: invoiceId,
   });
 
-  revalidateApp("/invoices");
+  revalidateApp("/invoices", "/inventory");
   return { success: true };
 }
 
@@ -2132,8 +2218,13 @@ export async function cancelInvoiceLhdnAction(invoiceId: string, reason?: string
 
 export async function getInvoicePreviewAction(invoiceId: string) {
   const { supabase, organization } = await requireMember();
-  const [{ data: invoice }, { data: lines }, { data: payments }, { data: latestLhdn }] =
-    await Promise.all([
+  const [
+    { data: invoice },
+    { data: lines },
+    { data: payments },
+    { data: latestLhdn },
+    { data: products },
+  ] = await Promise.all([
       supabase
         .from("invoices")
         .select("*, customers(name, phone, email, address, risk_level)")
@@ -2158,6 +2249,11 @@ export async function getInvoicePreviewAction(invoiceId: string) {
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle(),
+      supabase
+        .from("products")
+        .select("id, name, unit_price, quantity")
+        .eq("organization_id", organization.id)
+        .order("name"),
     ]);
 
   if (!invoice) return { error: "Invoice not found" };
@@ -2212,6 +2308,12 @@ export async function getInvoicePreviewAction(invoiceId: string) {
       orgPhone: organization.phone,
       serviceChargePercent: Number(organization.service_charge_percent ?? 0),
       customer,
+      products: (products || []).map((p) => ({
+        id: p.id,
+        name: p.name,
+        unit_price: Number(p.unit_price || 0),
+        quantity: Number(p.quantity || 0),
+      })),
     },
   };
 }

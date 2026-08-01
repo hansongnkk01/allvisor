@@ -16,17 +16,28 @@ type Line = {
   line_kind?: InvoiceLineKind | string | null;
 };
 
+type InventoryItem = {
+  id: string;
+  name: string;
+  unit_price: number;
+  quantity: number;
+};
+
 export function InvoiceCostPanel({
   invoiceId,
   lines,
+  products = [],
   editable,
   serviceChargePercent,
   labels,
+  onUpdated,
 }: {
   invoiceId: string;
   lines: Line[];
+  products?: InventoryItem[];
   editable: boolean;
   serviceChargePercent: number;
+  onUpdated?: () => void;
   labels: {
     description: string;
     qty: string;
@@ -41,15 +52,29 @@ export function InvoiceCostPanel({
     costKind: string;
     costDesc: string;
     costAmount: string;
+    costItem: string;
+    costQty: string;
     extrasHint: string;
+    noInventory: string;
   };
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [kind, setKind] = useState<"medicine" | "additional">("medicine");
+  const [productId, setProductId] = useState("");
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  const inStock = useMemo(
+    () => products.filter((p) => Number(p.quantity) > 0),
+    [products]
+  );
+
+  const selectedProduct = useMemo(
+    () => inStock.find((p) => p.id === productId) || null,
+    [inStock, productId]
+  );
 
   // Bill list: service + optional medicine/additional only (service tax is shown under totals)
   const billLines = useMemo(
@@ -67,8 +92,13 @@ export function InvoiceCostPanel({
     const fd = new FormData();
     fd.set("invoice_id", invoiceId);
     fd.set("cost_kind", kind);
-    fd.set("description", description);
-    fd.set("amount", amount);
+    if (kind === "medicine") {
+      fd.set("product_id", productId);
+      fd.set("quantity", amount);
+    } else {
+      fd.set("description", description);
+      fd.set("amount", amount);
+    }
     setError(null);
     startTransition(async () => {
       const result = await addInvoiceCostAction(fd);
@@ -76,8 +106,10 @@ export function InvoiceCostPanel({
         setError(result.error);
         return;
       }
+      setProductId("");
       setDescription("");
       setAmount("");
+      onUpdated?.();
       router.refresh();
     });
   }
@@ -93,6 +125,7 @@ export function InvoiceCostPanel({
         setError(result.error);
         return;
       }
+      onUpdated?.();
       router.refresh();
     });
   }
@@ -180,32 +213,78 @@ export function InvoiceCostPanel({
               <select
                 className="select"
                 value={kind}
-                onChange={(e) => setKind(e.target.value as "medicine" | "additional")}
+                onChange={(e) => {
+                  setKind(e.target.value as "medicine" | "additional");
+                  setProductId("");
+                  setDescription("");
+                  setAmount("");
+                  setError(null);
+                }}
               >
                 <option value="medicine">{labels.medicine}</option>
                 <option value="additional">{labels.additional}</option>
               </select>
             </div>
-            <div className="field">
-              <label>{labels.costDesc}</label>
-              <input
-                className="input"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder={kind === "medicine" ? "Amoxycillin" : "Inspection"}
-              />
-            </div>
-            <div className="field">
-              <label>{labels.costAmount}</label>
-              <input
-                className="input"
-                type="number"
-                step="0.01"
-                min={0}
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-              />
-            </div>
+            {kind === "medicine" ? (
+              <>
+                <div className="field">
+                  <label>{labels.costItem}</label>
+                  <select
+                    className="select"
+                    value={productId}
+                    onChange={(e) => setProductId(e.target.value)}
+                  >
+                    <option value="">—</option>
+                    {inStock.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} · {formatCurrency(p.unit_price)} · stock {p.quantity}
+                      </option>
+                    ))}
+                  </select>
+                  {!inStock.length ? (
+                    <p className="muted" style={{ margin: "0.35rem 0 0", fontSize: "0.8rem" }}>
+                      {labels.noInventory}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="field">
+                  <label>{labels.costQty}</label>
+                  <input
+                    className="input"
+                    type="number"
+                    step="1"
+                    min={1}
+                    max={selectedProduct?.quantity || undefined}
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    placeholder="1"
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="field">
+                  <label>{labels.costDesc}</label>
+                  <input
+                    className="input"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Inspection"
+                  />
+                </div>
+                <div className="field">
+                  <label>{labels.costAmount}</label>
+                  <input
+                    className="input"
+                    type="number"
+                    step="0.01"
+                    min={0}
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                  />
+                </div>
+              </>
+            )}
           </div>
           {error ? (
             <p style={{ color: "var(--danger)", margin: "0.5rem 0 0" }}>{error}</p>
