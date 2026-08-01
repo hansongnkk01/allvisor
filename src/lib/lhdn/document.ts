@@ -1,4 +1,5 @@
 import type { LhdnInvoicePayload } from "./types";
+import { addressLinesForUbl, parseMalaysiaAddress } from "./address-my";
 import { normalizeTin } from "./tin";
 
 function money(amount: number, currency = "MYR") {
@@ -45,10 +46,17 @@ export function buildMyInvoisInvoiceDocument(payload: LhdnInvoicePayload) {
         : "NA";
   const supplierSst = (payload.supplierSst || "NA").trim() || "NA";
   const supplierPhone = (payload.supplierPhone || "+60000000000").replace(/\s/g, "");
-  const supplierAddress = (payload.supplierAddress || "Malaysia").trim();
-  const supplierCity = (payload.supplierCity || "Kota Kinabalu").trim();
-  const supplierPostcode = (payload.supplierPostcode || "88000").trim();
-  const supplierState = (payload.supplierStateCode || "12").trim(); // 12 = Sabah
+  // Free-text org/patient address → structured MyInvois PostalAddress (no dummy "-" lines).
+  const supplierParsed = parseMalaysiaAddress(payload.supplierAddress, {
+    line1: "Malaysia",
+    city: payload.supplierCity || "Kota Kinabalu",
+    postcode: payload.supplierPostcode || "88000",
+    stateCode: payload.supplierStateCode || "12",
+  });
+  const supplierCity = (payload.supplierCity || supplierParsed.city).trim();
+  const supplierPostcode = (payload.supplierPostcode || supplierParsed.postcode).trim();
+  const supplierState = (payload.supplierStateCode || supplierParsed.stateCode).trim();
+  const supplierAddressLines = addressLinesForUbl(supplierParsed);
   const msic = (payload.supplierMsic || process.env.LHDN_MSIC || "86201").trim();
   const msicName =
     (payload.supplierMsicName || process.env.LHDN_MSIC_NAME || "Medical and dental practice activities").trim();
@@ -57,10 +65,29 @@ export function buildMyInvoisInvoiceDocument(payload: LhdnInvoicePayload) {
   const buyerTin = normalizeTin(payload.buyerTin || "EI00000000010");
   const isGeneralPublicTin = buyerTin === "EI00000000010";
   const buyerBrn = (payload.buyerBrn || "NA").trim() || "NA";
-  const buyerAddress = (payload.buyerAddress || supplierAddress).trim();
-  const buyerCity = (payload.buyerCity || supplierCity).trim();
-  const buyerPostcode = (payload.buyerPostcode || supplierPostcode).trim();
-  const buyerState = (payload.buyerStateCode || supplierState).trim();
+  const buyerHasAddress = Boolean((payload.buyerAddress || "").trim());
+  const buyerParsed = parseMalaysiaAddress(
+    payload.buyerAddress,
+    buyerHasAddress
+      ? {
+          line1: payload.buyerAddress!.trim(),
+          city: payload.buyerCity || "Kuala Lumpur",
+          postcode: payload.buyerPostcode || "50000",
+          stateCode: payload.buyerStateCode || "14",
+        }
+      : {
+          line1: supplierParsed.line1,
+          line2: supplierParsed.line2,
+          line3: supplierParsed.line3,
+          city: payload.buyerCity || supplierCity,
+          postcode: payload.buyerPostcode || supplierPostcode,
+          stateCode: payload.buyerStateCode || supplierState,
+        }
+  );
+  const buyerCity = (payload.buyerCity || buyerParsed.city).trim();
+  const buyerPostcode = (payload.buyerPostcode || buyerParsed.postcode).trim();
+  const buyerState = (payload.buyerStateCode || buyerParsed.stateCode).trim();
+  const buyerAddressLines = addressLinesForUbl(buyerParsed);
   const buyerPhoneRaw = (payload.buyerPhone || supplierPhone || "+60123456789").replace(
     /\s/g,
     ""
@@ -161,11 +188,10 @@ export function buildMyInvoisInvoiceDocument(payload: LhdnInvoicePayload) {
                     CityName: text(supplierCity),
                     PostalZone: text(supplierPostcode),
                     CountrySubentityCode: text(supplierState),
-                    AddressLine: [
-                      { Line: text(supplierAddress.slice(0, 150)) },
-                      { Line: text("-") },
-                      { Line: text("-") },
-                    ],
+                    AddressLine: (supplierAddressLines.length
+                      ? supplierAddressLines
+                      : ["Malaysia"]
+                    ).map((line) => ({ Line: text(line.slice(0, 150)) })),
                     Country: [
                       {
                         IdentificationCode: [
@@ -196,11 +222,10 @@ export function buildMyInvoisInvoiceDocument(payload: LhdnInvoicePayload) {
                     CityName: text(buyerCity),
                     PostalZone: text(buyerPostcode),
                     CountrySubentityCode: text(buyerState),
-                    AddressLine: [
-                      { Line: text(buyerAddress.slice(0, 150)) },
-                      { Line: text("-") },
-                      { Line: text("-") },
-                    ],
+                    AddressLine: (buyerAddressLines.length
+                      ? buyerAddressLines
+                      : [supplierParsed.line1 || "Malaysia"]
+                    ).map((line) => ({ Line: text(line.slice(0, 150)) })),
                     Country: [
                       {
                         IdentificationCode: [

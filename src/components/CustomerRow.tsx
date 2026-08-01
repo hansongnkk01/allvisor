@@ -94,6 +94,7 @@ export function CustomerRow({
                 required
                 className="input"
                 defaultValue={customer.address || ""}
+                placeholder="Street, city, postcode, state"
               />
             </div>
             <div className="field">

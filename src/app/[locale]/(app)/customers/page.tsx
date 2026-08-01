@@ -98,7 +98,12 @@ export default async function CustomersPage({
           </div>
           <div className="field">
             <label>{t("address")}</label>
-            <input name="address" required className="input" placeholder="No., street, city, postcode" />
+            <input
+              name="address"
+              required
+              className="input"
+              placeholder="Street, city, postcode, state (e.g. 12 Jalan Ampang, KL, 50450, Wilayah Persekutuan)"
+            />
           </div>
           <div className="field">
             <label>{t("notes")}</label>
