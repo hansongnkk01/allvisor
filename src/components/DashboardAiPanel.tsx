@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "@/i18n/navigation";
 
 type InsightInput = {
   niche: "clinic" | "retail";
@@ -86,7 +85,6 @@ export function DashboardAiPanel({
   data: InsightInput;
   title: string;
 }) {
-  const router = useRouter();
   const [tips, setTips] = useState(() => buildInsights(data));
   const [updatedAt, setUpdatedAt] = useState(() => new Date());
 
@@ -94,22 +92,6 @@ export function DashboardAiPanel({
     setTips(buildInsights(data));
     setUpdatedAt(new Date());
   }, [data]);
-
-  // Soft realtime: refresh dashboard data while the tab is visible
-  useEffect(() => {
-    const tick = () => {
-      if (document.visibilityState === "visible") router.refresh();
-    };
-    const id = window.setInterval(tick, 20_000);
-    const onFocus = () => tick();
-    window.addEventListener("focus", onFocus);
-    document.addEventListener("visibilitychange", onFocus);
-    return () => {
-      window.clearInterval(id);
-      window.removeEventListener("focus", onFocus);
-      document.removeEventListener("visibilitychange", onFocus);
-    };
-  }, [router]);
 
   return (
     <aside
@@ -147,7 +129,7 @@ export function DashboardAiPanel({
         })}
       </div>
       <p className="muted" style={{ fontSize: "0.75rem", marginTop: 10, marginBottom: 0 }}>
-        Live review · updated {updatedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+        Tips from current dashboard · {updatedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
       </p>
     </aside>
   );

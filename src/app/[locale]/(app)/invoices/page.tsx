@@ -28,10 +28,13 @@ export default async function InvoicesPage({
   const [{ data: invoices }, logs] = await Promise.all([
     supabase
       .from("invoices")
-      .select("*, customers(name, risk_level)")
+      .select(
+        "id, invoice_number, title, notes, status, total, amount_paid, created_at, issue_date, lhdn_status, tax_amount, customers(name, risk_level)"
+      )
       .eq("organization_id", ctx.organization.id)
-      .order("created_at", { ascending: false }),
-    fetchSectionLogs(ctx.organization.id, ["invoice", "pos"], 50),
+      .order("created_at", { ascending: false })
+      .limit(250),
+    fetchSectionLogs(ctx.organization.id, ["invoice", "pos"], 25),
   ]);
 
   const canLhdn = canAccessSensitive(ctx.membership.role);
@@ -58,7 +61,9 @@ export default async function InvoicesPage({
           issue_date: inv.issue_date,
           lhdn_status: inv.lhdn_status,
           tax_amount: Number(inv.tax_amount || 0),
-          customers: inv.customers,
+          customers: Array.isArray(inv.customers)
+            ? inv.customers[0] || null
+            : inv.customers,
         }))}
         canLhdn={canLhdn}
         loadPreview={getInvoicePreviewAction}

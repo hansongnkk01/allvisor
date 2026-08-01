@@ -21,10 +21,13 @@ export default async function InventoryPage({
   const [{ data: products }, logs] = await Promise.all([
     supabase
       .from("products")
-      .select("*")
+      .select(
+        "id, name, sku, unit_price, quantity, low_stock_threshold, created_at"
+      )
       .eq("organization_id", ctx.organization.id)
-      .order("created_at", { ascending: false }),
-    fetchSectionLogs(ctx.organization.id, ["inventory"], 50),
+      .order("created_at", { ascending: false })
+      .limit(500),
+    fetchSectionLogs(ctx.organization.id, ["inventory"], 25),
   ]);
 
   const isClinic = ctx.organization.niche === "clinic";

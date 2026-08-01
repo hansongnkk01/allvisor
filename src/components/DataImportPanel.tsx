@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import * as XLSX from "xlsx";
 import { useRouter } from "@/i18n/navigation";
 import { importMigrationDataAction } from "@/app/actions";
 import {
@@ -13,7 +12,8 @@ import {
   type ImportRow,
 } from "@/lib/data-import";
 
-function parseFile(file: File): Promise<ImportRow[]> {
+async function parseFile(file: File): Promise<ImportRow[]> {
+  const XLSX = await import("xlsx");
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {

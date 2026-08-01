@@ -23,24 +23,37 @@ export default async function AppointmentsPage({
   }
 
   const supabase = await createClient();
+  // Calendar window: ~45 days back + ~90 days ahead (keeps payload small)
+  const windowStart = new Date();
+  windowStart.setDate(windowStart.getDate() - 45);
+  const windowEnd = new Date();
+  windowEnd.setDate(windowEnd.getDate() + 90);
+
   const [{ data: appointments }, { data: customers }, { data: categories }, logs] =
     await Promise.all([
       supabase
         .from("appointments")
-        .select("*, customers(name, risk_level)")
+        .select(
+          "id, title, starts_at, ends_at, status, notes, reminder_sent, customers(name, risk_level)"
+        )
         .eq("organization_id", ctx.organization.id)
-        .order("starts_at", { ascending: true }),
+        .gte("starts_at", windowStart.toISOString())
+        .lte("starts_at", windowEnd.toISOString())
+        .order("starts_at", { ascending: true })
+        .limit(500),
       supabase
         .from("customers")
         .select("id, name, risk_level")
         .eq("organization_id", ctx.organization.id)
-        .order("name"),
+        .order("name")
+        .limit(500),
       supabase
         .from("service_categories")
         .select("id, name")
         .eq("organization_id", ctx.organization.id)
-        .order("name"),
-      fetchSectionLogs(ctx.organization.id, ["appointment"], 50),
+        .order("name")
+        .limit(200),
+      fetchSectionLogs(ctx.organization.id, ["appointment"], 25),
     ]);
 
   return (
@@ -57,7 +70,9 @@ export default async function AppointmentsPage({
             status: a.status as AppointmentStatus,
             notes: a.notes,
             reminder_sent: a.reminder_sent,
-            customers: a.customers,
+            customers: Array.isArray(a.customers)
+              ? a.customers[0] || null
+              : a.customers,
           }))}
           patients={(customers || []).map((c) => ({
             id: c.id,

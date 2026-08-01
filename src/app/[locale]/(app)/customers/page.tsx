@@ -25,16 +25,19 @@ export default async function CustomersPage({
   const [{ data: customers }, { data: deletions }, logs] = await Promise.all([
     supabase
       .from("customers")
-      .select("*")
-      .eq("organization_id", ctx.organization.id)
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("customer_deletions")
-      .select("*")
+      .select(
+        "id, name, email, phone, ic_number, address, notes, risk_level, created_by_name, created_at"
+      )
       .eq("organization_id", ctx.organization.id)
       .order("created_at", { ascending: false })
-      .limit(30),
-    fetchSectionLogs(ctx.organization.id, ["customer"], 50),
+      .limit(500),
+    supabase
+      .from("customer_deletions")
+      .select("id, customer_name, deleted_by_name, created_at")
+      .eq("organization_id", ctx.organization.id)
+      .order("created_at", { ascending: false })
+      .limit(20),
+    fetchSectionLogs(ctx.organization.id, ["customer"], 25),
   ]);
 
   const title = ctx.organization.niche === "clinic" ? t("titleClinic") : t("title");

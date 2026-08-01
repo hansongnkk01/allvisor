@@ -2,12 +2,45 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { requireOrg } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
-import { formatCurrency, formatDateTime } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
 import { Link } from "@/i18n/navigation";
 import { DayHourTimetable } from "@/components/DayHourTimetable";
 import { DashboardAiPanel } from "@/components/DashboardAiPanel";
 import { DashboardRecentInvoices, DashboardUpcomingAppointments } from "@/components/DashboardLists";
-import { dayBoundsMY } from "@/lib/datetime-my";
+import { dayBoundsMY, formatDayKeyMY } from "@/lib/datetime-my";
+
+type ApptRow = {
+  id: string;
+  title: string;
+  starts_at: string;
+  ends_at: string;
+  status?: string;
+  notes?: string | null;
+  customers?: { name: string; risk_level?: "high" | "medium" | "low" | null } | null;
+};
+
+function mapAppt(a: {
+  id: string;
+  title: string;
+  starts_at: string;
+  ends_at: string;
+  status?: string;
+  notes?: string | null;
+  customers?:
+    | { name: string; risk_level?: "high" | "medium" | "low" | null }
+    | { name: string; risk_level?: "high" | "medium" | "low" | null }[]
+    | null;
+}): ApptRow {
+  return {
+    id: a.id,
+    title: a.title,
+    starts_at: a.starts_at,
+    ends_at: a.ends_at,
+    status: a.status,
+    notes: a.notes,
+    customers: Array.isArray(a.customers) ? a.customers[0] || null : a.customers,
+  };
+}
 
 export default async function DashboardPage({
   params,
@@ -23,101 +56,92 @@ export default async function DashboardPage({
   const niche = ctx.organization.niche;
   const now = new Date();
   const { start: todayStart, end: todayEnd } = dayBoundsMY(now);
+  const monthStart = `${formatDayKeyMY(now).slice(0, 7)}-01`;
 
   const [
     { count: customerCount },
     { count: unpaidCount },
-    { data: products },
+    { data: stockRows },
     { data: recentInvoices },
     { data: ledger },
     { count: lhdnPending },
+    { count: appointmentsTodayCount },
+    { data: upcomingData },
+    { data: todayData },
+    { data: paidToday },
   ] = await Promise.all([
     supabase
       .from("customers")
-      .select("*", { count: "exact", head: true })
+      .select("id", { count: "exact", head: true })
       .eq("organization_id", orgId),
     supabase
       .from("invoices")
-      .select("*", { count: "exact", head: true })
+      .select("id", { count: "exact", head: true })
       .eq("organization_id", orgId)
       .in("status", ["unpaid", "partial"]),
-    supabase.from("products").select("*").eq("organization_id", orgId),
+    supabase
+      .from("products")
+      .select("quantity, low_stock_threshold")
+      .eq("organization_id", orgId),
     supabase
       .from("invoices")
-      .select("*, customers(name)")
+      .select("id, title, invoice_number, status, total, created_at, customers(name)")
       .eq("organization_id", orgId)
       .order("created_at", { ascending: false })
-      .limit(25),
-    supabase.from("ledger_entries").select("entry_type, amount").eq("organization_id", orgId),
+      .limit(12),
+    supabase
+      .from("ledger_entries")
+      .select("entry_type, amount")
+      .eq("organization_id", orgId)
+      .gte("entry_date", monthStart),
     supabase
       .from("invoices")
-      .select("*", { count: "exact", head: true })
+      .select("id", { count: "exact", head: true })
       .eq("organization_id", orgId)
       .in("lhdn_status", ["not_submitted", "pending", "rejected"]),
+    niche === "clinic"
+      ? supabase
+          .from("appointments")
+          .select("id", { count: "exact", head: true })
+          .eq("organization_id", orgId)
+          .gte("starts_at", todayStart.toISOString())
+          .lte("starts_at", todayEnd.toISOString())
+      : Promise.resolve({ count: 0 }),
+    niche === "clinic"
+      ? supabase
+          .from("appointments")
+          .select("id, title, starts_at, ends_at, status, notes, customers(name, risk_level)")
+          .eq("organization_id", orgId)
+          .gte("starts_at", now.toISOString())
+          .order("starts_at", { ascending: true })
+          .limit(12)
+      : Promise.resolve({ data: [] as never[] }),
+    niche === "clinic"
+      ? supabase
+          .from("appointments")
+          .select("id, title, starts_at, ends_at, status, notes, customers(name, risk_level)")
+          .eq("organization_id", orgId)
+          .gte("starts_at", todayStart.toISOString())
+          .lte("starts_at", todayEnd.toISOString())
+          .order("starts_at", { ascending: true })
+      : Promise.resolve({ data: [] as never[] }),
+    niche === "retail"
+      ? supabase
+          .from("payments")
+          .select("amount")
+          .eq("organization_id", orgId)
+          .gte("paid_at", todayStart.toISOString())
+          .lte("paid_at", todayEnd.toISOString())
+      : Promise.resolve({ data: [] as never[] }),
   ]);
 
-  let appointmentsToday = 0;
-  let salesToday = 0;
-  let upcoming: Array<{
-    id: string;
-    title: string;
-    starts_at: string;
-    ends_at: string;
-    status?: string;
-    notes?: string | null;
-    customers?: { name: string; risk_level?: "high" | "medium" | "low" | null } | null;
-  }> = [];
-  let todayAppts: typeof upcoming = [];
-
-  if (niche === "clinic") {
-    const { count } = await supabase
-      .from("appointments")
-      .select("*", { count: "exact", head: true })
-      .eq("organization_id", orgId)
-      .gte("starts_at", todayStart.toISOString())
-      .lte("starts_at", todayEnd.toISOString());
-    appointmentsToday = count || 0;
-
-    const { data } = await supabase
-      .from("appointments")
-      .select("*, customers(name, risk_level)")
-      .eq("organization_id", orgId)
-      .gte("starts_at", now.toISOString())
-      .order("starts_at", { ascending: true })
-      .limit(30);
-    upcoming = (data || []).map((a) => ({
-      ...a,
-      customers: Array.isArray(a.customers) ? a.customers[0] || null : a.customers,
-    }));
-
-    const { data: todayData } = await supabase
-      .from("appointments")
-      .select("id, title, starts_at, ends_at, status, notes, customers(name, risk_level)")
-      .eq("organization_id", orgId)
-      .gte("starts_at", todayStart.toISOString())
-      .lte("starts_at", todayEnd.toISOString())
-      .order("starts_at", { ascending: true });
-    todayAppts = (todayData || []).map((a) => ({
-      id: a.id,
-      title: a.title,
-      starts_at: a.starts_at,
-      ends_at: a.ends_at,
-      status: a.status,
-      notes: a.notes,
-      customers: Array.isArray(a.customers) ? a.customers[0] || null : a.customers,
-    }));
-  } else {
-    const { data: paidToday } = await supabase
-      .from("payments")
-      .select("amount")
-      .eq("organization_id", orgId)
-      .gte("paid_at", todayStart.toISOString())
-      .lte("paid_at", todayEnd.toISOString());
-    salesToday = (paidToday || []).reduce((sum, p) => sum + Number(p.amount), 0);
-  }
+  const appointmentsToday = appointmentsTodayCount || 0;
+  const salesToday = (paidToday || []).reduce((sum, p) => sum + Number(p.amount), 0);
+  const upcoming = (upcomingData || []).map(mapAppt);
+  const todayAppts = (todayData || []).map(mapAppt);
 
   const lowStockCount =
-    products?.filter((p) => p.quantity <= p.low_stock_threshold).length || 0;
+    stockRows?.filter((p) => Number(p.quantity) <= Number(p.low_stock_threshold)).length || 0;
 
   const income = (ledger || [])
     .filter((e) => e.entry_type === "income")
@@ -248,10 +272,7 @@ export default async function DashboardPage({
         />
 
         {niche === "clinic" ? (
-          <DashboardUpcomingAppointments
-            title={t("upcomingAppointments")}
-            items={upcoming}
-          />
+          <DashboardUpcomingAppointments title={t("upcomingAppointments")} items={upcoming} />
         ) : null}
       </div>
     </div>
