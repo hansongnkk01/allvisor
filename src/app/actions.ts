@@ -30,7 +30,7 @@ import {
   type ImportRow,
 } from "@/lib/data-import";
 import { canAccessSensitive, canManageStaff } from "@/lib/roles";
-import { formatDayKeyMY } from "@/lib/datetime-my";
+import { formatDayKeyMY, parseClinicDateTimeToIso } from "@/lib/datetime-my";
 
 async function requireMember() {
   const ctx = await getOrgContext();
@@ -651,26 +651,24 @@ export async function createAppointmentAction(formData: FormData) {
     title = category.name;
   }
 
+  const startsAt = parseClinicDateTimeToIso(String(formData.get("starts_at") || ""));
+  const endsAt = parseClinicDateTimeToIso(String(formData.get("ends_at") || ""));
+
   const payload = {
     organization_id: organization.id,
     customer_id: String(formData.get("customer_id") || ""),
     title,
-    starts_at: new Date(String(formData.get("starts_at") || "")).toISOString(),
-    ends_at: new Date(String(formData.get("ends_at") || "")).toISOString(),
+    starts_at: startsAt || "",
+    ends_at: endsAt || "",
     status: String(formData.get("status") || "scheduled") as AppointmentStatus,
     notes: String(formData.get("notes") || "") || null,
     reminder_sent: formData.get("reminder_sent") === "on",
   };
 
-  if (
-    !payload.customer_id ||
-    !payload.title ||
-    Number.isNaN(new Date(payload.starts_at).getTime()) ||
-    Number.isNaN(new Date(payload.ends_at).getTime())
-  ) {
+  if (!payload.customer_id || !payload.title || !startsAt || !endsAt) {
     return { error: "Missing appointment fields" };
   }
-  if (new Date(payload.ends_at).getTime() <= new Date(payload.starts_at).getTime()) {
+  if (new Date(endsAt).getTime() <= new Date(startsAt).getTime()) {
     return { error: "End time must be after start time" };
   }
 
@@ -1090,8 +1088,8 @@ export async function updateAppointmentAction(formData: FormData) {
   const id = String(formData.get("id") || "");
   if (!id) return { error: "Missing appointment id" };
 
-  const startsAt = String(formData.get("starts_at") || "");
-  const endsAt = String(formData.get("ends_at") || "");
+  const startsAt = parseClinicDateTimeToIso(String(formData.get("starts_at") || ""));
+  const endsAt = parseClinicDateTimeToIso(String(formData.get("ends_at") || ""));
   const notes = String(formData.get("notes") || "").trim() || null;
   const status = String(formData.get("status") || "scheduled") as AppointmentStatus;
 
@@ -1106,8 +1104,8 @@ export async function updateAppointmentAction(formData: FormData) {
   const { error } = await supabase
     .from("appointments")
     .update({
-      starts_at: new Date(startsAt).toISOString(),
-      ends_at: new Date(endsAt).toISOString(),
+      starts_at: startsAt,
+      ends_at: endsAt,
       notes,
       status,
     })

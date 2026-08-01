@@ -27,6 +27,33 @@ export function dayBoundsMY(date: Date = new Date()) {
   return { start, end, day };
 }
 
+/**
+ * Parse appointment datetime from forms.
+ * `datetime-local` sends "YYYY-MM-DDTHH:mm" with NO timezone — Node/Vercel
+ * would treat that as server-local (often UTC), shifting MY times by +8h.
+ * Naive values are interpreted as Asia/Kuala_Lumpur (+08:00).
+ */
+export function parseClinicDateTimeToIso(value: string): string | null {
+  const v = String(value || "").trim();
+  if (!v) return null;
+
+  if (/[zZ]$/.test(v) || /[+-]\d{2}:\d{2}$/.test(v)) {
+    const d = new Date(v);
+    return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  }
+
+  const m = v.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/);
+  if (m) {
+    const [, y, mo, d, h, mi, sec] = m;
+    const iso = `${y}-${mo}-${d}T${h}:${mi}:${sec || "00"}+08:00`;
+    const date = new Date(iso);
+    return Number.isNaN(date.getTime()) ? null : date.toISOString();
+  }
+
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
 export type AccountingPeriod =
   | "today"
   | "this_week"
