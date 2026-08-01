@@ -629,8 +629,16 @@ function InvoicePreviewBody({
 
   return (
     <div className="stack" style={{ gap: "1rem" }}>
-      <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div>
+      <div
+        className="row"
+        style={{
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          flexWrap: "wrap",
+          gap: 10,
+        }}
+      >
+        <div style={{ minWidth: 0, flex: "1 1 180px" }}>
           <h2 className="page-title" style={{ fontSize: "1.35rem" }}>
             {invoice.title || invoice.invoice_number}
           </h2>
@@ -638,13 +646,36 @@ function InvoicePreviewBody({
             {invoice.invoice_number} · {formatDateTime(invoice.created_at)}
           </div>
         </div>
-        <div className="row">
+        <div
+          className="row no-print"
+          style={{
+            alignItems: "stretch",
+            flexWrap: "wrap",
+            gap: 8,
+            justifyContent: "flex-end",
+          }}
+        >
           {lhdnStatus && lhdnStatus !== "not_submitted" ? (
-            <span className="badge" title={myStatus || lhdnStatus}>
+            <span className="badge" title={myStatus || lhdnStatus} style={{ alignSelf: "center" }}>
               {labels.lhdnStatusLine.replace("{status}", myStatus || lhdnStatus)}
             </span>
           ) : null}
-          <PrintInvoiceButton label={labels.print} invoiceId={invoice.id} />
+          {editable && balance > 0 ? (
+            <RecordPaymentForm
+              compact
+              invoiceId={invoice.id}
+              balance={balance}
+              labels={{
+                title: labels.recordPayment,
+                balanceDue: labels.balanceDue,
+                pay: labels.pay,
+              }}
+              onSuccess={onSubmitted}
+            />
+          ) : null}
+          <div style={{ alignSelf: "center" }}>
+            <PrintInvoiceButton label={labels.print} invoiceId={invoice.id} />
+          </div>
         </div>
       </div>
 
@@ -718,19 +749,6 @@ function InvoicePreviewBody({
           </div>
         </div>
       </div>
-
-      {editable && balance > 0 ? (
-        <RecordPaymentForm
-          invoiceId={invoice.id}
-          balance={balance}
-          labels={{
-            title: labels.recordPayment,
-            balanceDue: labels.balanceDue,
-            pay: labels.pay,
-          }}
-          onSuccess={onSubmitted}
-        />
-      ) : null}
 
       <div
         className="surface"
