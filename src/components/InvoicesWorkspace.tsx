@@ -660,6 +660,19 @@ function InvoicePreviewBody({
               {labels.lhdnStatusLine.replace("{status}", myStatus || lhdnStatus)}
             </span>
           ) : null}
+          {editable && balance > 0 ? (
+            <RecordPaymentForm
+              compact
+              invoiceId={invoice.id}
+              balance={balance}
+              labels={{
+                title: labels.recordPayment,
+                balanceDue: labels.balanceDue,
+                pay: labels.pay,
+              }}
+              onSuccess={onSubmitted}
+            />
+          ) : null}
           <PrintInvoiceButton
             label={labels.print}
             invoiceId={invoice.id}
@@ -674,19 +687,6 @@ function InvoicePreviewBody({
               boxSizing: "border-box",
             }}
           />
-          {editable && balance > 0 ? (
-            <RecordPaymentForm
-              compact
-              invoiceId={invoice.id}
-              balance={balance}
-              labels={{
-                title: labels.recordPayment,
-                balanceDue: labels.balanceDue,
-                pay: labels.pay,
-              }}
-              onSuccess={onSubmitted}
-            />
-          ) : null}
         </div>
       </div>
 
