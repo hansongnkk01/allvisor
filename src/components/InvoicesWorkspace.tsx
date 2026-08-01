@@ -23,6 +23,7 @@ export type InvoiceListRow = {
   id: string;
   invoice_number: string;
   title: string | null;
+  notes?: string | null;
   status: InvoiceStatus;
   total: number;
   amount_paid: number;
@@ -32,6 +33,15 @@ export type InvoiceListRow = {
   tax_amount: number;
   customers?: { name: string; risk_level?: "high" | "medium" | "low" | null } | null;
 };
+
+function displayInvoiceNotes(notes: string | null | undefined) {
+  if (!notes) return null;
+  // Strip internal appt marker: "appt:uuid · user notes"
+  const cleaned = notes
+    .replace(/appt:[0-9a-f-]{36}\s*[·•-]?\s*/i, "")
+    .trim();
+  return cleaned || null;
+}
 
 type PreviewPayload = {
   invoice: InvoiceListRow & {
@@ -320,6 +330,11 @@ export function InvoicesWorkspace({
                   >
                     <td>
                       <div>{inv.title || inv.invoice_number}</div>
+                      {displayInvoiceNotes(inv.notes) ? (
+                        <div style={{ fontSize: "0.85rem", marginTop: 2 }}>
+                          {displayInvoiceNotes(inv.notes)}
+                        </div>
+                      ) : null}
                       <div className="muted" style={{ fontSize: "0.8rem" }}>
                         {inv.invoice_number}
                       </div>

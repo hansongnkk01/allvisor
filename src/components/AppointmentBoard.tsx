@@ -298,6 +298,11 @@ export function AppointmentBoard({
     setEndSlot(minutes);
   }
 
+  const [completingId, setCompletingId] = useState<string | null>(null);
+  const [optimisticCompleted, setOptimisticCompleted] = useState<Set<string>>(
+    () => new Set()
+  );
+
   const completeAppointment = async (id: string) => {
     const ok = await confirm({
       title: "Allvisor",
@@ -306,29 +311,42 @@ export function AppointmentBoard({
       cancelLabel: "Cancel",
     });
     if (!ok) return;
-    await new Promise((r) => window.setTimeout(r, 0));
-    startTransition(async () => {
-      try {
-        const result = await completeAppointmentWithInvoiceAction(id);
-        if (result?.error) {
-          await confirm({
-            title: "Allvisor",
-            message: result.error,
-            confirmLabel: "OK",
-            hideCancel: true,
-          });
-          return;
-        }
-        router.refresh();
-      } catch (e) {
+    setCompletingId(id);
+    setOptimisticCompleted((prev) => new Set(prev).add(id));
+    try {
+      const result = await completeAppointmentWithInvoiceAction(id);
+      if (result?.error) {
+        setOptimisticCompleted((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+        setCompletingId(null);
         await confirm({
           title: "Allvisor",
-          message: e instanceof Error ? e.message : "Failed to complete appointment",
+          message: result.error,
           confirmLabel: "OK",
           hideCancel: true,
         });
+        return;
       }
-    });
+      // Refresh in background — UI already shows completed
+      router.refresh();
+    } catch (e) {
+      setOptimisticCompleted((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      await confirm({
+        title: "Allvisor",
+        message: e instanceof Error ? e.message : "Failed to complete appointment",
+        confirmLabel: "OK",
+        hideCancel: true,
+      });
+    } finally {
+      setCompletingId(null);
+    }
   };
 
   const listHandlers = {
@@ -340,6 +358,8 @@ export function AppointmentBoard({
       refreshAfter(() => updateAppointmentStatusAction(id, status));
     },
     onComplete: completeAppointment,
+    completingId,
+    optimisticCompleted,
     onDelete: async (id: string) => {
       const ok = await confirm({
         title: "Allvisor",
@@ -443,10 +463,6 @@ export function AppointmentBoard({
 
       {view === "calendar" ? (
         <>
-          <p className="muted" style={{ margin: 0, fontSize: "0.9rem" }}>
-            {labels.bookHint}
-          </p>
-
           <div
             style={{
               display: "grid",
@@ -679,6 +695,8 @@ function AppointmentList({
   onComplete,
   onDelete,
   onSave,
+  completingId,
+  optimisticCompleted,
 }: {
   items: Appt[];
   labels: {
@@ -698,6 +716,8 @@ function AppointmentList({
   onComplete: (id: string) => void | Promise<void>;
   onDelete: (id: string) => void | Promise<void>;
   onSave: (formData: FormData) => Promise<{ error?: string; success?: boolean } | void>;
+  completingId: string | null;
+  optimisticCompleted: Set<string>;
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -711,6 +731,11 @@ function AppointmentList({
     <div className="stack" style={{ gap: "0.75rem" }}>
       {items.map((a) => {
         const isEditing = editingId === a.id;
+        const isCompleting = completingId === a.id;
+        const status: AppointmentStatus =
+          a.status === "completed" || optimisticCompleted.has(a.id)
+            ? "completed"
+            : a.status;
         const start = new Date(a.starts_at);
         const end = new Date(a.ends_at);
         const endDisplay =
@@ -720,7 +745,7 @@ function AppointmentList({
         return (
           <div
             key={a.id}
-            className={`surface ${apptCardClass(a.status)}`}
+            className={`surface ${apptCardClass(status)}`}
             style={{ padding: "0.9rem 1rem", boxShadow: "none" }}
           >
             <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -749,17 +774,17 @@ function AppointmentList({
                   </div>
                 ) : null}
               </div>
-              <div className="row" style={{ flexWrap: "wrap", justifyContent: "flex-end" }}>
+              <div className="row" style={{ flexWrap: "wrap", justifyContent: "flex-end", alignItems: "center" }}>
                 {!isEditing ? (
                   <>
                     <select
                       className="select"
                       style={{ width: 140 }}
-                      value={a.status === "completed" ? "completed" : a.status}
-                      disabled={a.status === "completed"}
+                      value={status === "completed" ? "completed" : status}
+                      disabled={status === "completed" || isCompleting}
                       onChange={(e) => onStatus(a.id, e.target.value as AppointmentStatus)}
                     >
-                      {a.status === "completed" ? (
+                      {status === "completed" ? (
                         <option value="completed">completed</option>
                       ) : null}
                       {DROPDOWN_STATUSES.map((s) => (
@@ -768,11 +793,18 @@ function AppointmentList({
                         </option>
                       ))}
                     </select>
+                    {isCompleting ? (
+                      <span
+                        className="appt-complete-spinner"
+                        title="Completing…"
+                        aria-label="Loading"
+                      />
+                    ) : null}
                     <button
                       type="button"
                       className="btn btn-tick"
                       title="Completed"
-                      disabled={a.status === "completed"}
+                      disabled={status === "completed" || isCompleting}
                       onClick={() => onComplete(a.id)}
                     >
                       ✓
@@ -781,6 +813,7 @@ function AppointmentList({
                       type="button"
                       className="btn btn-edit-soft"
                       style={{ padding: "0.4rem 0.7rem" }}
+                      disabled={isCompleting}
                       onClick={() => {
                         setError(null);
                         setEditingId(a.id);
@@ -792,6 +825,7 @@ function AppointmentList({
                       type="button"
                       className="btn btn-delete-soft"
                       style={{ padding: "0.4rem 0.7rem" }}
+                      disabled={isCompleting}
                       onClick={() => onDelete(a.id)}
                     >
                       {labels.delete}

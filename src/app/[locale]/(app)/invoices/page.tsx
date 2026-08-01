@@ -50,6 +50,7 @@ export default async function InvoicesPage({
           id: inv.id,
           invoice_number: inv.invoice_number,
           title: inv.title,
+          notes: inv.notes ?? null,
           status: inv.status as InvoiceStatus,
           total: Number(inv.total),
           amount_paid: Number(inv.amount_paid),

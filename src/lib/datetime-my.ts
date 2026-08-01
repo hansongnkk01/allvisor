@@ -1,6 +1,17 @@
 /** Asia/Kuala_Lumpur day bounds for “today” queries (fixes UTC server skew). */
 
 export function formatDayKeyMY(date: Date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kuala_Lumpur",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const y = parts.find((p) => p.type === "year")?.value;
+  const m = parts.find((p) => p.type === "month")?.value;
+  const d = parts.find((p) => p.type === "day")?.value;
+  if (y && m && d) return `${y}-${m}-${d}`;
+  // Fallback
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Kuala_Lumpur",
     year: "numeric",
@@ -25,29 +36,46 @@ export type AccountingPeriod =
   | "this_year";
 
 export function accountingPeriodRange(period: AccountingPeriod, now = new Date()) {
-  const { start: todayStart, end: todayEnd } = dayBoundsMY(now);
-  const myParts = formatDayKeyMY(now).split("-").map(Number);
-  const y = myParts[0];
-  const m = myParts[1];
+  const { start: todayStart, end: todayEnd, day: todayDay } = dayBoundsMY(now);
+  const [ys, ms] = todayDay.split("-");
+  const y = Number(ys);
+  const m = Number(ms);
 
-  if (period === "today") return { start: todayStart, end: todayEnd };
+  const monthStartDay = (yy: number, mm: number) =>
+    `${yy}-${String(mm).padStart(2, "0")}-01`;
+
+  if (period === "today") {
+    return {
+      start: todayStart,
+      end: todayEnd,
+      startDay: todayDay,
+      endDay: todayDay,
+    };
+  }
 
   if (period === "this_week") {
-    // Monday-start week in MYT
-    const dow = new Date(todayStart).getUTCDay(); // careful - use local MY offset date
-    const local = new Date(todayStart);
     const jsDay = new Date(
-      local.toLocaleString("en-US", { timeZone: "Asia/Kuala_Lumpur" })
+      todayStart.toLocaleString("en-US", { timeZone: "Asia/Kuala_Lumpur" })
     ).getDay();
     const diffToMon = (jsDay + 6) % 7;
-    const weekStart = new Date(todayStart);
-    weekStart.setTime(todayStart.getTime() - diffToMon * 86400000);
-    return { start: weekStart, end: todayEnd };
+    const weekStart = new Date(todayStart.getTime() - diffToMon * 86400000);
+    const startDay = formatDayKeyMY(weekStart);
+    return {
+      start: weekStart,
+      end: todayEnd,
+      startDay,
+      endDay: todayDay,
+    };
   }
 
   if (period === "this_month") {
-    const start = new Date(`${y}-${String(m).padStart(2, "0")}-01T00:00:00+08:00`);
-    return { start, end: todayEnd };
+    const startDay = monthStartDay(y, m);
+    return {
+      start: new Date(`${startDay}T00:00:00+08:00`),
+      end: todayEnd,
+      startDay,
+      endDay: todayDay,
+    };
   }
 
   if (period === "prev_3_months") {
@@ -57,8 +85,13 @@ export function accountingPeriodRange(period: AccountingPeriod, now = new Date()
       pm += 12;
       py -= 1;
     }
-    const start = new Date(`${py}-${String(pm).padStart(2, "0")}-01T00:00:00+08:00`);
-    return { start, end: todayEnd };
+    const startDay = monthStartDay(py, pm);
+    return {
+      start: new Date(`${startDay}T00:00:00+08:00`),
+      end: todayEnd,
+      startDay,
+      endDay: todayDay,
+    };
   }
 
   if (period === "prev_6_months") {
@@ -68,11 +101,21 @@ export function accountingPeriodRange(period: AccountingPeriod, now = new Date()
       pm += 12;
       py -= 1;
     }
-    const start = new Date(`${py}-${String(pm).padStart(2, "0")}-01T00:00:00+08:00`);
-    return { start, end: todayEnd };
+    const startDay = monthStartDay(py, pm);
+    return {
+      start: new Date(`${startDay}T00:00:00+08:00`),
+      end: todayEnd,
+      startDay,
+      endDay: todayDay,
+    };
   }
 
   // this_year
-  const start = new Date(`${y}-01-01T00:00:00+08:00`);
-  return { start, end: todayEnd };
+  const startDay = `${y}-01-01`;
+  return {
+    start: new Date(`${startDay}T00:00:00+08:00`),
+    end: todayEnd,
+    startDay,
+    endDay: todayDay,
+  };
 }

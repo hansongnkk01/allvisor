@@ -361,6 +361,16 @@ table.data th {
   line-height: 1;
 }
 
+.appt-complete-spinner {
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 999px;
+  border: 2px solid rgba(6, 95, 70, 0.2);
+  border-top-color: #065f46;
+  animation: allvisor-spin 0.65s linear infinite;
+  flex-shrink: 0;
+}
+
 .btn-edit-soft {
   background: #fef9c3;
   color: #854d0e;

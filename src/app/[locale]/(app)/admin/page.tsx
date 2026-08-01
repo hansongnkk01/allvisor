@@ -54,7 +54,8 @@ export default async function AdminPage({
 
   const unlocked = await isAdminUnlocked();
   const hint = await getDefaultAdminPasswordHint();
-  const isAdmin = canManageStaff(ctx.membership.role);
+  /** Anyone who can open Admin sees settings panels (clinic + retail). Staff add/kick stays owner/admin. */
+  const canManageTeam = canManageStaff(ctx.membership.role);
 
   if (!unlocked) {
     return (
@@ -287,9 +288,7 @@ export default async function AdminPage({
         </div>
       ) : null}
 
-      {isAdmin ? (
-        <>
-          <div className="surface" style={{ padding: "1.25rem" }}>
+      <div className="surface" style={{ padding: "1.25rem" }}>
             <h3 style={{ marginTop: 0 }}>{t("securityTitle")}</h3>
             <p className="muted">
               {t("defaultPasswordHelp")}:{" "}
@@ -578,8 +577,6 @@ export default async function AdminPage({
               </p>
             ) : null}
           </div>
-        </>
-      ) : null}
 
       {branchOrgs.map((branch, idx) => (
         <BranchGroup
@@ -733,108 +730,114 @@ export default async function AdminPage({
               </FilterableRows>
             </ExpandSection>
 
-            {isAdmin ? (
-              <ExpandSection title={t("staffTitle")}>
-                <p className="muted">{t("addMemberHint")}</p>
-                <ActionForm
-                  action={branch.id === orgId ? addStaffAction : addBranchStaffAction}
-                  className="stack"
-                >
-                  {branch.id !== orgId ? (
-                    <input type="hidden" name="target_org_id" value={branch.id} />
-                  ) : null}
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-                      gap: "0.65rem",
-                    }}
+            <ExpandSection title={t("staffTitle")} defaultOpen={branch.id === orgId}>
+              {canManageTeam ? (
+                <>
+                  <p className="muted">{t("addMemberHint")}</p>
+                  <ActionForm
+                    action={branch.id === orgId ? addStaffAction : addBranchStaffAction}
+                    className="stack"
                   >
-                    <div className="field">
-                      <label>{t("staffUsername")}</label>
-                      <input
-                        name="username"
-                        type="email"
-                        required
-                        className="input"
-                        placeholder="member@email.com"
-                      />
+                    {branch.id !== orgId ? (
+                      <input type="hidden" name="target_org_id" value={branch.id} />
+                    ) : null}
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+                        gap: "0.65rem",
+                      }}
+                    >
+                      <div className="field">
+                        <label>{t("staffUsername")}</label>
+                        <input
+                          name="username"
+                          type="email"
+                          required
+                          className="input"
+                          placeholder="member@email.com"
+                        />
+                      </div>
+                      <div className="field">
+                        <label>{t("staffName")}</label>
+                        <input name="full_name" className="input" />
+                      </div>
+                      <div className="field">
+                        <label>{t("staffRole")}</label>
+                        <select name="role" className="select" defaultValue="staff">
+                          <option value="staff">staff</option>
+                          <option value="manager">manager</option>
+                          <option value="supervisor">supervisor</option>
+                          <option value="admin">admin</option>
+                        </select>
+                      </div>
+                      <div className="field">
+                        <label>{t("jobTitle")}</label>
+                        <input
+                          name="job_title"
+                          className="input"
+                          placeholder="Supervisor / Nurse / …"
+                        />
+                      </div>
                     </div>
-                    <div className="field">
-                      <label>{t("staffName")}</label>
-                      <input name="full_name" className="input" />
-                    </div>
-                    <div className="field">
-                      <label>{t("staffRole")}</label>
-                      <select name="role" className="select" defaultValue="staff">
-                        <option value="staff">staff</option>
-                        <option value="manager">manager</option>
-                        <option value="supervisor">supervisor</option>
-                        <option value="admin">admin</option>
-                      </select>
-                    </div>
-                    <div className="field">
-                      <label>{t("jobTitle")}</label>
-                      <input
-                        name="job_title"
-                        className="input"
-                        placeholder="Supervisor / Nurse / …"
-                      />
-                    </div>
-                  </div>
-                  <button type="submit" className="btn btn-primary">
-                    {t("addStaff")}
-                  </button>
-                </ActionForm>
+                    <button type="submit" className="btn btn-primary">
+                      {t("addStaff")}
+                    </button>
+                  </ActionForm>
+                </>
+              ) : (
+                <p className="muted">{t("addMemberHint")}</p>
+              )}
 
-                <div className="table-wrap" style={{ marginTop: 12 }}>
-                  <table className="data">
-                    <thead>
-                      <tr>
-                        <th>{t("staffName")}</th>
-                        <th>{t("staffEmail")}</th>
-                        <th>{t("staffRole")}</th>
-                        <th>{t("jobTitle")}</th>
-                        <th>{t("kickStaff")}</th>
+              <div className="table-wrap" style={{ marginTop: 12 }}>
+                <table className="data">
+                  <thead>
+                    <tr>
+                      <th>{t("staffName")}</th>
+                      <th>{t("staffEmail")}</th>
+                      <th>{t("staffRole")}</th>
+                      <th>{t("jobTitle")}</th>
+                      <th>{t("kickStaff")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(branch.members || []).map((m) => (
+                      <tr key={m.id}>
+                        <td>{m.profiles?.full_name || "—"}</td>
+                        <td>{m.profiles?.email || "—"}</td>
+                        <td>
+                          <span className="badge">{m.role}</span>
+                        </td>
+                        <td>{m.job_title || "—"}</td>
+                        <td>
+                          {canManageTeam &&
+                          m.role !== "owner" &&
+                          m.user_id !== ctx.profile.id ? (
+                            <ActionForm
+                              action={
+                                branch.id === orgId
+                                  ? kickStaffAction
+                                  : kickBranchStaffAction
+                              }
+                            >
+                              <input type="hidden" name="membership_id" value={m.id} />
+                              {branch.id !== orgId ? (
+                                <input type="hidden" name="target_org_id" value={branch.id} />
+                              ) : null}
+                              <button type="submit" className="btn btn-ghost">
+                                {t("kick")}
+                              </button>
+                            </ActionForm>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {(branch.members || []).map((m) => (
-                        <tr key={m.id}>
-                          <td>{m.profiles?.full_name || "—"}</td>
-                          <td>{m.profiles?.email || "—"}</td>
-                          <td>
-                            <span className="badge">{m.role}</span>
-                          </td>
-                          <td>{m.job_title || "—"}</td>
-                          <td>
-                            {m.role !== "owner" && m.user_id !== ctx.profile.id ? (
-                              <ActionForm
-                                action={
-                                  branch.id === orgId
-                                    ? kickStaffAction
-                                    : kickBranchStaffAction
-                                }
-                              >
-                                <input type="hidden" name="membership_id" value={m.id} />
-                                {branch.id !== orgId ? (
-                                  <input type="hidden" name="target_org_id" value={branch.id} />
-                                ) : null}
-                                <button type="submit" className="btn btn-ghost">
-                                  {t("kick")}
-                                </button>
-                              </ActionForm>
-                            ) : (
-                              "—"
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </ExpandSection>
-            ) : null}
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </ExpandSection>
           </div>
         </BranchGroup>
       ))}

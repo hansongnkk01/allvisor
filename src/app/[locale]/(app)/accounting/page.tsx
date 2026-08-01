@@ -78,11 +78,7 @@ export default async function AccountingPage({
   }
 
   const period: AccountingPeriod = isPeriod(sp.period) ? sp.period : "this_month";
-  const { start, end } = accountingPeriodRange(period);
-  const startIso = start.toISOString();
-  const endIso = end.toISOString();
-  const startDay = formatDayKeyMY(start);
-  const endDay = formatDayKeyMY(end);
+  const { startDay, endDay } = accountingPeriodRange(period);
 
   const supabase = await createClient();
   const isClinic = ctx.organization.niche === "clinic";
@@ -105,9 +101,6 @@ export default async function AccountingPage({
       .order("created_at", { ascending: false }),
     fetchSectionLogs(ctx.organization.id, ["accounting"]),
   ]);
-
-  void startIso;
-  void endIso;
 
   const income = (ledger || [])
     .filter((e) => e.entry_type === "income")
@@ -195,7 +188,7 @@ export default async function AccountingPage({
                 name="entry_date"
                 type="date"
                 className="input"
-                defaultValue={new Date().toISOString().slice(0, 10)}
+                defaultValue={formatDayKeyMY()}
               />
             </div>
             <div className="field">
@@ -235,7 +228,7 @@ export default async function AccountingPage({
                 name="expense_date"
                 type="date"
                 className="input"
-                defaultValue={new Date().toISOString().slice(0, 10)}
+                defaultValue={formatDayKeyMY()}
               />
             </div>
             <div className="field">

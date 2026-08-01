@@ -30,6 +30,7 @@ import {
   type ImportRow,
 } from "@/lib/data-import";
 import { canAccessSensitive, canManageStaff } from "@/lib/roles";
+import { formatDayKeyMY } from "@/lib/datetime-my";
 
 async function requireMember() {
   const ctx = await getOrgContext();
@@ -618,7 +619,7 @@ export async function recordPaymentAction(formData: FormData) {
       source: "payment",
       source_id: invoiceId,
       amount,
-      entry_date: new Date().toISOString().slice(0, 10),
+      entry_date: formatDayKeyMY(),
       description: `Payment for ${invoice.invoice_number}`,
     });
   }
@@ -714,41 +715,50 @@ export async function completeAppointmentWithInvoiceAction(appointmentId: string
   invoiceId?: string;
 }> {
   const { supabase, organization } = await requireMember();
+  const todayMY = formatDayKeyMY();
 
-  const { data: appt, error: apptErr } = await supabase
-    .from("appointments")
-    .select("id, title, customer_id, notes, customers(name)")
-    .eq("id", appointmentId)
-    .eq("organization_id", organization.id)
-    .maybeSingle();
+  const marker = `appt:${appointmentId}`;
+
+  // Load appointment + duplicate check in parallel
+  const [{ data: appt, error: apptErr }, { data: existingByNote }] = await Promise.all([
+    supabase
+      .from("appointments")
+      .select("id, title, customer_id, notes")
+      .eq("id", appointmentId)
+      .eq("organization_id", organization.id)
+      .maybeSingle(),
+    supabase
+      .from("invoices")
+      .select("id")
+      .eq("organization_id", organization.id)
+      .ilike("notes", `%${marker}%`)
+      .limit(1)
+      .maybeSingle(),
+  ]);
 
   if (apptErr || !appt) return { error: apptErr?.message || "Appointment not found" };
 
-  const { error: statusErr } = await supabase
+  // Mark completed immediately (don't wait for invoice pricing)
+  const statusPromise = supabase
     .from("appointments")
     .update({ status: "completed" })
     .eq("id", appointmentId);
-  if (statusErr) return { error: statusErr.message };
-
-  // Avoid duplicate pending invoice for same appointment note tag
-  const marker = `appt:${appointmentId}`;
-  const { data: existingByNote } = await supabase
-    .from("invoices")
-    .select("id")
-    .eq("organization_id", organization.id)
-    .ilike("notes", `%${marker}%`)
-    .maybeSingle();
 
   if (existingByNote?.id) {
-    await logActivity({
+    const { error: statusErr } = await statusPromise;
+    if (statusErr) return { error: statusErr.message };
+    void logActivity({
       action: "appointment.complete",
       summary: `Completed appointment (invoice already exists)`,
       entityType: "appointment",
       entityId: appointmentId,
     });
-    revalidateApp("/appointments", "/dashboard", "/invoices", "/staff");
+    revalidateApp("/appointments", "/invoices");
     return { success: true, invoiceId: existingByNote.id };
   }
+
+  const { error: statusErr } = await statusPromise;
+  if (statusErr) return { error: statusErr.message };
 
   const year = new Date().getFullYear();
   const prefix =
@@ -758,50 +768,25 @@ export async function completeAppointmentWithInvoiceAction(appointmentId: string
   const startSeq = Number(
     (organization as { invoice_next_seq?: number | null }).invoice_next_seq || 1
   );
-  const { count } = await supabase
-    .from("invoices")
-    .select("*", { count: "exact", head: true })
-    .eq("organization_id", organization.id);
+
+  // Fast-ish unique number: avoid full table count when possible
+  const title = appt.title || "Consultation";
+  const [{ count }, { data: cat }] = await Promise.all([
+    supabase
+      .from("invoices")
+      .select("*", { count: "exact", head: true })
+      .eq("organization_id", organization.id),
+    supabase
+      .from("service_categories")
+      .select("id")
+      .eq("organization_id", organization.id)
+      .ilike("name", title)
+      .maybeSingle(),
+  ]);
   const seq = Math.max(startSeq, (count || 0) + 1);
   const invoiceNumber = `${prefix}-${year}-${String(seq).padStart(5, "0")}`;
 
-  const unitPrice = 0;
-  const lineTotal = 0;
-  const title = appt.title || "Consultation";
-
-  const { data: invoice, error: invErr } = await supabase
-    .from("invoices")
-    .insert({
-      organization_id: organization.id,
-      customer_id: appt.customer_id,
-      invoice_number: invoiceNumber,
-      title: `${title} · pending`,
-      status: "unpaid",
-      issue_date: new Date().toISOString().slice(0, 10),
-      subtotal: lineTotal,
-      tax_amount: 0,
-      total: lineTotal,
-      amount_paid: 0,
-      notes: `${marker}${appt.notes ? ` · ${appt.notes}` : ""}`,
-      medicine_description: null,
-      medicine_amount: 0,
-      additional_description: null,
-      additional_amount: 0,
-      lhdn_status: "not_submitted",
-    })
-    .select("id")
-    .single();
-
-  if (invErr || !invoice) return { error: invErr?.message || "Failed to create invoice" };
-
-  // Prefer first active service under matching category name, else service named like title
   let price = 0;
-  const { data: cat } = await supabase
-    .from("service_categories")
-    .select("id")
-    .eq("organization_id", organization.id)
-    .ilike("name", title)
-    .maybeSingle();
   if (cat?.id) {
     const { data: catItem } = await supabase
       .from("service_items")
@@ -824,7 +809,34 @@ export async function completeAppointmentWithInvoiceAction(appointmentId: string
     price = Number(service?.unit_price || 0);
   }
 
-  const finalPrice = price > 0 ? price : unitPrice;
+  const finalPrice = price > 0 ? price : 0;
+  const notes = `${marker}${appt.notes ? ` · ${appt.notes}` : ""}`;
+
+  const { data: invoice, error: invErr } = await supabase
+    .from("invoices")
+    .insert({
+      organization_id: organization.id,
+      customer_id: appt.customer_id,
+      invoice_number: invoiceNumber,
+      title: `${title} · pending`,
+      status: "unpaid",
+      issue_date: todayMY,
+      subtotal: finalPrice,
+      tax_amount: 0,
+      total: finalPrice,
+      amount_paid: 0,
+      notes,
+      medicine_description: null,
+      medicine_amount: 0,
+      additional_description: null,
+      additional_amount: 0,
+      lhdn_status: "not_submitted",
+    })
+    .select("id")
+    .single();
+
+  if (invErr || !invoice) return { error: invErr?.message || "Failed to create invoice" };
+
   const linePayload: Record<string, unknown> = {
     invoice_id: invoice.id,
     organization_id: organization.id,
@@ -835,42 +847,37 @@ export async function completeAppointmentWithInvoiceAction(appointmentId: string
     line_kind: "service" as InvoiceLineKind,
   };
   let { error: lineErr } = await supabase.from("invoice_lines").insert(linePayload);
-  // Fallback if migration 011 (line_kind) not applied yet
   if (lineErr && /line_kind/i.test(lineErr.message)) {
     delete linePayload.line_kind;
     const retry = await supabase.from("invoice_lines").insert(linePayload);
     lineErr = retry.error;
   }
   if (lineErr) {
-    // Status already completed — still surface invoice line failure clearly
     return {
       error: `Appointment completed, but invoice line failed: ${lineErr.message}`,
       invoiceId: invoice.id,
     };
   }
 
-  if (finalPrice > 0) {
-    await supabase
-      .from("invoices")
-      .update({ subtotal: finalPrice, total: finalPrice })
-      .eq("id", invoice.id);
-  }
-
   const pct = Number(organization.service_charge_percent ?? 0);
-  try {
-    await syncInvoiceChargeAndTotals(supabase, organization.id, invoice.id, pct);
-  } catch {
-    // non-fatal — invoice already exists
-  }
+  // Fire-and-forget non-critical work so UI can return faster
+  void (async () => {
+    try {
+      if (pct > 0) {
+        await syncInvoiceChargeAndTotals(supabase, organization.id, invoice.id, pct);
+      }
+    } catch {
+      /* non-fatal */
+    }
+    await logActivity({
+      action: "appointment.complete_invoice",
+      summary: `Completed appointment → pending invoice ${invoiceNumber}`,
+      entityType: "invoice",
+      entityId: invoice.id,
+    });
+  })();
 
-  await logActivity({
-    action: "appointment.complete_invoice",
-    summary: `Completed appointment → pending invoice ${invoiceNumber}`,
-    entityType: "invoice",
-    entityId: invoice.id,
-  });
-
-  revalidateApp("/appointments", "/dashboard", "/invoices", "/accounting", "/staff");
+  revalidateApp("/appointments", "/invoices");
   return { success: true, invoiceId: invoice.id };
 }
 
@@ -1122,7 +1129,7 @@ export async function posCheckoutAction(formData: FormData) {
     source: "pos",
     source_id: invoice.id,
     amount: lineTotal,
-    entry_date: new Date().toISOString().slice(0, 10),
+    entry_date: formatDayKeyMY(),
     description: `POS sale ${invoiceNumber}`,
   });
 
@@ -1142,9 +1149,7 @@ export async function createExpenseAction(formData: FormData) {
   const category = String(formData.get("category") || "").trim();
   const description = String(formData.get("description") || "") || null;
   const amount = Number(formData.get("amount") || 0);
-  const expenseDate = String(
-    formData.get("expense_date") || new Date().toISOString().slice(0, 10)
-  );
+  const expenseDate = String(formData.get("expense_date") || formatDayKeyMY());
 
   if (!category || amount <= 0) return { error: "Invalid expense" };
 
@@ -1188,9 +1193,7 @@ export async function createIncomeAction(formData: FormData) {
   const category = String(formData.get("category") || "").trim() || "Other income";
   const description = String(formData.get("description") || "").trim() || category;
   const amount = Number(formData.get("amount") || 0);
-  const entryDate = String(
-    formData.get("entry_date") || new Date().toISOString().slice(0, 10)
-  );
+  const entryDate = String(formData.get("entry_date") || formatDayKeyMY());
 
   if (amount <= 0) return { error: "Invalid income amount" };
 
@@ -2336,7 +2339,7 @@ export async function updateInvoiceStatusAction(formData: FormData) {
         source: "invoice_status",
         source_id: snapshot.id,
         amount: remaining,
-        entry_date: new Date().toISOString().slice(0, 10),
+        entry_date: formatDayKeyMY(),
         description: `Marked paid · ${title}`,
       });
     }
@@ -2549,7 +2552,7 @@ export async function getDefaultAdminPasswordHint() {
 
 export async function updateClinicHoursAction(formData: FormData) {
   const { supabase, organization, membership } = await requireMember();
-  if (!canManageStaff(membership.role) && membership.role !== "supervisor") {
+  if (!canAccessSensitive(membership.role)) {
     return { error: "Forbidden" };
   }
   const unlocked = await isSectionUnlocked("admin");
@@ -2633,7 +2636,7 @@ export async function importMigrationDataAction(
   errors?: { row: number; message: string }[];
 }> {
   const { supabase, organization, membership, profile } = await requireMember();
-  if (!canManageStaff(membership.role) && membership.role !== "supervisor") {
+  if (!canAccessSensitive(membership.role)) {
     return { error: "Forbidden" };
   }
   const unlocked = await isSectionUnlocked("admin");

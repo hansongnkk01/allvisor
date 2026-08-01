@@ -45,7 +45,7 @@ export default async function AppointmentsPage({
 
   return (
     <div className="stack" style={{ gap: "1.25rem" }}>
-      <PageHeader title={t("title")} subtitle={t("bookHint")} />
+      <PageHeader title={t("title")} />
 
       <div className="surface" style={{ padding: "1.25rem" }}>
         <AppointmentBoard
