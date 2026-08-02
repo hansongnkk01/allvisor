@@ -31,7 +31,12 @@ import { InvoiceFormatForm } from "@/components/InvoiceFormatForm";
 import { BranchClinicSettings } from "@/components/BranchClinicSettings";
 import { formatCurrency } from "@/lib/utils";
 import { defaultAdminPassword } from "@/lib/admin-lock";
-import { canAccessAdmin, canManageStaff } from "@/lib/roles";
+import {
+  assignableStaffRoles,
+  canAccessAdmin,
+  canManageStaff,
+  staffRoleLabel,
+} from "@/lib/roles";
 
 export default async function AdminPage({
   params,
@@ -51,6 +56,7 @@ export default async function AdminPage({
   const hint = await getDefaultAdminPasswordHint();
   /** Anyone who can open Admin sees settings panels (clinic + retail). Staff add/kick stays owner/admin. */
   const canManageTeam = canManageStaff(ctx.membership.role);
+  const rolesCanAssign = assignableStaffRoles(ctx.membership.role);
 
   if (!unlocked) {
     return (
@@ -617,7 +623,7 @@ export default async function AdminPage({
             </ExpandSection>
 
             <ExpandSection title={t("staffTitle")} defaultOpen={branch.id === orgId}>
-              {canManageTeam ? (
+              {rolesCanAssign.length ? (
                 <>
                   <p className="muted">{t("addMemberHint")}</p>
                   <ActionForm
@@ -651,10 +657,11 @@ export default async function AdminPage({
                       <div className="field">
                         <label>{t("staffRole")}</label>
                         <select name="role" className="select" defaultValue="staff">
-                          <option value="staff">staff</option>
-                          <option value="manager">manager</option>
-                          <option value="supervisor">supervisor</option>
-                          <option value="admin">admin</option>
+                          {rolesCanAssign.map((role) => (
+                            <option key={role} value={role}>
+                              {staffRoleLabel(role)}
+                            </option>
+                          ))}
                         </select>
                       </div>
                       <div className="field">
@@ -675,9 +682,10 @@ export default async function AdminPage({
                 <p className="muted">{t("addMemberHint")}</p>
               )}
 
-              <div className="table-wrap" style={{ marginTop: 12 }}>
-                <table className="data">
-                  <thead>
+              <div style={{ marginTop: 12 }}>
+                <FilterableRows
+                  placeholder={t("searchStaff")}
+                  headers={
                     <tr>
                       <th>{t("staffName")}</th>
                       <th>{t("staffEmail")}</th>
@@ -685,14 +693,20 @@ export default async function AdminPage({
                       <th>{t("jobTitle")}</th>
                       <th>{t("kickStaff")}</th>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {(branch.members || []).map((m) => (
-                      <tr key={m.id}>
-                        <td>{m.profiles?.full_name || "—"}</td>
-                        <td>{m.profiles?.email || "—"}</td>
+                  }
+                >
+                  {(branch.members || []).map((m) => {
+                    const name = m.profiles?.full_name || "";
+                    const email = m.profiles?.email || "";
+                    return (
+                      <tr
+                        key={m.id}
+                        data-search={`${name} ${email} ${m.role} ${m.job_title || ""}`.toLowerCase()}
+                      >
+                        <td>{name || "—"}</td>
+                        <td>{email || "—"}</td>
                         <td>
-                          <span className="badge">{m.role}</span>
+                          <span className="badge">{staffRoleLabel(m.role)}</span>
                         </td>
                         <td>{m.job_title || "—"}</td>
                         <td>
@@ -708,7 +722,11 @@ export default async function AdminPage({
                             >
                               <input type="hidden" name="membership_id" value={m.id} />
                               {branch.id !== orgId ? (
-                                <input type="hidden" name="target_org_id" value={branch.id} />
+                                <input
+                                  type="hidden"
+                                  name="target_org_id"
+                                  value={branch.id}
+                                />
                               ) : null}
                               <button type="submit" className="btn btn-ghost">
                                 {t("kick")}
@@ -719,9 +737,9 @@ export default async function AdminPage({
                           )}
                         </td>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    );
+                  })}
+                </FilterableRows>
               </div>
             </ExpandSection>
           </div>

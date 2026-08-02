@@ -31,7 +31,11 @@ import {
   type ImportKind,
   type ImportRow,
 } from "@/lib/data-import";
-import { canAccessSensitive, canManageStaff } from "@/lib/roles";
+import {
+  assignableStaffRoles,
+  canAccessSensitive,
+  canManageStaff,
+} from "@/lib/roles";
 import { formatDayKeyMY, parseClinicDateTimeToIso } from "@/lib/datetime-my";
 import {
   formatInvoiceNumber,
@@ -1496,8 +1500,8 @@ export async function addStaffAction(formData: FormData) {
   const role = String(formData.get("role") || "staff") as MembershipRole;
   const jobTitle = String(formData.get("job_title") || "").trim() || null;
 
-  const allowedRoles: MembershipRole[] = ["admin", "supervisor", "manager", "staff"];
-  if (!allowedRoles.includes(role)) return { error: "Invalid role" };
+  const allowedRoles = assignableStaffRoles(membership.role);
+  if (!allowedRoles.includes(role)) return { error: "Invalid role for your account" };
   if (!email) return { error: "Username (registered email) required" };
 
   const admin = await getServiceAdmin();
@@ -1743,7 +1747,7 @@ export async function respondBranchLinkAction(formData: FormData) {
 
 export async function upsertBranchServiceCategoryAction(formData: FormData) {
   const { membership } = await requireAdminAccess();
-  if (!canManageStaff(membership.role) && membership.role !== "supervisor") {
+  if (!canAccessSensitive(membership.role)) {
     return { error: "Forbidden" };
   }
   const targetOrgId = String(formData.get("target_org_id") || "");
@@ -1829,6 +1833,8 @@ export async function addBranchStaffAction(formData: FormData) {
   const role = String(formData.get("role") || "staff") as MembershipRole;
   const jobTitle = String(formData.get("job_title") || "").trim() || null;
   if (!email) return { error: "Username (registered email) required" };
+  const allowedRoles = assignableStaffRoles(membership.role);
+  if (!allowedRoles.includes(role)) return { error: "Invalid role for your account" };
 
   const ctx = await requireMember();
   const linked =

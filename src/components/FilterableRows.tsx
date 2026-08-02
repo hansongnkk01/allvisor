@@ -6,9 +6,12 @@ import { SearchField } from "@/components/ListControls";
 /** Client filter for server-rendered <tr data-search="..."> rows. */
 export function FilterableRows({
   placeholder,
+  headers,
   children,
 }: {
   placeholder: string;
+  /** Optional <tr>…</tr> header row(s) for the table. */
+  headers?: ReactNode;
   children: ReactNode;
 }) {
   const [q, setQ] = useState("");
@@ -28,6 +31,7 @@ export function FilterableRows({
       <SearchField value={q} onChange={setQ} placeholder={placeholder} />
       <div className="table-wrap" style={{ marginTop: 8 }}>
         <table className="data">
+          {headers ? <thead>{headers}</thead> : null}
           <tbody ref={bodyRef}>{children}</tbody>
         </table>
       </div>
