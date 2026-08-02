@@ -2709,7 +2709,9 @@ export async function changeAdminPasswordAction(formData: FormData) {
   if (!unlocked) return { error: "Admin unlock required" };
 
   const next = String(formData.get("new_password") || "").trim();
+  const confirm = String(formData.get("confirm_password") || "").trim();
   if (next.length < 6) return { error: "Password min 6 characters" };
+  if (next !== confirm) return { error: "Passwords do not match" };
 
   const { error } = await supabase
     .from("organizations")

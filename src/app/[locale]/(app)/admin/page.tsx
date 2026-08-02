@@ -298,17 +298,26 @@ export default async function AdminPage({
                   : defaultAdminPassword(org.name, org.created_at)}
               </code>
             </p>
-            <ActionForm action={changeAdminPasswordAction} className="row">
+            <ActionForm action={changeAdminPasswordAction} className="stack" style={{ maxWidth: 360 }}>
               <input
                 name="new_password"
                 type="password"
                 minLength={6}
                 required
                 className="input"
-                style={{ maxWidth: 280 }}
                 placeholder={t("newPassword")}
+                autoComplete="new-password"
               />
-              <button type="submit" className="btn btn-soft">
+              <input
+                name="confirm_password"
+                type="password"
+                minLength={6}
+                required
+                className="input"
+                placeholder={t("confirmPassword")}
+                autoComplete="new-password"
+              />
+              <button type="submit" className="btn btn-soft" style={{ alignSelf: "flex-start" }}>
                 {t("changePassword")}
               </button>
             </ActionForm>

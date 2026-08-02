@@ -298,6 +298,7 @@
     "unlock": "Buka admin",
     "securityTitle": "Kata laluan admin",
     "newPassword": "Kata laluan baru",
+    "confirmPassword": "Taip semula kata laluan baru",
     "changePassword": "Tukar kata laluan",
     "upgrade": "Naik taraf pelan",
     "plan": "Pelan",
