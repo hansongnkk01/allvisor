@@ -15,18 +15,40 @@ export function canAccessAdmin(role: MembershipRole) {
   return canAccessSensitive(role);
 }
 
-/** Can manage staff (add/kick): owner, co-admin (admin), or supervisor */
+/** Can manage staff (add/kick) from Admin team panel */
 export function canManageStaff(role: MembershipRole) {
-  return role === "owner" || role === "admin" || role === "supervisor";
+  return (
+    role === "owner" ||
+    role === "admin" ||
+    role === "supervisor" ||
+    role === "manager"
+  );
 }
 
 /** Roles the actor may assign when adding a team member. */
 export function assignableStaffRoles(actor: MembershipRole): MembershipRole[] {
   if (actor === "owner" || actor === "admin") {
-    return ["staff", "manager", "supervisor", "admin"];
+    return ["staff", "supervisor", "manager", "admin"];
   }
   if (actor === "supervisor") {
     return ["staff", "manager"];
+  }
+  if (actor === "manager") {
+    return ["staff"];
+  }
+  return [];
+}
+
+/** Roles the actor may remove (never includes owner). */
+export function kickableStaffRoles(actor: MembershipRole): MembershipRole[] {
+  if (actor === "owner" || actor === "admin") {
+    return ["admin", "supervisor", "manager", "staff"];
+  }
+  if (actor === "supervisor") {
+    return ["manager", "staff"];
+  }
+  if (actor === "manager") {
+    return ["staff"];
   }
   return [];
 }

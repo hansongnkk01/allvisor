@@ -6,15 +6,11 @@ import { PageHeader } from "@/components/PageHeader";
 import { ActionForm } from "@/components/ActionForm";
 import { BranchGroup, ExpandSection } from "@/components/BranchGroup";
 import {
-  addBranchStaffAction,
-  addStaffAction,
   changeAdminPasswordAction,
   deleteServiceCategoryAction,
   deleteServiceItemAction,
   getDefaultAdminPasswordHint,
   isAdminUnlocked,
-  kickBranchStaffAction,
-  kickStaffAction,
   requestBranchLinkAction,
   respondBranchLinkAction,
   unlockAdminAction,
@@ -29,14 +25,15 @@ import { AdminActivityLog } from "@/components/AdminActivityLog";
 import { FilterableRows } from "@/components/FilterableRows";
 import { InvoiceFormatForm } from "@/components/InvoiceFormatForm";
 import { BranchClinicSettings } from "@/components/BranchClinicSettings";
+import { TeamMembersSection } from "@/components/TeamMembersSection";
 import { formatCurrency } from "@/lib/utils";
 import { defaultAdminPassword } from "@/lib/admin-lock";
 import {
   assignableStaffRoles,
   canAccessAdmin,
-  canManageStaff,
-  staffRoleLabel,
+  kickableStaffRoles,
 } from "@/lib/roles";
+import type { MembershipRole } from "@/lib/types";
 
 export default async function AdminPage({
   params,
@@ -54,9 +51,9 @@ export default async function AdminPage({
 
   const unlocked = await isAdminUnlocked();
   const hint = await getDefaultAdminPasswordHint();
-  /** Anyone who can open Admin sees settings panels (clinic + retail). Staff add/kick stays owner/admin. */
-  const canManageTeam = canManageStaff(ctx.membership.role);
   const rolesCanAssign = assignableStaffRoles(ctx.membership.role);
+  const rolesCanKick = kickableStaffRoles(ctx.membership.role);
+  const currentUserId = ctx.membership.user_id || ctx.profile.id;
 
   if (!unlocked) {
     return (
@@ -622,126 +619,41 @@ export default async function AdminPage({
               </FilterableRows>
             </ExpandSection>
 
-            <ExpandSection title={t("staffTitle")} defaultOpen={branch.id === orgId}>
-              {rolesCanAssign.length ? (
-                <>
-                  <p className="muted">{t("addMemberHint")}</p>
-                  <ActionForm
-                    action={branch.id === orgId ? addStaffAction : addBranchStaffAction}
-                    className="stack"
-                  >
-                    {branch.id !== orgId ? (
-                      <input type="hidden" name="target_org_id" value={branch.id} />
-                    ) : null}
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-                        gap: "0.65rem",
-                      }}
-                    >
-                      <div className="field">
-                        <label>{t("staffUsername")}</label>
-                        <input
-                          name="username"
-                          type="email"
-                          required
-                          className="input"
-                          placeholder="member@email.com"
-                        />
-                      </div>
-                      <div className="field">
-                        <label>{t("staffName")}</label>
-                        <input name="full_name" className="input" />
-                      </div>
-                      <div className="field">
-                        <label>{t("staffRole")}</label>
-                        <select name="role" className="select" defaultValue="staff">
-                          {rolesCanAssign.map((role) => (
-                            <option key={role} value={role}>
-                              {staffRoleLabel(role)}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="field">
-                        <label>{t("jobTitle")}</label>
-                        <input
-                          name="job_title"
-                          className="input"
-                          placeholder="Supervisor / Nurse / …"
-                        />
-                      </div>
-                    </div>
-                    <button type="submit" className="btn btn-primary">
-                      {t("addStaff")}
-                    </button>
-                  </ActionForm>
-                </>
-              ) : (
-                <p className="muted">{t("addMemberHint")}</p>
-              )}
-
-              <div style={{ marginTop: 12 }}>
-                <FilterableRows
-                  placeholder={t("searchStaff")}
-                  headers={
-                    <tr>
-                      <th>{t("staffName")}</th>
-                      <th>{t("staffEmail")}</th>
-                      <th>{t("staffRole")}</th>
-                      <th>{t("jobTitle")}</th>
-                      <th>{t("kickStaff")}</th>
-                    </tr>
-                  }
-                >
-                  {(branch.members || []).map((m) => {
-                    const name = m.profiles?.full_name || "";
-                    const email = m.profiles?.email || "";
-                    return (
-                      <tr
-                        key={m.id}
-                        data-search={`${name} ${email} ${m.role} ${m.job_title || ""}`.toLowerCase()}
-                      >
-                        <td>{name || "—"}</td>
-                        <td>{email || "—"}</td>
-                        <td>
-                          <span className="badge">{staffRoleLabel(m.role)}</span>
-                        </td>
-                        <td>{m.job_title || "—"}</td>
-                        <td>
-                          {canManageTeam &&
-                          m.role !== "owner" &&
-                          m.user_id !== ctx.profile.id ? (
-                            <ActionForm
-                              action={
-                                branch.id === orgId
-                                  ? kickStaffAction
-                                  : kickBranchStaffAction
-                              }
-                            >
-                              <input type="hidden" name="membership_id" value={m.id} />
-                              {branch.id !== orgId ? (
-                                <input
-                                  type="hidden"
-                                  name="target_org_id"
-                                  value={branch.id}
-                                />
-                              ) : null}
-                              <button type="submit" className="btn btn-ghost">
-                                {t("kick")}
-                              </button>
-                            </ActionForm>
-                          ) : (
-                            "—"
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </FilterableRows>
-              </div>
-            </ExpandSection>
+            <TeamMembersSection
+              branchId={branch.id}
+              isOwnBranch={branch.id === orgId}
+              currentUserId={currentUserId}
+              assignableRoles={rolesCanAssign}
+              kickableRoles={rolesCanKick}
+              defaultOpen={branch.id === orgId}
+              members={(branch.members || []).map((m) => {
+                const profile = Array.isArray(m.profiles)
+                  ? m.profiles[0]
+                  : m.profiles;
+                return {
+                  id: m.id,
+                  user_id: m.user_id,
+                  role: m.role as MembershipRole,
+                  job_title: m.job_title,
+                  profiles: profile
+                    ? { full_name: profile.full_name, email: profile.email }
+                    : null,
+                };
+              })}
+              labels={{
+                title: t("staffTitle"),
+                hint: t("addMemberHint"),
+                username: t("staffUsername"),
+                name: t("staffName"),
+                role: t("staffRole"),
+                jobTitle: t("jobTitle"),
+                add: t("addStaff"),
+                search: t("searchStaff"),
+                email: t("staffEmail"),
+                kickCol: t("kickStaff"),
+                kick: t("kick"),
+              }}
+            />
           </div>
         </BranchGroup>
       ))}

@@ -35,6 +35,7 @@ import {
   assignableStaffRoles,
   canAccessSensitive,
   canManageStaff,
+  kickableStaffRoles,
 } from "@/lib/roles";
 import { formatDayKeyMY, parseClinicDateTimeToIso } from "@/lib/datetime-my";
 import {
@@ -1691,7 +1692,7 @@ export async function addStaffAction(formData: FormData) {
 
 export async function kickStaffAction(formData: FormData) {
   const { supabase, organization, membership, profile } = await requireMember();
-  if (!canManageStaff(membership.role)) return { error: "Only admin can kick staff" };
+  if (!canManageStaff(membership.role)) return { error: "Not allowed to kick staff" };
 
   const membershipId = String(formData.get("membership_id") || "");
   if (!membershipId) return { error: "Missing member" };
@@ -1705,14 +1706,23 @@ export async function kickStaffAction(formData: FormData) {
 
   if (!target) return { error: "Member not found" };
   if (target.role === "owner") return { error: "Cannot kick owner" };
-  if (target.user_id === profile.id) return { error: "Cannot kick yourself" };
+  if (target.user_id === profile.id || target.user_id === membership.user_id) {
+    return { error: "Cannot kick yourself" };
+  }
+  const allowed = kickableStaffRoles(membership.role);
+  if (!allowed.includes(target.role as MembershipRole)) {
+    return { error: "Not allowed to kick this role" };
+  }
 
   const { error } = await supabase.from("memberships").delete().eq("id", membershipId);
   if (error) return { error: error.message };
 
+  const targetProfile = Array.isArray(target.profiles)
+    ? target.profiles[0]
+    : target.profiles;
   await logActivity({
     action: "staff.kick",
-    summary: `Removed staff ${target.profiles?.full_name || target.profiles?.email || target.user_id}`,
+    summary: `Removed staff ${targetProfile?.full_name || targetProfile?.email || target.user_id}`,
     entityType: "membership",
     entityId: target.user_id,
   });
@@ -1994,7 +2004,7 @@ export async function addBranchStaffAction(formData: FormData) {
 
 export async function kickBranchStaffAction(formData: FormData) {
   const { membership } = await requireMember();
-  if (!canManageStaff(membership.role)) return { error: "Only admin" };
+  if (!canManageStaff(membership.role)) return { error: "Not allowed to kick staff" };
   const membershipId = String(formData.get("membership_id") || "");
   const targetOrgId = String(formData.get("target_org_id") || "");
   const admin = await getServiceAdmin();
@@ -2020,6 +2030,10 @@ export async function kickBranchStaffAction(formData: FormData) {
     .eq("organization_id", targetOrgId)
     .maybeSingle();
   if (!target || target.role === "owner") return { error: "Cannot remove" };
+  if (target.user_id === membership.user_id) return { error: "Cannot kick yourself" };
+  if (!kickableStaffRoles(membership.role).includes(target.role as MembershipRole)) {
+    return { error: "Not allowed to kick this role" };
+  }
 
   const { error } = await admin.from("memberships").delete().eq("id", membershipId);
   if (error) return { error: error.message };

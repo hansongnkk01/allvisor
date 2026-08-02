@@ -323,7 +323,7 @@
     "staffName": "Nama",
     "staffEmail": "Emel staf",
     "staffUsername": "Username (email daftar)",
-    "addMemberHint": "Member mesti daftar akaun Allvisor dahulu. Kemudian masukkan username (email) di sini. Peranan: staff, supervisor, manager, co-admin. Satu akaun hanya boleh join satu dashboard kedai.",
+    "addMemberHint": "Masukkan email akaun Allvisor yang sudah berdaftar untuk tambah sebagai staff / supervisor / manager / co-admin. Satu akaun satu kedai. Owner tidak boleh dikick.",
     "staffPassword": "Kata laluan (pengguna baru sahaja)",
     "staffRole": "Peranan",
     "jobTitle": "Pangkat / title",

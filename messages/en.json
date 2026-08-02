@@ -293,7 +293,7 @@
     "staffName": "Name",
     "staffEmail": "Staff email",
     "staffUsername": "Username (registered email)",
-    "addMemberHint": "Member must register an Allvisor account first. Then enter their username (email) here. Roles: staff, supervisor, manager, co-admin. One account can only join one shop dashboard.",
+    "addMemberHint": "Enter a registered Allvisor email to add them as staff / supervisor / manager / co-admin. One account can only join one shop. Owner cannot be kicked.",
     "staffPassword": "Password (new users only)",
     "staffRole": "Role",
     "jobTitle": "Title / pangkat",
