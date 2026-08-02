@@ -408,6 +408,9 @@ table.data th {
 .invoice-row-lhdn-rejected td {
   background: #ffd7a8;
 }
+.invoice-row-lhdn-pending td {
+  background: #c7d7f5;
+}
 .invoice-row-revoked td {
   background: #e5e7eb;
   text-decoration: line-through;

@@ -463,14 +463,18 @@ export function InvoicesWorkspace({
               {pager.slice.map((inv) => {
                 const revoked = inv.status === "void";
                 const lhdnRejected = inv.lhdn_status === "rejected";
+                const lhdnNotSubmitted =
+                  !inv.lhdn_status || inv.lhdn_status === "not_submitted";
                 const paid = inv.status === "paid";
                 const rowClass = revoked
                   ? "invoice-row-revoked"
                   : lhdnRejected
                     ? "invoice-row-lhdn-rejected"
-                    : paid
-                      ? "invoice-row-paid"
-                      : "invoice-row-unpaid";
+                    : lhdnNotSubmitted
+                      ? "invoice-row-lhdn-pending"
+                      : paid
+                        ? "invoice-row-paid"
+                        : "invoice-row-unpaid";
                 return (
                   <tr
                     key={inv.id}
