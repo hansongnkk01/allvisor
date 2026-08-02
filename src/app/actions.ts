@@ -2749,14 +2749,38 @@ export async function getDefaultAdminPasswordHint() {
   return defaultAdminPassword(ctx.organization.name, ctx.organization.created_at);
 }
 
-export async function updateClinicHoursAction(formData: FormData) {
+/** Resolve own org or linked branch for admin settings writes. */
+async function resolveBranchOrgWriteTarget(formData: FormData) {
   const { supabase, organization, membership } = await requireMember();
   if (!canAccessSensitive(membership.role)) {
-    return { error: "Forbidden" };
+    return { error: "Forbidden" as const };
   }
   const unlocked = await isSectionUnlocked("admin");
-  if (!unlocked) return { error: "Admin unlock required" };
+  if (!unlocked) return { error: "Admin unlock required" as const };
 
+  const targetOrgId = String(formData.get("target_org_id") || organization.id);
+  if (targetOrgId === organization.id) {
+    return { db: supabase, targetOrgId, organization };
+  }
+
+  const { data: link } = await supabase
+    .from("branch_links")
+    .select("id")
+    .eq("organization_id", organization.id)
+    .eq("linked_organization_id", targetOrgId)
+    .maybeSingle();
+  if (!link) return { error: "Branch not linked" as const };
+
+  const admin = await getServiceAdmin();
+  if (!admin) return { error: "Server admin client unavailable" as const };
+  return { db: admin, targetOrgId, organization };
+}
+
+export async function updateClinicHoursAction(formData: FormData) {
+  const target = await resolveBranchOrgWriteTarget(formData);
+  if ("error" in target) return { error: target.error };
+
+  const { db, targetOrgId } = target;
   const openHour = Number(formData.get("clinic_open_hour") ?? 0);
   const closeHour = Number(formData.get("clinic_close_hour") ?? 23);
   const closedRaw = formData.getAll("closed_weekdays").map((v) => Number(v));
@@ -2773,14 +2797,14 @@ export async function updateClinicHoursAction(formData: FormData) {
     return { error: "Invalid hours" };
   }
 
-  const { error } = await supabase
+  const { error } = await db
     .from("organizations")
     .update({
       clinic_open_hour: openHour,
       clinic_close_hour: closeHour,
       closed_weekdays: closedWeekdays,
     })
-    .eq("id", organization.id);
+    .eq("id", targetOrgId);
 
   if (error) return { error: error.message };
 
@@ -2788,7 +2812,7 @@ export async function updateClinicHoursAction(formData: FormData) {
     action: "admin.clinic_hours",
     summary: `Updated clinic hours ${String(openHour).padStart(2, "0")}:00–${String(closeHour).padStart(2, "0")}:00`,
     entityType: "organization",
-    entityId: organization.id,
+    entityId: targetOrgId,
   });
 
   revalidateApp("/admin", "/dashboard", "/appointments");
@@ -2797,26 +2821,26 @@ export async function updateClinicHoursAction(formData: FormData) {
 }
 
 export async function updateServiceChargeAction(formData: FormData) {
-  const { supabase, organization } = await requireAdminAccess();
-  const unlocked = await isSectionUnlocked("admin");
-  if (!unlocked) return { error: "Admin unlock required" };
+  const target = await resolveBranchOrgWriteTarget(formData);
+  if ("error" in target) return { error: target.error };
 
+  const { db, targetOrgId } = target;
   const pct = Number(formData.get("service_charge_percent") || 0);
   if (Number.isNaN(pct) || pct < 0 || pct > 100) {
     return { error: "Service charge must be between 0 and 100%" };
   }
 
-  const { error } = await supabase
+  const { error } = await db
     .from("organizations")
     .update({ service_charge_percent: pct })
-    .eq("id", organization.id);
+    .eq("id", targetOrgId);
   if (error) return { error: error.message };
 
   await logActivity({
     action: "admin.service_charge",
     summary: `Set service charge to ${pct}%`,
     entityType: "organization",
-    entityId: organization.id,
+    entityId: targetOrgId,
   });
 
   revalidateApp("/admin", "/invoices", "/dashboard");

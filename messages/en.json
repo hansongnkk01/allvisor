@@ -335,7 +335,7 @@
     "serviceChargeHint": "Applied automatically on every invoice as service tax (shown in small text before total).",
     "saveServiceCharge": "Save service charge",
     "clinicHoursTitle": "Clinic hours & weekly off",
-    "clinicHoursHint": "Controls what hours appear on Dashboard and Appointments timetables. Last hour shown = closing hour.",
+    "clinicHoursHint": "Per-branch settings. Controls Dashboard and Appointments timetables for this clinic. Last hour shown = closing hour.",
     "openHour": "Opens at",
     "closeHour": "Closes at (last hour shown)",
     "weeklyOff": "Weekly off days",

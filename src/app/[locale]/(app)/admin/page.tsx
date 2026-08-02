@@ -18,8 +18,6 @@ import {
   requestBranchLinkAction,
   respondBranchLinkAction,
   unlockAdminAction,
-  updateClinicHoursAction,
-  updateServiceChargeAction,
   upgradePlanAction,
   upsertBranchServiceCategoryAction,
   upsertBranchServiceItemAction,
@@ -31,6 +29,7 @@ import { DataImportPanel } from "@/components/DataImportPanel";
 import { AdminActivityLog } from "@/components/AdminActivityLog";
 import { FilterableRows } from "@/components/FilterableRows";
 import { InvoiceFormatForm } from "@/components/InvoiceFormatForm";
+import { BranchClinicSettings } from "@/components/BranchClinicSettings";
 import { formatCurrency } from "@/lib/utils";
 import { PLAN_LIMITS } from "@/lib/subscription";
 import { defaultAdminPassword } from "@/lib/admin-lock";
@@ -166,6 +165,10 @@ export default async function AdminPage({
     categories: typeof categories;
     services: typeof services;
     members: typeof members;
+    service_charge_percent: number;
+    clinic_open_hour: number;
+    clinic_close_hour: number;
+    closed_weekdays: number[];
   }> = [
     {
       id: orgId,
@@ -173,6 +176,10 @@ export default async function AdminPage({
       categories: categories || [],
       services: services || [],
       members: membersResolved,
+      service_charge_percent: Number(ctx.organization.service_charge_percent ?? 0),
+      clinic_open_hour: Number(ctx.organization.clinic_open_hour ?? 0),
+      clinic_close_hour: Number(ctx.organization.clinic_close_hour ?? 23),
+      closed_weekdays: ctx.organization.closed_weekdays || [],
     },
   ];
 
@@ -184,7 +191,9 @@ export default async function AdminPage({
       const admin = createAdminClient(url, key);
       const { data: linkedOrgs } = await admin
         .from("organizations")
-        .select("id, name")
+        .select(
+          "id, name, service_charge_percent, clinic_open_hour, clinic_close_hour, closed_weekdays"
+        )
         .in("id", linkedIds)
         .order("name");
 
@@ -212,6 +221,10 @@ export default async function AdminPage({
           categories: cats || [],
           services: svcs || [],
           members: mems || [],
+          service_charge_percent: Number(lo.service_charge_percent ?? 0),
+          clinic_open_hour: Number(lo.clinic_open_hour ?? 0),
+          clinic_close_hour: Number(lo.clinic_close_hour ?? 23),
+          closed_weekdays: (lo.closed_weekdays as number[] | null) || [],
         });
       }
     }
@@ -383,101 +396,6 @@ export default async function AdminPage({
             }}
           />
 
-          <div className="surface" style={{ padding: "1.25rem" }}>
-            <h3 style={{ marginTop: 0 }}>{t("clinicHoursTitle")}</h3>
-            <p className="muted">{t("clinicHoursHint")}</p>
-            <ActionForm action={updateServiceChargeAction} className="stack" style={{ marginBottom: "1.25rem" }}>
-              <div className="field" style={{ maxWidth: 260 }}>
-                <label>{t("serviceChargePercent")}</label>
-                <input
-                  name="service_charge_percent"
-                  type="number"
-                  step="0.01"
-                  min={0}
-                  max={100}
-                  className="input"
-                  defaultValue={String(org.service_charge_percent ?? 0)}
-                />
-              </div>
-              <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
-                {t("serviceChargeHint")}
-              </p>
-              <button type="submit" className="btn btn-soft">
-                {t("saveServiceCharge")}
-              </button>
-            </ActionForm>
-            <ActionForm action={updateClinicHoursAction} className="stack">
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-                  gap: "0.75rem",
-                }}
-              >
-                <div className="field">
-                  <label>{t("openHour")}</label>
-                  <select
-                    name="clinic_open_hour"
-                    className="select"
-                    defaultValue={String(org.clinic_open_hour ?? 0)}
-                  >
-                    {Array.from({ length: 24 }, (_, h) => (
-                      <option key={h} value={h}>
-                        {String(h).padStart(2, "0")}:00
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="field">
-                  <label>{t("closeHour")}</label>
-                  <select
-                    name="clinic_close_hour"
-                    className="select"
-                    defaultValue={String(org.clinic_close_hour ?? 23)}
-                  >
-                    {Array.from({ length: 24 }, (_, h) => (
-                      <option key={h} value={h}>
-                        {String(h).padStart(2, "0")}:00
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div>
-                <strong style={{ fontSize: "0.9rem" }}>{t("weeklyOff")}</strong>
-                <div className="row" style={{ marginTop: 8 }}>
-                  {(
-                    [
-                      [1, t("mon")],
-                      [2, t("tue")],
-                      [3, t("wed")],
-                      [4, t("thu")],
-                      [5, t("fri")],
-                      [6, t("sat")],
-                      [0, t("sun")],
-                    ] as const
-                  ).map(([day, label]) => (
-                    <label key={day} className="row" style={{ gap: 6 }}>
-                      <input
-                        type="checkbox"
-                        name="closed_weekdays"
-                        value={day}
-                        defaultChecked={(org.closed_weekdays || []).includes(day)}
-                      />
-                      <span>{label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-              <p className="muted" style={{ fontSize: "0.85rem", margin: 0 }}>
-                {t("holidayNote")}
-              </p>
-              <button type="submit" className="btn btn-primary">
-                {t("saveHours")}
-              </button>
-            </ActionForm>
-          </div>
-
           <DataImportPanel
             labels={{
               title: t("importTitle"),
@@ -579,6 +497,34 @@ export default async function AdminPage({
           toneIndex={idx}
         >
           <div className="stack" style={{ gap: "0.85rem" }}>
+            <BranchClinicSettings
+              branchId={branch.id}
+              settings={{
+                serviceChargePercent: branch.service_charge_percent,
+                openHour: branch.clinic_open_hour,
+                closeHour: branch.clinic_close_hour,
+                closedWeekdays: branch.closed_weekdays,
+              }}
+              labels={{
+                title: t("clinicHoursTitle"),
+                hint: t("clinicHoursHint"),
+                serviceChargePercent: t("serviceChargePercent"),
+                serviceChargeHint: t("serviceChargeHint"),
+                saveServiceCharge: t("saveServiceCharge"),
+                openHour: t("openHour"),
+                closeHour: t("closeHour"),
+                weeklyOff: t("weeklyOff"),
+                mon: t("mon"),
+                tue: t("tue"),
+                wed: t("wed"),
+                thu: t("thu"),
+                fri: t("fri"),
+                sat: t("sat"),
+                sun: t("sun"),
+                holidayNote: t("holidayNote"),
+                saveHours: t("saveHours"),
+              }}
+            />
             <ExpandSection title={t("categoriesTitle")} defaultOpen>
               <ActionForm
                 action={
