@@ -81,7 +81,7 @@ export default async function DashboardPage({
       .in("status", ["unpaid", "partial"]),
     supabase
       .from("products")
-      .select("quantity, low_stock_threshold")
+      .select("name, quantity, low_stock_threshold")
       .eq("organization_id", orgId),
     supabase
       .from("invoices")
@@ -115,8 +115,9 @@ export default async function DashboardPage({
           .select("id, title, starts_at, ends_at, status, notes, customers(name, risk_level)")
           .eq("organization_id", orgId)
           .gte("starts_at", now.toISOString())
+          .lte("starts_at", todayEnd.toISOString())
           .order("starts_at", { ascending: true })
-          .limit(12)
+          .limit(20)
       : Promise.resolve({ data: [] as never[] }),
     niche === "clinic"
       ? supabase
@@ -142,8 +143,11 @@ export default async function DashboardPage({
   const upcoming = (upcomingData || []).map(mapAppt);
   const todayAppts = (todayData || []).map(mapAppt);
 
-  const lowStockCount =
-    stockRows?.filter((p) => Number(p.quantity) <= Number(p.low_stock_threshold)).length || 0;
+  const lowStockItems = (stockRows || [])
+    .filter((p) => Number(p.quantity) <= Number(p.low_stock_threshold))
+    .map((p) => String(p.name || "").trim())
+    .filter(Boolean);
+  const lowStockCount = lowStockItems.length;
 
   const income = (ledger || [])
     .filter((e) => e.entry_type === "income")
@@ -211,6 +215,7 @@ export default async function DashboardPage({
             patients: customerCount || 0,
             unpaidInvoices: unpaidCount || 0,
             lowStock: lowStockCount,
+            lowStockNames: lowStockItems,
             income,
             expense,
             appointmentsToday,

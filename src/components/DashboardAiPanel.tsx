@@ -7,6 +7,8 @@ type InsightInput = {
   patients: number;
   unpaidInvoices: number;
   lowStock: number;
+  /** Product names at or below low-stock threshold */
+  lowStockNames?: string[];
   income: number;
   expense: number;
   appointmentsToday: number;
@@ -30,9 +32,15 @@ function buildInsights(data: InsightInput): Tip[] {
   const profit = data.income - data.expense;
 
   if (data.lowStock > 0) {
+    const names = (data.lowStockNames || []).filter(Boolean);
+    const shown = names.slice(0, 4);
+    const extra = names.length > shown.length ? ` (+${names.length - shown.length} more)` : "";
+    const namePart = shown.length
+      ? `Low stock: ${shown.join(", ")}${extra}.`
+      : `${data.lowStock} medicine/supply item(s) are low.`;
     tips.push({
       tone: "alert",
-      text: `${data.lowStock} medicine/supply item(s) are low. Restock before weekend demand spikes.`,
+      text: `${namePart} Restock before weekend demand spikes.`,
     });
   }
 

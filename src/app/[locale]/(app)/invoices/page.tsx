@@ -83,6 +83,7 @@ export default async function InvoicesPage({
           filterDay: t("filterDay"),
           allDays: t("allDays"),
           submitLhdn: td("submitLhdn"),
+          resubmitLhdn: td("resubmitLhdn"),
           submitLhdnHint: td("submitLhdnHint"),
           submitLhdnPlanLocked: td("submitLhdnPlanLocked"),
           submitLhdnNeedTin: td("submitLhdnNeedTin"),

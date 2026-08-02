@@ -31,6 +31,7 @@ export function SubmitLhdnButton({
   cancelPrompt,
   canCancel,
   inline = false,
+  onDone,
 }: {
   invoiceId: string;
   label: string;
@@ -45,6 +46,7 @@ export function SubmitLhdnButton({
   canCancel?: boolean;
   /** Compact layout for modal header (no outer surface card). */
   inline?: boolean;
+  onDone?: () => void;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -113,6 +115,7 @@ export function SubmitLhdnButton({
                       : `${my}${summary}`
                   );
                   router.refresh();
+                  onDone?.();
                 } catch (err) {
                   setError(err instanceof Error ? err.message : "Submit failed");
                 }

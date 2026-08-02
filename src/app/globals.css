@@ -405,6 +405,9 @@ table.data th {
 .invoice-row-paid td {
   background: #dcfce7;
 }
+.invoice-row-lhdn-rejected td {
+  background: #ffd7a8;
+}
 .invoice-row-revoked td {
   background: #e5e7eb;
   text-decoration: line-through;

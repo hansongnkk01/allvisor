@@ -18,10 +18,11 @@ import {
   Shield,
 } from "lucide-react";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
-import { nicheNavKeys } from "@/lib/niches";
+import { ADMIN_ZONE_NAV_KEYS, nicheNavKeys } from "@/lib/niches";
 import type { Niche } from "@/lib/types";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { NavigationProgress } from "./NavigationProgress";
+import { ExitAdminZoneButton } from "./ExitAdminZoneButton";
 import { signOutAction } from "@/app/actions";
 import { cn } from "@/lib/utils";
 
@@ -98,24 +99,26 @@ export function AppShell({
   niche,
   orgName,
   role,
+  adminZoneUnlocked = false,
   children,
 }: {
   niche: Niche;
   orgName: string;
   role?: string;
+  adminZoneUnlocked?: boolean;
   children: React.ReactNode;
 }) {
   const t = useTranslations("Nav");
   const tBrand = useTranslations("Brand");
   const pathname = usePathname();
+  const canSeeAdminZone =
+    role === "owner" ||
+    role === "admin" ||
+    role === "supervisor" ||
+    role === "manager";
   const keys = nicheNavKeys[niche].filter((key) => {
-    if (key !== "admin" && key !== "accounting" && key !== "lhdn") return true;
-    return (
-      role === "owner" ||
-      role === "admin" ||
-      role === "supervisor" ||
-      role === "manager"
-    );
+    if (!ADMIN_ZONE_NAV_KEYS.has(key)) return true;
+    return canSeeAdminZone;
   });
 
   useEffect(() => {
@@ -159,16 +162,46 @@ export function AppShell({
                 key === "customers" && niche === "clinic"
                   ? t("patients")
                   : t(key as "dashboard");
+              const startAdminZone = key === "admin";
               return (
-                <NavItem
-                  key={key}
-                  href={href}
-                  active={active}
-                  label={label}
-                  icon={icons[key]}
-                />
+                <div key={key} className="stack" style={{ gap: "0.35rem" }}>
+                  {startAdminZone ? (
+                    <div
+                      aria-hidden
+                      style={{
+                        marginTop: "0.85rem",
+                        marginBottom: "0.35rem",
+                        borderTop: "1px solid var(--line)",
+                        paddingTop: "0.85rem",
+                      }}
+                    >
+                      <div
+                        className="muted"
+                        style={{
+                          fontSize: "0.7rem",
+                          letterSpacing: "0.04em",
+                          textTransform: "uppercase",
+                          padding: "0 0.85rem 0.35rem",
+                        }}
+                      >
+                        {t("adminZone")}
+                      </div>
+                    </div>
+                  ) : null}
+                  <NavItem
+                    href={href}
+                    active={active}
+                    label={label}
+                    icon={icons[key]}
+                  />
+                </div>
               );
             })}
+            {canSeeAdminZone && adminZoneUnlocked ? (
+              <div style={{ marginTop: "0.5rem" }}>
+                <ExitAdminZoneButton label={t("exitAdminZone")} />
+              </div>
+            ) : null}
           </nav>
 
           <div className="stack" style={{ gap: "0.75rem" }}>

@@ -12,6 +12,7 @@ import { ListPager, SearchField, useClientPager } from "@/components/ListControl
 import { PatientName } from "@/components/PatientName";
 import { RecordPaymentForm } from "@/components/RecordPaymentForm";
 import { PrintInvoiceButton } from "@/components/PrintInvoiceButton";
+import { SubmitLhdnButton } from "@/components/SubmitLhdnButton";
 import { ActionForm } from "@/components/ActionForm";
 import { InvoiceCostPanel } from "@/components/InvoiceCostPanel";
 import { useConfirm } from "@/components/ConfirmDialog";
@@ -90,7 +91,7 @@ function dayKey(iso: string) {
 
 export function InvoicesWorkspace({
   invoices,
-  canLhdn: _canLhdn,
+  canLhdn,
   loadPreview,
   labels,
   initialPreviewId,
@@ -114,6 +115,7 @@ export function InvoicesWorkspace({
     filterDay: string;
     allDays: string;
     submitLhdn: string;
+    resubmitLhdn: string;
     submitLhdnHint: string;
     submitLhdnPlanLocked: string;
     submitLhdnNeedTin: string;
@@ -335,6 +337,7 @@ export function InvoicesWorkspace({
                 <InvoicePreviewBody
                   data={preview}
                   labels={labels}
+                  canLhdn={canLhdn}
                   onSubmitted={reloadPreview}
                 />
               ) : null}
@@ -459,12 +462,15 @@ export function InvoicesWorkspace({
             <tbody>
               {pager.slice.map((inv) => {
                 const revoked = inv.status === "void";
+                const lhdnRejected = inv.lhdn_status === "rejected";
                 const paid = inv.status === "paid";
                 const rowClass = revoked
                   ? "invoice-row-revoked"
-                  : paid
-                    ? "invoice-row-paid"
-                    : "invoice-row-unpaid";
+                  : lhdnRejected
+                    ? "invoice-row-lhdn-rejected"
+                    : paid
+                      ? "invoice-row-paid"
+                      : "invoice-row-unpaid";
                 return (
                   <tr
                     key={inv.id}
@@ -548,6 +554,7 @@ export function InvoicesWorkspace({
 
 type PreviewLabels = {
   submitLhdn: string;
+  resubmitLhdn: string;
   submitLhdnHint: string;
   submitLhdnPlanLocked: string;
   submitLhdnNeedTin: string;
@@ -603,10 +610,12 @@ type PreviewLabels = {
 function InvoicePreviewBody({
   data,
   labels,
+  canLhdn,
   onSubmitted,
 }: {
   data: PreviewPayload;
   labels: PreviewLabels;
+  canLhdn: boolean;
   onSubmitted: () => void;
 }) {
   const invoice = data.invoice;
@@ -626,6 +635,21 @@ function InvoicePreviewBody({
   const balance = Math.max(0, latestTotal - Number(invoice.amount_paid || 0));
   const myStatus = data.latestLhdn?.myinvoisStatus;
   const lhdnStatus = invoice.lhdn_status || "not_submitted";
+  const hasUuid = Boolean(data.latestLhdn?.uuid);
+  const canSubmitLhdn =
+    canLhdn &&
+    !labels.planLocked &&
+    !labels.needTin &&
+    invoice.status === "paid" &&
+    (lhdnStatus === "rejected" || lhdnStatus === "not_submitted");
+  const showLhdnActions =
+    canLhdn &&
+    invoice.status === "paid" &&
+    (canSubmitLhdn ||
+      lhdnStatus === "rejected" ||
+      lhdnStatus === "pending" ||
+      lhdnStatus === "accepted" ||
+      hasUuid);
 
   return (
     <div className="stack" style={{ gap: "1rem" }}>
@@ -656,7 +680,14 @@ function InvoicePreviewBody({
           }}
         >
           {lhdnStatus && lhdnStatus !== "not_submitted" ? (
-            <span className="badge" title={myStatus || lhdnStatus} style={{ alignSelf: "center" }}>
+            <span
+              className="badge"
+              title={myStatus || lhdnStatus}
+              style={{
+                alignSelf: "center",
+                background: lhdnStatus === "rejected" ? "#ffd7a8" : undefined,
+              }}
+            >
               {labels.lhdnStatusLine.replace("{status}", myStatus || lhdnStatus)}
             </span>
           ) : null}
@@ -689,6 +720,46 @@ function InvoicePreviewBody({
           />
         </div>
       </div>
+
+      {showLhdnActions ? (
+        <SubmitLhdnButton
+          invoiceId={invoice.id}
+          inline
+          label={lhdnStatus === "rejected" ? labels.resubmitLhdn : labels.submitLhdn}
+          hint={labels.submitLhdnHint}
+          disabledReason={
+            canSubmitLhdn
+              ? null
+              : labels.planLocked
+                ? labels.submitLhdnPlanLocked
+                : labels.needTin
+                  ? labels.submitLhdnNeedTin
+                  : lhdnStatus === "accepted"
+                    ? labels.submitLhdnAlready.replace(
+                        "{status}",
+                        myStatus || lhdnStatus
+                      )
+                    : lhdnStatus === "pending"
+                      ? labels.lhdnStatusLine.replace(
+                          "{status}",
+                          myStatus || "pending"
+                        )
+                      : null
+          }
+          refreshLabel={labels.refreshLhdnStatus}
+          hasUuid={hasUuid}
+          currentStatusLabel={
+            lhdnStatus === "rejected"
+              ? labels.lhdnStatusLine.replace("{status}", myStatus || "rejected")
+              : null
+          }
+          cancelLabel={labels.cancelLhdn}
+          cancelHint={labels.cancelLhdnHint}
+          cancelPrompt={labels.cancelLhdnPrompt}
+          canCancel={lhdnStatus === "accepted" && hasUuid}
+          onDone={onSubmitted}
+        />
+      ) : null}
 
       <div className="surface invoice-sheet" style={{ padding: "1.25rem", boxShadow: "none" }}>
         <div className="row" style={{ justifyContent: "space-between", marginBottom: "1rem" }}>

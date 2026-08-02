@@ -10,6 +10,8 @@ import { revalidateApp, revalidateAppLayout } from "@/lib/revalidate";
 import { logActivity } from "@/lib/activity";
 import {
   defaultAdminPassword,
+  ADMIN_ZONE_SECTIONS,
+  adminZoneCookieName,
   hashAdminPassword,
   sectionCookieName,
   verifyAdminPassword,
@@ -58,6 +60,14 @@ async function getServiceAdmin() {
 function legacyAdminCookieName(orgId: string) {
   return `allvisor_admin_${orgId}`;
 }
+
+const ADMIN_ZONE_COOKIE = {
+  httpOnly: true as const,
+  sameSite: "lax" as const,
+  secure: process.env.NODE_ENV === "production",
+  path: "/",
+  maxAge: 60 * 60 * 8,
+};
 
 export async function createOrganizationAction(formData: FormData) {
   const supabase = await createClient();
@@ -2610,17 +2620,27 @@ export async function isSectionUnlocked(section: LockedSection) {
   const ctx = await getOrgContext();
   if (!ctx) return false;
   const jar = await cookies();
-  if (jar.get(sectionCookieName(ctx.organization.id, section))?.value === "1") {
+  const orgId = ctx.organization.id;
+  // One unlock opens the whole admin zone (admin + accounting + LHDN).
+  if (jar.get(adminZoneCookieName(orgId))?.value === "1") return true;
+  if (jar.get(sectionCookieName(orgId, section))?.value === "1") return true;
+  // backward compat for admin cookie name
+  if (section === "admin" && jar.get(legacyAdminCookieName(orgId))?.value === "1") {
     return true;
   }
-  // backward compat for admin cookie name
-  if (section === "admin") {
-    return jar.get(legacyAdminCookieName(ctx.organization.id))?.value === "1";
+  // Any individual section cookie also counts as zone unlock (legacy per-page unlocks).
+  for (const s of ADMIN_ZONE_SECTIONS) {
+    if (jar.get(sectionCookieName(orgId, s))?.value === "1") return true;
   }
+  if (jar.get(legacyAdminCookieName(orgId))?.value === "1") return true;
   return false;
 }
 
 export async function isAdminUnlocked() {
+  return isSectionUnlocked("admin");
+}
+
+export async function isAdminZoneUnlocked() {
   return isSectionUnlocked("admin");
 }
 
@@ -2631,7 +2651,7 @@ export async function unlockSectionAction(formData: FormData) {
   }
 
   const section = String(formData.get("section") || "admin") as LockedSection;
-  if (!["admin", "accounting", "lhdn"].includes(section)) {
+  if (!ADMIN_ZONE_SECTIONS.includes(section)) {
     return { error: "Invalid section" };
   }
 
@@ -2645,30 +2665,41 @@ export async function unlockSectionAction(formData: FormData) {
   if (!ok) return { error: "Wrong password" };
 
   const jar = await cookies();
-  jar.set(sectionCookieName(organization.id, section), "1", {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 60 * 60 * 8,
-  });
-  if (section === "admin") {
-    jar.set(legacyAdminCookieName(organization.id), "1", {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      maxAge: 60 * 60 * 8,
-    });
+  // Unlock entire admin zone once — free move between Admin / Accounting / LHDN.
+  jar.set(adminZoneCookieName(organization.id), "1", ADMIN_ZONE_COOKIE);
+  for (const s of ADMIN_ZONE_SECTIONS) {
+    jar.set(sectionCookieName(organization.id, s), "1", ADMIN_ZONE_COOKIE);
   }
+  jar.set(legacyAdminCookieName(organization.id), "1", ADMIN_ZONE_COOKIE);
 
-  revalidateApp(`/${section === "lhdn" ? "lhdn" : section}`);
+  revalidateApp("/admin", "/accounting", "/lhdn");
+  revalidateAppLayout();
   return { success: true };
 }
 
 export async function unlockAdminAction(formData: FormData) {
   formData.set("section", "admin");
   return unlockSectionAction(formData);
+}
+
+/** Lock Admin / Accounting / LHDN again so staff cannot open them. */
+export async function lockAdminZoneAction() {
+  const ctx = await getOrgContext();
+  if (!ctx) return { error: "Not authenticated" };
+  const jar = await cookies();
+  const orgId = ctx.organization.id;
+  const clear = {
+    ...ADMIN_ZONE_COOKIE,
+    maxAge: 0,
+  };
+  jar.set(adminZoneCookieName(orgId), "", clear);
+  for (const s of ADMIN_ZONE_SECTIONS) {
+    jar.set(sectionCookieName(orgId, s), "", clear);
+  }
+  jar.set(legacyAdminCookieName(orgId), "", clear);
+  revalidateApp("/admin", "/accounting", "/lhdn", "/dashboard");
+  revalidateAppLayout();
+  return { success: true };
 }
 
 export async function changeAdminPasswordAction(formData: FormData) {

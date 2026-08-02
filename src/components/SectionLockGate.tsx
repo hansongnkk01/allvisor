@@ -18,8 +18,9 @@ export async function SectionLockGate({
       <PageHeader title={title} subtitle={subtitle || "Password required"} />
       <div className="surface" style={{ padding: "1.25rem", maxWidth: 480 }}>
         <p className="muted">
-          Only admin / supervisor / manager can open this section. Use the same
-          password as Admin (default = clinic name without spaces + year).
+          Only admin / supervisor / manager can open this section. One unlock
+          opens Admin, Accounting and LHDN together (same password; default =
+          clinic name without spaces + year).
         </p>
         <p className="muted" style={{ fontSize: "0.85rem" }}>
           Default / hint: <code>{hint}</code>

@@ -2,6 +2,8 @@ import { createHash } from "crypto";
 
 export type LockedSection = "admin" | "accounting" | "lhdn";
 
+export const ADMIN_ZONE_SECTIONS: LockedSection[] = ["admin", "accounting", "lhdn"];
+
 export function hashAdminPassword(password: string) {
   return createHash("sha256").update(password).digest("hex");
 }
@@ -24,4 +26,9 @@ export function verifyAdminPassword(
 
 export function sectionCookieName(orgId: string, section: LockedSection) {
   return `allvisor_${section}_${orgId}`;
+}
+
+/** Shared cookie: unlock admin + accounting + LHDN together. */
+export function adminZoneCookieName(orgId: string) {
+  return `allvisor_zone_${orgId}`;
 }
