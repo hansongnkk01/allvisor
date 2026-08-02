@@ -116,15 +116,35 @@ export async function createOrganizationAction(formData: FormData) {
   return { success: true };
 }
 
+function normalizePersonName(value: string) {
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function normalizeEmailValue(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function normalizePhoneDigits(value: string) {
+  return value.replace(/\D/g, "");
+}
+
+function normalizeIcValue(value: string) {
+  return value.replace(/[\s-]/g, "").toLowerCase();
+}
+
 export async function upsertCustomerAction(formData: FormData) {
   const { supabase, organization, profile } = await requireMember();
   const id = String(formData.get("id") || "");
+  const name = String(formData.get("name") || "").trim();
+  const emailRaw = String(formData.get("email") || "").trim();
+  const phoneRaw = String(formData.get("phone") || "").trim();
+  const icRaw = String(formData.get("ic_number") || "").trim();
   const payload: Record<string, unknown> = {
     organization_id: organization.id,
-    name: String(formData.get("name") || "").trim(),
-    email: String(formData.get("email") || "") || null,
-    phone: String(formData.get("phone") || "") || null,
-    ic_number: String(formData.get("ic_number") || "").trim() || null,
+    name,
+    email: emailRaw || null,
+    phone: phoneRaw || null,
+    ic_number: icRaw || null,
     address: String(formData.get("address") || "").trim() || null,
     notes: String(formData.get("notes") || "") || null,
     risk_level: (["high", "medium", "low"].includes(String(formData.get("risk_level") || ""))
@@ -133,6 +153,66 @@ export async function upsertCustomerAction(formData: FormData) {
   };
   if (!payload.name) return { error: "Name required" };
   if (!payload.address) return { error: "Address required" };
+
+  // Duplicate check: same org name / email / phone / IC (exclude self on edit).
+  const { data: existingRows } = await supabase
+    .from("customers")
+    .select("id, name, email, phone, ic_number")
+    .eq("organization_id", organization.id)
+    .limit(3000);
+
+  const nameKey = normalizePersonName(name);
+  const emailKey = emailRaw ? normalizeEmailValue(emailRaw) : "";
+  const phoneKey = phoneRaw ? normalizePhoneDigits(phoneRaw) : "";
+  const icKey = icRaw ? normalizeIcValue(icRaw) : "";
+
+  type Conflict = {
+    name: string;
+    email: string | null;
+    phone: string | null;
+    ic_number: string | null;
+    matchedOn: string[];
+  };
+  const conflicts: Conflict[] = [];
+
+  for (const row of existingRows || []) {
+    if (id && row.id === id) continue;
+    const matchedOn: string[] = [];
+    if (nameKey && normalizePersonName(row.name || "") === nameKey) matchedOn.push("name");
+    if (
+      emailKey &&
+      row.email &&
+      normalizeEmailValue(row.email) === emailKey
+    ) {
+      matchedOn.push("email");
+    }
+    if (
+      phoneKey.length >= 6 &&
+      row.phone &&
+      normalizePhoneDigits(row.phone) === phoneKey
+    ) {
+      matchedOn.push("phone");
+    }
+    if (icKey && row.ic_number && normalizeIcValue(row.ic_number) === icKey) {
+      matchedOn.push("IC");
+    }
+    if (matchedOn.length) {
+      conflicts.push({
+        name: row.name || "—",
+        email: row.email || null,
+        phone: row.phone || null,
+        ic_number: row.ic_number || null,
+        matchedOn,
+      });
+    }
+  }
+
+  if (conflicts.length) {
+    return {
+      error: "A patient with the same name, IC, email, or phone already exists.",
+      conflicts,
+    };
+  }
 
   if (!id) {
     payload.created_by = profile.id;
