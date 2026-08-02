@@ -364,7 +364,7 @@
     "serviceChargeHint": "Dikenakan automatik pada setiap invois sebagai cukai perkhidmatan (ditunjuk dalam tulisan kecil sebelum total).",
     "saveServiceCharge": "Simpan caj perkhidmatan",
     "clinicHoursTitle": "Waktu operasi & cuti mingguan",
-    "clinicHoursHint": "Kawalan jam yang dipapar pada jadual Dashboard dan Temujanji. Jam terakhir = waktu tutup.",
+    "clinicHoursHint": "Tetapan ikut cawangan. Kawalan jadual Dashboard dan Temujanji untuk klinik ini. Jam terakhir = waktu tutup.",
     "openHour": "Buka pada",
     "closeHour": "Tutup pada (jam terakhir dipapar)",
     "weeklyOff": "Hari cuti mingguan",
