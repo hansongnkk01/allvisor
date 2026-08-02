@@ -30,6 +30,7 @@ import {
 import { DataImportPanel } from "@/components/DataImportPanel";
 import { AdminActivityLog } from "@/components/AdminActivityLog";
 import { FilterableRows } from "@/components/FilterableRows";
+import { InvoiceFormatForm } from "@/components/InvoiceFormatForm";
 import { formatCurrency } from "@/lib/utils";
 import { PLAN_LIMITS } from "@/lib/subscription";
 import { defaultAdminPassword } from "@/lib/admin-lock";
@@ -361,43 +362,26 @@ export default async function AdminPage({
             </ActionForm>
           </div>
 
-          <div className="surface" style={{ padding: "1.25rem" }}>
-            <h3 style={{ marginTop: 0 }}>{t("invoiceFormatTitle")}</h3>
-            <p className="muted">{t("invoiceFormatHint")}</p>
-            <ActionForm action={updateOrgSettingsAction} className="stack">
-              <input type="hidden" name="name" value={org.name} />
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-                  gap: "0.75rem",
-                }}
-              >
-                <div className="field">
-                  <label>{t("invoicePrefix")}</label>
-                  <input
-                    name="invoice_prefix"
-                    className="input"
-                    defaultValue={org.invoice_prefix || "INV"}
-                    placeholder="INV"
-                  />
-                </div>
-                <div className="field">
-                  <label>{t("invoiceNextSeq")}</label>
-                  <input
-                    name="invoice_next_seq"
-                    type="number"
-                    min={1}
-                    className="input"
-                    defaultValue={String(org.invoice_next_seq || 1)}
-                  />
-                </div>
-              </div>
-              <button type="submit" className="btn btn-soft">
-                {t("saveInvoiceFormat")}
-              </button>
-            </ActionForm>
-          </div>
+          <InvoiceFormatForm
+            orgName={org.name}
+            initial={{
+              prefix: org.invoice_prefix || "INV",
+              nextSeq: org.invoice_next_seq || 1,
+              seqDigits: org.invoice_seq_digits || 5,
+              pattern: org.invoice_number_pattern || "{PREFIX}-{YYYY}-{SEQ}",
+            }}
+            labels={{
+              title: t("invoiceFormatTitle"),
+              hint: t("invoiceFormatHint"),
+              prefix: t("invoicePrefix"),
+              nextSeq: t("invoiceNextSeq"),
+              seqDigits: t("invoiceSeqDigits"),
+              pattern: t("invoicePattern"),
+              patternHelp: t("invoicePatternHelp"),
+              preview: t("invoicePreview"),
+              save: t("saveInvoiceFormat"),
+            }}
+          />
 
           <div className="surface" style={{ padding: "1.25rem" }}>
             <h3 style={{ marginTop: 0 }}>{t("clinicHoursTitle")}</h3>

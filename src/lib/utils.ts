@@ -1,4 +1,5 @@
 import { clsx, type ClassValue } from "clsx";
+import { formatInvoiceNumber } from "./invoice-number";
 import type { Niche } from "./types";
 
 export function cn(...inputs: ClassValue[]) {
@@ -38,6 +39,5 @@ export function nicheAccent(niche: Niche) {
 }
 
 export function generateInvoiceNumber(seq: number) {
-  const year = new Date().getFullYear();
-  return `INV-${year}-${String(seq).padStart(5, "0")}`;
+  return formatInvoiceNumber(null, seq);
 }

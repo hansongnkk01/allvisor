@@ -58,6 +58,8 @@ export interface Organization {
   service_charge_percent?: number;
   invoice_prefix?: string | null;
   invoice_next_seq?: number | null;
+  invoice_seq_digits?: number | null;
+  invoice_number_pattern?: string | null;
   created_at: string;
 }
 

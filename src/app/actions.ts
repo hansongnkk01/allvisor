@@ -33,6 +33,13 @@ import {
 } from "@/lib/data-import";
 import { canAccessSensitive, canManageStaff } from "@/lib/roles";
 import { formatDayKeyMY, parseClinicDateTimeToIso } from "@/lib/datetime-my";
+import {
+  formatInvoiceNumber,
+  nextInvoiceSeq,
+  normalizeInvoicePattern,
+  normalizeInvoicePrefix,
+  normalizeSeqDigits,
+} from "@/lib/invoice-number";
 
 async function requireMember() {
   const ctx = await getOrgContext();
@@ -487,7 +494,7 @@ export async function createInvoiceAction(formData: FormData) {
 
   const invoiceNumber =
     customNumber ||
-    `INV-${new Date().getFullYear()}-${String((count || 0) + 1).padStart(5, "0")}`;
+    formatInvoiceNumber(organization, nextInvoiceSeq(organization, count || 0));
 
   const { data: invoice, error } = await supabase
     .from("invoices")
@@ -818,15 +825,6 @@ export async function completeAppointmentWithInvoiceAction(appointmentId: string
   const { error: statusErr } = await statusPromise;
   if (statusErr) return { error: statusErr.message };
 
-  const year = new Date().getFullYear();
-  const prefix =
-    String((organization as { invoice_prefix?: string | null }).invoice_prefix || "INV")
-      .replace(/[^A-Za-z0-9_-]/g, "")
-      .slice(0, 12) || "INV";
-  const startSeq = Number(
-    (organization as { invoice_next_seq?: number | null }).invoice_next_seq || 1
-  );
-
   // Fast-ish unique number: avoid full table count when possible
   const title = appt.title || "Consultation";
   const [{ count }, { data: cat }] = await Promise.all([
@@ -841,8 +839,10 @@ export async function completeAppointmentWithInvoiceAction(appointmentId: string
       .ilike("name", title)
       .maybeSingle(),
   ]);
-  const seq = Math.max(startSeq, (count || 0) + 1);
-  const invoiceNumber = `${prefix}-${year}-${String(seq).padStart(5, "0")}`;
+  const invoiceNumber = formatInvoiceNumber(
+    organization,
+    nextInvoiceSeq(organization, count || 0)
+  );
 
   let price = 0;
   if (cat?.id) {
@@ -1221,7 +1221,10 @@ export async function posCheckoutAction(formData: FormData) {
     .select("*", { count: "exact", head: true })
     .eq("organization_id", organization.id);
 
-  const invoiceNumber = `INV-${new Date().getFullYear()}-${String((count || 0) + 1).padStart(5, "0")}`;
+  const invoiceNumber = formatInvoiceNumber(
+    organization,
+    nextInvoiceSeq(organization, count || 0)
+  );
 
   const { data: invoice, error } = await supabase
     .from("invoices")
@@ -1387,14 +1390,23 @@ export async function updateOrgSettingsAction(formData: FormData) {
   };
 
   if (formData.has("invoice_prefix")) {
-    const prefix = String(formData.get("invoice_prefix") || "INV")
-      .replace(/[^A-Za-z0-9_-]/g, "")
-      .slice(0, 12);
-    patch.invoice_prefix = prefix || "INV";
+    patch.invoice_prefix = normalizeInvoicePrefix(
+      String(formData.get("invoice_prefix") || "INV")
+    );
   }
   if (formData.has("invoice_next_seq")) {
     const seq = Math.max(1, Math.floor(Number(formData.get("invoice_next_seq")) || 1));
     patch.invoice_next_seq = seq;
+  }
+  if (formData.has("invoice_seq_digits")) {
+    patch.invoice_seq_digits = normalizeSeqDigits(
+      String(formData.get("invoice_seq_digits") || "5")
+    );
+  }
+  if (formData.has("invoice_number_pattern")) {
+    patch.invoice_number_pattern = normalizeInvoicePattern(
+      String(formData.get("invoice_number_pattern") || "")
+    );
   }
 
   if (formData.has("lhdn_brn")) {
@@ -1427,10 +1439,10 @@ export async function updateOrgSettingsAction(formData: FormData) {
           "Database missing LHDN columns — run migration 012_lhdn_intermediary.sql in Supabase SQL Editor.",
       };
     }
-    if (/invoice_prefix|invoice_next_seq/i.test(error.message)) {
+    if (/invoice_prefix|invoice_next_seq|invoice_seq_digits|invoice_number_pattern/i.test(error.message)) {
       return {
         error:
-          "Database missing invoice format columns — run migration 014_invoice_number_settings.sql in Supabase SQL Editor.",
+          "Database missing invoice format columns — run migrations 014_invoice_number_settings.sql and 015_invoice_number_pattern.sql in Supabase SQL Editor.",
       };
     }
     return { error: error.message };

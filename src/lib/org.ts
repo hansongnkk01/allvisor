@@ -22,7 +22,8 @@ export async function requireUser(locale: string) {
 
 const ORG_SELECT_BASE =
   "id, name, niche, locale_default, tin, sst_number, lhdn_brn, lhdn_intermediary_linked, lhdn_intermediary_linked_at, address, phone, subscription_plan, subscription_status, trial_ends_at, admin_password_hash, clinic_open_hour, clinic_close_hour, closed_weekdays, service_charge_percent, created_at";
-const ORG_SELECT_WITH_INVOICE = `${ORG_SELECT_BASE}, invoice_prefix, invoice_next_seq`;
+const ORG_SELECT_WITH_INVOICE = `${ORG_SELECT_BASE}, invoice_prefix, invoice_next_seq, invoice_seq_digits, invoice_number_pattern`;
+const ORG_SELECT_INVOICE_BASIC = `${ORG_SELECT_BASE}, invoice_prefix, invoice_next_seq`;
 const MEMBERSHIP_SELECT = (orgFields: string) =>
   `id, organization_id, user_id, role, created_at, organizations(${orgFields}), profiles(id, full_name, email, locale, created_at)`;
 
@@ -51,8 +52,18 @@ export const getOrgContext = cache(async (): Promise<OrgContext | null> => {
 
   let membership = full.data as MembershipRow | null;
 
-  // Migration 014 may not be applied yet — retry without invoice format columns.
+  // Migration 015 / 014 may not be applied yet — retry with fewer invoice columns.
   if (full.error || !membership?.organizations) {
+    const mid = await supabase
+      .from("memberships")
+      .select(MEMBERSHIP_SELECT(ORG_SELECT_INVOICE_BASIC))
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    membership = mid.data as MembershipRow | null;
+  }
+  if (!membership?.organizations) {
     const fallback = await supabase
       .from("memberships")
       .select(MEMBERSHIP_SELECT(ORG_SELECT_BASE))
