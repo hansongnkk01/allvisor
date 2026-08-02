@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { ActionForm } from "@/components/ActionForm";
 import { createExpenseAction, createIncomeAction, isSectionUnlocked } from "@/app/actions";
-import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
 import { canAccessSensitive } from "@/lib/roles";
 import { SectionLockGate } from "@/components/SectionLockGate";
 import { SectionActivityLog } from "@/components/SectionActivityLog";
@@ -16,7 +16,10 @@ import {
   type AccountingPeriod,
 } from "@/lib/datetime-my";
 import { AccountingCashChart } from "@/components/AccountingCashChart";
-import { CsvDownloadButton } from "@/components/CsvDownloadButton";
+import {
+  AccountingExpenseTable,
+  AccountingLedgerTable,
+} from "@/components/AccountingPagedTables";
 
 const CLINIC_EXPENSE_CATS = [
   "Rent",
@@ -264,122 +267,51 @@ export default async function AccountingPage({
       />
 
       <div className="fluid-grid">
-        <div className="surface" style={{ padding: "1.25rem" }}>
-          <div className="row" style={{ justifyContent: "space-between", marginBottom: 8 }}>
-            <h3 style={{ margin: 0 }}>{t("cashFlowLedger")}</h3>
-            <CsvDownloadButton
-              label={t("exportCsv")}
-              filename={`allvisor-cash-flow-${period}.csv`}
-              headers={[
-                t("date"),
-                t("type"),
-                t("description"),
-                t("source"),
-                t("amount"),
-                t("recordedAt"),
-              ]}
-              rows={(ledger || []).map((e) => [
-                e.entry_date,
-                e.entry_type,
-                e.description || "",
-                e.source,
-                Number(e.amount),
-                e.created_at,
-              ])}
-            />
-          </div>
-          <div className="table-wrap">
-            <table className="data">
-              <thead>
-                <tr>
-                  <th>{t("date")}</th>
-                  <th>{t("type")}</th>
-                  <th>{t("description")}</th>
-                  <th>{t("source")}</th>
-                  <th>{t("amount")}</th>
-                  <th>{t("recordedAt")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(ledger || []).map((e) => (
-                  <tr key={e.id}>
-                    <td>{formatDate(e.entry_date)}</td>
-                    <td>
-                      <span className="badge">{e.entry_type}</span>
-                    </td>
-                    <td>{e.description || "—"}</td>
-                    <td>{e.source}</td>
-                    <td
-                      style={{
-                        color: e.entry_type === "income" ? "var(--ok, #0a7)" : "inherit",
-                        fontWeight: 600,
-                      }}
-                    >
-                      {e.entry_type === "income" ? "+" : "−"}
-                      {formatCurrency(Number(e.amount))}
-                    </td>
-                    <td>{formatDateTime(e.created_at)}</td>
-                  </tr>
-                ))}
-                {!ledger?.length ? (
-                  <tr>
-                    <td colSpan={6} className="muted">
-                      {t("emptyLedger")}
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <AccountingLedgerTable
+          title={t("cashFlowLedger")}
+          exportLabel={t("exportCsv")}
+          filename={`allvisor-cash-flow-${period}.csv`}
+          empty={t("emptyLedger")}
+          rows={(ledger || []).map((e) => ({
+            id: e.id,
+            entry_date: e.entry_date,
+            entry_type: e.entry_type,
+            description: e.description,
+            source: e.source,
+            amount: e.amount,
+            created_at: e.created_at,
+          }))}
+          labels={{
+            date: t("date"),
+            type: t("type"),
+            description: t("description"),
+            source: t("source"),
+            amount: t("amount"),
+            recordedAt: t("recordedAt"),
+          }}
+        />
 
-        <div className="surface" style={{ padding: "1.25rem" }}>
-          <div className="row" style={{ justifyContent: "space-between", marginBottom: 8 }}>
-            <h3 style={{ margin: 0 }}>{t("expenseList")}</h3>
-            <CsvDownloadButton
-              label={t("exportCsv")}
-              filename={`allvisor-expenses-${period}.csv`}
-              headers={[t("date"), t("category"), t("description"), t("amount")]}
-              rows={(expenses || []).map((e) => [
-                e.expense_date,
-                e.category,
-                e.description || "",
-                Number(e.amount),
-              ])}
-            />
-          </div>
-          <div className="table-wrap">
-            <table className="data">
-              <thead>
-                <tr>
-                  <th>{t("date")}</th>
-                  <th>{t("category")}</th>
-                  <th>{t("description")}</th>
-                  <th>{t("amount")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(expenses || []).map((e) => (
-                  <tr key={e.id}>
-                    <td>{formatDate(e.expense_date)}</td>
-                    <td>{e.category}</td>
-                    <td>{e.description || "—"}</td>
-                    <td>{formatCurrency(Number(e.amount))}</td>
-                  </tr>
-                ))}
-                {!expenses?.length ? (
-                  <tr>
-                    <td colSpan={4} className="muted">
-                      {t("empty")}
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <AccountingExpenseTable
+          title={t("expenseList")}
+          exportLabel={t("exportCsv")}
+          filename={`allvisor-expenses-${period}.csv`}
+          empty={t("empty")}
+          rows={(expenses || []).map((e) => ({
+            id: e.id,
+            expense_date: e.expense_date,
+            category: e.category,
+            description: e.description,
+            amount: e.amount,
+          }))}
+          labels={{
+            date: t("date"),
+            category: t("category"),
+            description: t("description"),
+            amount: t("amount"),
+          }}
+        />
 
-        <SectionActivityLog title={t("activity")} logs={logs} />
+        <SectionActivityLog title={t("activity")} logs={logs} pageSize={10} />
       </div>
     </div>
   );
