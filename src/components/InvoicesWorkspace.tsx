@@ -10,6 +10,7 @@ import {
 } from "@/app/actions";
 import { ListPager, SearchField, useClientPager } from "@/components/ListControls";
 import { PatientName } from "@/components/PatientName";
+import { PatientSafetyBanner } from "@/components/PatientSafetyBanner";
 import { RecordPaymentForm } from "@/components/RecordPaymentForm";
 import { PrintInvoiceButton } from "@/components/PrintInvoiceButton";
 import { SubmitLhdnButton } from "@/components/SubmitLhdnButton";
@@ -76,6 +77,8 @@ type PreviewPayload = {
     phone?: string | null;
     email?: string | null;
     address?: string | null;
+    risk_level?: "high" | "medium" | "low" | null;
+    allergies?: string | null;
   } | null;
   products: Array<{
     id: string;
@@ -787,6 +790,10 @@ function InvoicePreviewBody({
             {labels.billTo}
           </div>
           <strong>{data.customer?.name || "—"}</strong>
+          <PatientSafetyBanner
+            risk={data.customer?.risk_level}
+            allergies={data.customer?.allergies}
+          />
           <div className="muted" style={{ fontSize: "0.85rem" }}>
             {[data.customer?.address, data.customer?.phone, data.customer?.email]
               .filter(Boolean)

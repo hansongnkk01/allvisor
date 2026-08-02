@@ -26,7 +26,7 @@ export default async function CustomersPage({
     supabase
       .from("customers")
       .select(
-        "id, name, email, phone, ic_number, address, notes, risk_level, created_by_name, created_at"
+        "id, name, email, phone, ic_number, address, notes, risk_level, allergies, created_by_name, created_at"
       )
       .eq("organization_id", ctx.organization.id)
       .order("created_at", { ascending: false })
@@ -54,6 +54,7 @@ export default async function CustomersPage({
     cancel: t("cancel"),
     addedBy: t("addedBy"),
     risk: t("risk"),
+    allergies: t("allergies"),
   };
 
   return (
@@ -103,6 +104,14 @@ export default async function CustomersPage({
               required
               className="input"
               placeholder="Street, city, postcode, state (e.g. 12 Jalan Ampang, KL, 50450, Wilayah Persekutuan)"
+            />
+          </div>
+          <div className="field">
+            <label>{t("allergies")}</label>
+            <input
+              name="allergies"
+              className="input"
+              placeholder={t("allergiesPlaceholder")}
             />
           </div>
           <div className="field">

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ActionForm } from "@/components/ActionForm";
 import { PatientName } from "@/components/PatientName";
+import { PatientSafetyBanner } from "@/components/PatientSafetyBanner";
 import { deleteCustomerAction, upsertCustomerAction } from "@/app/actions";
 import type { Customer } from "@/lib/types";
 
@@ -19,6 +20,7 @@ type Labels = {
   cancel: string;
   addedBy: string;
   risk: string;
+  allergies: string;
 };
 
 export function CustomerRow({
@@ -98,6 +100,15 @@ export function CustomerRow({
               />
             </div>
             <div className="field">
+              <label>{labels.allergies}</label>
+              <input
+                name="allergies"
+                className="input"
+                defaultValue={customer.allergies || ""}
+                placeholder="Penicillin, seafood…"
+              />
+            </div>
+            <div className="field">
               <label>{labels.notes}</label>
               <textarea name="notes" className="textarea" defaultValue={customer.notes || ""} />
             </div>
@@ -123,6 +134,11 @@ export function CustomerRow({
     <tr>
       <td>
         <PatientName name={customer.name} risk={customer.risk_level} />
+        <PatientSafetyBanner
+          risk={customer.risk_level}
+          allergies={customer.allergies}
+          compact
+        />
         {customer.notes ? (
           <div className="muted" style={{ fontSize: "0.8rem", marginTop: 2 }}>
             {customer.notes}

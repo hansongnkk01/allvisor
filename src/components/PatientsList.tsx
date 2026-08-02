@@ -25,6 +25,7 @@ export function PatientsList({
     cancel: string;
     addedBy: string;
     risk: string;
+    allergies: string;
   };
   empty: string;
   searchPlaceholder: string;
@@ -34,7 +35,7 @@ export function PatientsList({
     const needle = q.trim().toLowerCase();
     if (!needle) return customers;
     return customers.filter((c) =>
-      [c.name, c.email, c.phone, c.ic_number, c.address, c.notes]
+      [c.name, c.email, c.phone, c.ic_number, c.address, c.notes, c.allergies]
         .filter(Boolean)
         .join(" ")
         .toLowerCase()

@@ -73,7 +73,19 @@
     "occupied": "Booked",
     "free": "Free",
     "clinicClosed": "Clinic closed",
-    "publicHoliday": "Public holiday"
+    "publicHoliday": "Public holiday",
+    "dailyClose": "Daily close",
+    "dailyCloseHint": "End-of-day checklist — clear unpaid, stock and LHDN before you leave.",
+    "closeIncome": "Income today",
+    "closeUnpaid": "Still unpaid",
+    "closeNoShow": "No-shows today",
+    "closeLowStock": "Low stock items",
+    "closeLhdnPending": "LHDN pending",
+    "closeLhdnRejected": "LHDN rejected",
+    "closeNone": "None",
+    "closeOpenInvoices": "Invoices",
+    "closeOpenInventory": "Inventory",
+    "closeOpenLhdn": "LHDN"
   },
   "Customers": {
     "title": "Customers",
@@ -99,7 +111,9 @@
     "riskLow": "Low",
     "riskMedium": "Medium",
     "riskHigh": "High",
-    "activity": "Customer activity"
+    "activity": "Customer activity",
+    "allergies": "Allergies",
+    "allergiesPlaceholder": "e.g. Penicillin, seafood, latex…"
   },
   "Appointments": {
     "title": "Appointments",
@@ -386,7 +400,11 @@
     "activity": "Inventory activity",
     "selectItem": "Select",
     "selectAll": "Select all items",
-    "okSelected": "OK for selected items"
+    "okSelected": "OK for selected items",
+    "frequentlyUsed": "Frequently used",
+    "frequentlyUsedHint": "Most issued / sold in the last 90 days — keep these easy to find.",
+    "usedTimes": "used",
+    "onHand": "on hand"
   },
   "POS": {
     "title": "POS / Quick sale",

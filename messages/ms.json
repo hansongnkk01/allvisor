@@ -73,7 +73,19 @@
     "occupied": "Ditempah",
     "free": "Kosong",
     "clinicClosed": "Klinik tutup",
-    "publicHoliday": "Cuti umum"
+    "publicHoliday": "Cuti umum",
+    "dailyClose": "Tutup harian",
+    "dailyCloseHint": "Senarai semak akhir hari — selesaikan belum bayar, stok dan LHDN sebelum pulang.",
+    "closeIncome": "Pendapatan hari ini",
+    "closeUnpaid": "Masih belum bayar",
+    "closeNoShow": "Tidak hadir hari ini",
+    "closeLowStock": "Item stok rendah",
+    "closeLhdnPending": "LHDN menunggu",
+    "closeLhdnRejected": "LHDN ditolak",
+    "closeNone": "Tiada",
+    "closeOpenInvoices": "Invois",
+    "closeOpenInventory": "Inventori",
+    "closeOpenLhdn": "LHDN"
   },
   "Customers": {
     "title": "Pelanggan",
@@ -99,7 +111,9 @@
     "riskLow": "Rendah",
     "riskMedium": "Sederhana",
     "riskHigh": "Tinggi",
-    "activity": "Aktiviti pelanggan"
+    "activity": "Aktiviti pelanggan",
+    "allergies": "Alahan",
+    "allergiesPlaceholder": "cth. Penisilin, makanan laut, lateks…"
   },
   "Appointments": {
     "title": "Temujanji",
@@ -158,7 +172,11 @@
     "activity": "Aktiviti inventori",
     "selectItem": "Pilih",
     "selectAll": "Pilih semua item",
-    "okSelected": "OK untuk item dipilih"
+    "okSelected": "OK untuk item dipilih",
+    "frequentlyUsed": "Sering dipakai",
+    "frequentlyUsedHint": "Paling kerap dikeluarkan / dijual 90 hari lepas — mudah dicari.",
+    "usedTimes": "kali",
+    "onHand": "dalam stok"
   },
   "POS": {
     "title": "POS / Jualan pantas",

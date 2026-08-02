@@ -6,6 +6,7 @@ import { formatCurrency } from "@/lib/utils";
 import { Link } from "@/i18n/navigation";
 import { DayHourTimetable } from "@/components/DayHourTimetable";
 import { DashboardAiPanel } from "@/components/DashboardAiPanel";
+import { DailyClosePanel } from "@/components/DailyClosePanel";
 import { DashboardRecentInvoices, DashboardUpcomingAppointments } from "@/components/DashboardLists";
 import { dayBoundsMY, formatDayKeyMY } from "@/lib/datetime-my";
 
@@ -60,12 +61,14 @@ export default async function DashboardPage({
 
   const [
     { count: customerCount },
-    { count: unpaidCount },
+    { data: unpaidRows },
     { data: stockRows },
     { data: recentInvoices },
     { data: ledger },
     { count: lhdnPending },
+    { count: lhdnRejected },
     { count: appointmentsTodayCount },
+    { count: noShowTodayCount },
     { data: upcomingData },
     { data: todayData },
     { data: paidToday },
@@ -76,7 +79,7 @@ export default async function DashboardPage({
       .eq("organization_id", orgId),
     supabase
       .from("invoices")
-      .select("id", { count: "exact", head: true })
+      .select("total, amount_paid")
       .eq("organization_id", orgId)
       .in("status", ["unpaid", "partial"]),
     supabase
@@ -94,18 +97,32 @@ export default async function DashboardPage({
       .select("entry_type, amount")
       .eq("organization_id", orgId)
       .gte("entry_date", monthStart),
-    // Only paid invoices awaiting MyInvois confirmation (auto-submit on Pay)
     supabase
       .from("invoices")
       .select("id", { count: "exact", head: true })
       .eq("organization_id", orgId)
       .eq("status", "paid")
-      .in("lhdn_status", ["not_submitted", "pending", "rejected"]),
+      .in("lhdn_status", ["not_submitted", "pending"]),
+    supabase
+      .from("invoices")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", orgId)
+      .eq("status", "paid")
+      .eq("lhdn_status", "rejected"),
     niche === "clinic"
       ? supabase
           .from("appointments")
           .select("id", { count: "exact", head: true })
           .eq("organization_id", orgId)
+          .gte("starts_at", todayStart.toISOString())
+          .lte("starts_at", todayEnd.toISOString())
+      : Promise.resolve({ count: 0 }),
+    niche === "clinic"
+      ? supabase
+          .from("appointments")
+          .select("id", { count: "exact", head: true })
+          .eq("organization_id", orgId)
+          .eq("status", "no_show")
           .gte("starts_at", todayStart.toISOString())
           .lte("starts_at", todayEnd.toISOString())
       : Promise.resolve({ count: 0 }),
@@ -128,16 +145,19 @@ export default async function DashboardPage({
           .lte("starts_at", todayEnd.toISOString())
           .order("starts_at", { ascending: true })
       : Promise.resolve({ data: [] as never[] }),
-    niche === "retail"
-      ? supabase
-          .from("payments")
-          .select("amount")
-          .eq("organization_id", orgId)
-          .gte("paid_at", todayStart.toISOString())
-          .lte("paid_at", todayEnd.toISOString())
-      : Promise.resolve({ data: [] as never[] }),
+    supabase
+      .from("payments")
+      .select("amount")
+      .eq("organization_id", orgId)
+      .gte("paid_at", todayStart.toISOString())
+      .lte("paid_at", todayEnd.toISOString()),
   ]);
 
+  const unpaidCount = unpaidRows?.length || 0;
+  const unpaidTotal = (unpaidRows || []).reduce(
+    (sum, inv) => sum + Math.max(0, Number(inv.total) - Number(inv.amount_paid || 0)),
+    0
+  );
   const appointmentsToday = appointmentsTodayCount || 0;
   const salesToday = (paidToday || []).reduce((sum, p) => sum + Number(p.amount), 0);
   const upcoming = (upcomingData || []).map(mapAppt);
@@ -148,6 +168,7 @@ export default async function DashboardPage({
     .map((p) => String(p.name || "").trim())
     .filter(Boolean);
   const lowStockCount = lowStockItems.length;
+  const lhdnPendingTotal = (lhdnPending || 0) + (lhdnRejected || 0);
 
   const income = (ledger || [])
     .filter((e) => e.entry_type === "income")
@@ -179,7 +200,7 @@ export default async function DashboardPage({
       )}
       <div className="surface kpi" style={{ margin: 0 }}>
         <div className="kpi-label">{t("unpaidInvoices")}</div>
-        <div className="kpi-value">{unpaidCount || 0}</div>
+        <div className="kpi-value">{unpaidCount}</div>
       </div>
       <div className="surface kpi" style={{ margin: 0 }}>
         <div className="kpi-label">{niche === "clinic" ? t("patients") : t("customers")}</div>
@@ -213,17 +234,41 @@ export default async function DashboardPage({
           data={{
             niche,
             patients: customerCount || 0,
-            unpaidInvoices: unpaidCount || 0,
+            unpaidInvoices: unpaidCount,
             lowStock: lowStockCount,
             lowStockNames: lowStockItems,
             income,
             expense,
             appointmentsToday,
-            lhdnPending: lhdnPending || 0,
+            lhdnPending: lhdnPendingTotal,
             orgHasTin: Boolean(ctx.organization.tin),
           }}
         />
       </div>
+
+      <DailyClosePanel
+        title={t("dailyClose")}
+        subtitle={t("dailyCloseHint")}
+        incomeToday={salesToday}
+        unpaidCount={unpaidCount}
+        unpaidTotal={unpaidTotal}
+        noShowToday={niche === "clinic" ? noShowTodayCount || 0 : -1}
+        lowStockNames={lowStockItems}
+        lhdnPendingCount={lhdnPending || 0}
+        lhdnRejectedCount={lhdnRejected || 0}
+        labels={{
+          income: t("closeIncome"),
+          unpaid: t("closeUnpaid"),
+          noShow: t("closeNoShow"),
+          lowStock: t("closeLowStock"),
+          lhdnPending: t("closeLhdnPending"),
+          lhdnRejected: t("closeLhdnRejected"),
+          none: t("closeNone"),
+          openInvoices: t("closeOpenInvoices"),
+          openInventory: t("closeOpenInventory"),
+          openLhdn: t("closeOpenLhdn"),
+        }}
+      />
 
       <div className="row">
         <span className="muted">{t("quickActions")}:</span>

@@ -1,0 +1,149 @@
+import { Link } from "@/i18n/navigation";
+import { formatCurrency } from "@/lib/utils";
+
+export function DailyClosePanel({
+  title,
+  subtitle,
+  incomeToday,
+  unpaidCount,
+  unpaidTotal,
+  noShowToday,
+  lowStockNames,
+  lhdnPendingCount,
+  lhdnRejectedCount,
+  labels,
+}: {
+  title: string;
+  subtitle: string;
+  incomeToday: number;
+  unpaidCount: number;
+  unpaidTotal: number;
+  noShowToday: number;
+  lowStockNames: string[];
+  lhdnPendingCount: number;
+  lhdnRejectedCount: number;
+  labels: {
+    income: string;
+    unpaid: string;
+    noShow: string;
+    lowStock: string;
+    lhdnPending: string;
+    lhdnRejected: string;
+    none: string;
+    openInvoices: string;
+    openInventory: string;
+    openLhdn: string;
+  };
+}) {
+  const stockPreview = lowStockNames.slice(0, 4);
+  const stockExtra = lowStockNames.length - stockPreview.length;
+
+  return (
+    <div
+      className="surface"
+      style={{
+        padding: "1.15rem 1.25rem",
+        borderColor: "rgba(15, 118, 110, 0.35)",
+        background:
+          "linear-gradient(135deg, rgba(15,118,110,0.06), rgba(255,255,255,0.9))",
+      }}
+    >
+      <div className="row" style={{ justifyContent: "space-between", marginBottom: 8 }}>
+        <div>
+          <h3 style={{ margin: 0 }}>{title}</h3>
+          <p className="muted" style={{ margin: "0.25rem 0 0", fontSize: "0.85rem" }}>
+            {subtitle}
+          </p>
+        </div>
+      </div>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+          gap: "0.65rem",
+        }}
+      >
+        <CloseStat label={labels.income} value={formatCurrency(incomeToday)} tone="good" />
+        <CloseStat
+          label={labels.unpaid}
+          value={`${unpaidCount} · ${formatCurrency(unpaidTotal)}`}
+          tone={unpaidCount > 0 ? "alert" : "good"}
+        />
+        {noShowToday >= 0 ? (
+          <CloseStat
+            label={labels.noShow}
+            value={String(noShowToday)}
+            tone={noShowToday > 0 ? "warn" : "good"}
+          />
+        ) : null}
+        <CloseStat
+          label={labels.lhdnPending}
+          value={String(lhdnPendingCount)}
+          tone={lhdnPendingCount > 0 ? "alert" : "good"}
+        />
+        <CloseStat
+          label={labels.lhdnRejected}
+          value={String(lhdnRejectedCount)}
+          tone={lhdnRejectedCount > 0 ? "alert" : "good"}
+        />
+      </div>
+      <div style={{ marginTop: "0.85rem" }}>
+        <div className="muted" style={{ fontSize: "0.8rem", marginBottom: 4 }}>
+          {labels.lowStock}
+        </div>
+        {stockPreview.length ? (
+          <p style={{ margin: 0, fontSize: "0.9rem", fontWeight: 600 }}>
+            {stockPreview.join(", ")}
+            {stockExtra > 0 ? ` (+${stockExtra})` : ""}
+          </p>
+        ) : (
+          <p className="muted" style={{ margin: 0, fontSize: "0.9rem" }}>
+            {labels.none}
+          </p>
+        )}
+      </div>
+      <div className="row" style={{ marginTop: "0.85rem", flexWrap: "wrap", gap: 8 }}>
+        <Link href="/invoices" className="btn btn-soft">
+          {labels.openInvoices}
+        </Link>
+        <Link href="/inventory" className="btn btn-soft">
+          {labels.openInventory}
+        </Link>
+        <Link href="/lhdn" className="btn btn-soft">
+          {labels.openLhdn}
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function CloseStat({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: "good" | "warn" | "alert";
+}) {
+  const bg =
+    tone === "good"
+      ? "rgba(22, 163, 74, 0.1)"
+      : tone === "warn"
+        ? "rgba(202, 138, 4, 0.12)"
+        : "rgba(220, 38, 38, 0.1)";
+  return (
+    <div
+      style={{
+        padding: "0.65rem 0.75rem",
+        borderRadius: 12,
+        background: bg,
+      }}
+    >
+      <div className="muted" style={{ fontSize: "0.75rem" }}>
+        {label}
+      </div>
+      <div style={{ fontWeight: 700, fontSize: "1.05rem", marginTop: 2 }}>{value}</div>
+    </div>
+  );
+}

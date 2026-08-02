@@ -88,6 +88,7 @@ export interface Customer {
   created_by: string | null;
   created_by_name: string | null;
   risk_level: RiskLevel | null;
+  allergies?: string | null;
   created_at: string;
 }
 

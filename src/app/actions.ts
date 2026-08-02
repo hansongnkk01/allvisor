@@ -148,6 +148,7 @@ export async function upsertCustomerAction(formData: FormData) {
     ic_number: icRaw || null,
     address: String(formData.get("address") || "").trim() || null,
     notes: String(formData.get("notes") || "") || null,
+    allergies: String(formData.get("allergies") || "").trim() || null,
     risk_level: (["high", "medium", "low"].includes(String(formData.get("risk_level") || ""))
       ? String(formData.get("risk_level"))
       : null) as "high" | "medium" | "low" | null,
@@ -2401,7 +2402,7 @@ export async function getInvoicePreviewAction(invoiceId: string) {
   ] = await Promise.all([
       supabase
         .from("invoices")
-        .select("*, customers(name, phone, email, address, risk_level)")
+        .select("*, customers(name, phone, email, address, risk_level, allergies)")
         .eq("id", invoiceId)
         .eq("organization_id", organization.id)
         .maybeSingle(),
@@ -2432,11 +2433,16 @@ export async function getInvoicePreviewAction(invoiceId: string) {
 
   if (!invoice) return { error: "Invoice not found" };
 
-  const customer = invoice.customers as {
+  const customerRaw = Array.isArray(invoice.customers)
+    ? invoice.customers[0]
+    : invoice.customers;
+  const customer = (customerRaw || null) as {
     name?: string;
     phone?: string | null;
     email?: string | null;
     address?: string | null;
+    risk_level?: "high" | "medium" | "low" | null;
+    allergies?: string | null;
   } | null;
 
   return {

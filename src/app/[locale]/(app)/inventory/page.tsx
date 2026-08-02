@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { ActionForm } from "@/components/ActionForm";
 import { upsertProductAction } from "@/app/actions";
 import { InventoryStockTable } from "@/components/InventoryStockTable";
+import { FrequentlyUsedStock } from "@/components/FrequentlyUsedStock";
 import { SectionActivityLog } from "@/components/SectionActivityLog";
 import { fetchSectionLogs } from "@/lib/section-logs";
 
@@ -18,7 +19,10 @@ export default async function InventoryPage({
   const t = await getTranslations("Inventory");
   const ctx = await requireOrg(locale);
   const supabase = await createClient();
-  const [{ data: products }, logs] = await Promise.all([
+  const since = new Date();
+  since.setDate(since.getDate() - 90);
+
+  const [{ data: products }, { data: movements }, logs] = await Promise.all([
     supabase
       .from("products")
       .select(
@@ -27,8 +31,45 @@ export default async function InventoryPage({
       .eq("organization_id", ctx.organization.id)
       .order("created_at", { ascending: false })
       .limit(500),
+    supabase
+      .from("stock_movements")
+      .select("product_id, quantity, products(id, name, sku, quantity)")
+      .eq("organization_id", ctx.organization.id)
+      .in("type", ["out", "sale"])
+      .gte("created_at", since.toISOString())
+      .limit(3000),
     fetchSectionLogs(ctx.organization.id, ["inventory"], 25),
   ]);
+
+  const usage = new Map<
+    string,
+    { id: string; name: string; sku: string | null; quantity: number; usedQty: number }
+  >();
+  for (const m of movements || []) {
+    const pid = m.product_id as string;
+    if (!pid) continue;
+    const prodRaw = Array.isArray(m.products) ? m.products[0] : m.products;
+    const prod = prodRaw as
+      | { id: string; name: string; sku?: string | null; quantity?: number }
+      | null;
+    if (!prod?.id) continue;
+    const prev = usage.get(pid);
+    const add = Number(m.quantity) || 0;
+    if (prev) {
+      prev.usedQty += add;
+    } else {
+      usage.set(pid, {
+        id: prod.id,
+        name: prod.name,
+        sku: prod.sku || null,
+        quantity: Number(prod.quantity || 0),
+        usedQty: add,
+      });
+    }
+  }
+  const frequentItems = [...usage.values()]
+    .sort((a, b) => b.usedQty - a.usedQty)
+    .slice(0, 12);
 
   const isClinic = ctx.organization.niche === "clinic";
 
@@ -37,6 +78,15 @@ export default async function InventoryPage({
       <PageHeader
         title={t("title")}
         subtitle={isClinic ? t("clinicSubtitle") : t("retailSubtitle")}
+      />
+
+      <FrequentlyUsedStock
+        title={t("frequentlyUsed")}
+        hint={t("frequentlyUsedHint")}
+        items={frequentItems}
+        usedLabel={t("usedTimes")}
+        onHandLabel={t("onHand")}
+        empty={t("empty")}
       />
 
       <div className="surface" style={{ padding: "1.25rem" }}>

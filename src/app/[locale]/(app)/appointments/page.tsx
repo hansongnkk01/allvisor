@@ -34,7 +34,7 @@ export default async function AppointmentsPage({
       supabase
         .from("appointments")
         .select(
-          "id, title, starts_at, ends_at, status, notes, reminder_sent, customers(name, risk_level)"
+          "id, title, starts_at, ends_at, status, notes, reminder_sent, customers(name, risk_level, allergies)"
         )
         .eq("organization_id", ctx.organization.id)
         .gte("starts_at", windowStart.toISOString())
@@ -43,7 +43,7 @@ export default async function AppointmentsPage({
         .limit(500),
       supabase
         .from("customers")
-        .select("id, name, risk_level")
+        .select("id, name, risk_level, allergies")
         .eq("organization_id", ctx.organization.id)
         .order("name")
         .limit(500),
@@ -78,6 +78,7 @@ export default async function AppointmentsPage({
             id: c.id,
             name: c.name,
             risk_level: c.risk_level,
+            allergies: c.allergies,
           }))}
           categories={(categories || []).map((c) => ({
             id: c.id,

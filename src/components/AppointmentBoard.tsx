@@ -23,6 +23,7 @@ import {
 import { DayHourTimetable, slotLabel, type TimetableHours } from "@/components/DayHourTimetable";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import { PatientName } from "@/components/PatientName";
+import { PatientSafetyBanner } from "@/components/PatientSafetyBanner";
 import { useConfirm } from "@/components/ConfirmDialog";
 import type { AppointmentStatus } from "@/lib/types";
 import { createPortal } from "react-dom";
@@ -34,10 +35,19 @@ type Appt = {
   status: AppointmentStatus;
   notes: string | null;
   reminder_sent: boolean;
-  customers?: { name: string; risk_level?: "high" | "medium" | "low" | null } | null;
+  customers?: {
+    name: string;
+    risk_level?: "high" | "medium" | "low" | null;
+    allergies?: string | null;
+  } | null;
 };
 
-type PatientOpt = { id: string; name: string; risk_level?: "high" | "medium" | "low" | null };
+type PatientOpt = {
+  id: string;
+  name: string;
+  risk_level?: "high" | "medium" | "low" | null;
+  allergies?: string | null;
+};
 type CategoryOpt = { id: string; name: string };
 
 const STATUSES: AppointmentStatus[] = [
@@ -756,6 +766,11 @@ function AppointmentList({
                     risk={a.customers?.risk_level}
                   />
                 </strong>
+                <PatientSafetyBanner
+                  risk={a.customers?.risk_level}
+                  allergies={a.customers?.allergies}
+                  compact
+                />
                 <div className="muted" style={{ fontSize: "0.85rem" }}>
                   {a.title} · {start.toLocaleString()} –{" "}
                   {endDisplay.toLocaleTimeString([], {
