@@ -429,7 +429,7 @@ export default async function AdminPage({
                 style={{ maxWidth: 320 }}
               />
               <button type="submit" className="btn btn-primary">
-                {t("requestLink")}
+                {t("linkBranch")}
               </button>
             </ActionForm>
             {(outgoingPending || []).length ? (

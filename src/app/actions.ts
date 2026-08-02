@@ -1732,6 +1732,21 @@ export async function kickStaffAction(formData: FormData) {
   return { success: true };
 }
 
+async function upsertBidirectionalBranchLinks(
+  admin: NonNullable<Awaited<ReturnType<typeof getServiceAdmin>>>,
+  orgA: string,
+  orgB: string
+) {
+  const { error } = await admin.from("branch_links").upsert(
+    [
+      { organization_id: orgA, linked_organization_id: orgB },
+      { organization_id: orgB, linked_organization_id: orgA },
+    ],
+    { onConflict: "organization_id,linked_organization_id" }
+  );
+  return error;
+}
+
 export async function requestBranchLinkAction(formData: FormData) {
   const { supabase, organization, membership, profile } = await requireMember();
   if (!canManageStaff(membership.role)) return { error: "Only admin can link branches" };
@@ -1762,6 +1777,47 @@ export async function requestBranchLinkAction(formData: FormData) {
     .eq("linked_organization_id", target.id)
     .maybeSingle();
   if (already) return { error: "Already linked" };
+
+  // Same person admin of both clinics → link immediately (show in branch list).
+  const { data: targetMembership } = await admin
+    .from("memberships")
+    .select("role")
+    .eq("organization_id", target.id)
+    .eq("user_id", profile.id)
+    .maybeSingle();
+
+  const canAutoLink =
+    !!targetMembership && canManageStaff(targetMembership.role as MembershipRole);
+
+  if (canAutoLink) {
+    const { error: reqError } = await admin.from("branch_link_requests").upsert(
+      {
+        from_organization_id: organization.id,
+        to_organization_id: target.id,
+        requested_by: profile.id,
+        status: "approved",
+      },
+      { onConflict: "from_organization_id,to_organization_id" }
+    );
+    if (reqError) return { error: reqError.message };
+
+    const linkError = await upsertBidirectionalBranchLinks(
+      admin,
+      organization.id,
+      target.id
+    );
+    if (linkError) return { error: linkError.message };
+
+    await logActivity({
+      action: "branch.link",
+      summary: `Linked branch "${target.name}"`,
+      entityType: "organization",
+      entityId: target.id,
+    });
+
+    revalidateApp("/admin");
+    return { success: true };
+  }
 
   const { error } = await supabase.from("branch_link_requests").upsert(
     {
@@ -1813,16 +1869,14 @@ export async function respondBranchLinkAction(formData: FormData) {
   if (updError) return { error: updError.message };
 
   if (decision === "approved") {
-    await supabase.from("branch_links").upsert([
-      {
-        organization_id: req.from_organization_id,
-        linked_organization_id: req.to_organization_id,
-      },
-      {
-        organization_id: req.to_organization_id,
-        linked_organization_id: req.from_organization_id,
-      },
-    ]);
+    const admin = await getServiceAdmin();
+    if (!admin) return { error: "Service role required to complete branch link" };
+    const linkError = await upsertBidirectionalBranchLinks(
+      admin,
+      req.from_organization_id,
+      req.to_organization_id
+    );
+    if (linkError) return { error: linkError.message };
   }
 
   await logActivity({
