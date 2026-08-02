@@ -18,7 +18,6 @@ import {
   requestBranchLinkAction,
   respondBranchLinkAction,
   unlockAdminAction,
-  upgradePlanAction,
   upsertBranchServiceCategoryAction,
   upsertBranchServiceItemAction,
   updateOrgSettingsAction,
@@ -31,12 +30,8 @@ import { FilterableRows } from "@/components/FilterableRows";
 import { InvoiceFormatForm } from "@/components/InvoiceFormatForm";
 import { BranchClinicSettings } from "@/components/BranchClinicSettings";
 import { formatCurrency } from "@/lib/utils";
-import { PLAN_LIMITS } from "@/lib/subscription";
 import { defaultAdminPassword } from "@/lib/admin-lock";
 import { canAccessAdmin, canManageStaff } from "@/lib/roles";
-import type { SubscriptionPlan } from "@/lib/types";
-
-const plans: SubscriptionPlan[] = ["free", "starter", "growth", "pro"];
 
 export default async function AdminPage({
   params,
@@ -418,54 +413,6 @@ export default async function AdminPage({
               partial: t("importPartial"),
             }}
           />
-
-          <div className="surface" style={{ padding: "1.25rem" }}>
-            <h3 style={{ marginTop: 0 }}>{t("upgrade")}</h3>
-            <p className="muted">
-              {t("plan")}: <strong>{org.subscription_plan}</strong> · {t("status")}:{" "}
-              <strong>{org.subscription_status}</strong>
-            </p>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-                gap: "0.75rem",
-                marginTop: "1rem",
-              }}
-            >
-              {plans.map((plan) => (
-                <div
-                  key={plan}
-                  className="surface"
-                  style={{
-                    padding: "1rem",
-                    boxShadow: "none",
-                    borderColor:
-                      org.subscription_plan === plan ? "var(--accent)" : "var(--line)",
-                  }}
-                >
-                  <div style={{ fontWeight: 700 }}>{PLAN_LIMITS[plan].label}</div>
-                  <form
-                    action={async () => {
-                      "use server";
-                      await upgradePlanAction(plan);
-                    }}
-                  >
-                    <button
-                      type="submit"
-                      className={
-                        org.subscription_plan === plan ? "btn btn-soft" : "btn btn-primary"
-                      }
-                      style={{ width: "100%", marginTop: 8 }}
-                      disabled={org.subscription_plan === plan}
-                    >
-                      {org.subscription_plan === plan ? "Current" : "Select"}
-                    </button>
-                  </form>
-                </div>
-              ))}
-            </div>
-          </div>
 
           <div className="surface" style={{ padding: "1.25rem" }}>
             <h3 style={{ marginTop: 0 }}>{t("addBranch")}</h3>
