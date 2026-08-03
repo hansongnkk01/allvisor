@@ -21,6 +21,8 @@
     "staff": "Staf",
     "settings": "Tetapan",
     "admin": "Admin",
+    "operationsZone": "Operasi",
+    "settingsZone": "Tetapan",
     "adminZone": "Zon admin",
     "exitAdminZone": "Keluar zon admin",
     "logout": "Log keluar",

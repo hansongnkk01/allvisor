@@ -21,6 +21,8 @@
     "staff": "Staff",
     "settings": "Settings",
     "admin": "Admin",
+    "operationsZone": "Operations",
+    "settingsZone": "Settings",
     "adminZone": "Admin zone",
     "exitAdminZone": "Exit admin zone",
     "logout": "Log out",

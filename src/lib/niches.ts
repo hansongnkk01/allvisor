@@ -14,7 +14,7 @@ export function isRetailNiche(niche: Niche | string | null | undefined): boolean
   return niche === "retail";
 }
 
-/** Staff zone first, then Admin zone (Admin / Accounting / LHDN). */
+/** Flat nav keys (clinic: staff then admin). */
 export const nicheNavKeys = {
   clinic: [
     "dashboard",
@@ -30,13 +30,13 @@ export const nicheNavKeys = {
     "dashboard",
     "customers",
     "pos",
-    "receipts",
     "cash",
-    "inventory",
+    "invoices",
+    "receipts",
     "categories",
+    "inventory",
     "logistics",
     "printers",
-    "invoices",
     "admin",
     "accounting",
     "lhdn",
@@ -44,6 +44,25 @@ export const nicheNavKeys = {
 } as const;
 
 export const ADMIN_ZONE_NAV_KEYS = new Set(["admin", "accounting", "lhdn"]);
+
+/** Grouped retail sidebar: Operations → Settings → Admin zone */
+export const retailNavSections = [
+  {
+    id: "operations",
+    labelKey: "operationsZone" as const,
+    keys: ["dashboard", "customers", "pos", "cash", "invoices"] as const,
+  },
+  {
+    id: "settings",
+    labelKey: "settingsZone" as const,
+    keys: ["receipts", "categories", "inventory", "logistics", "printers"] as const,
+  },
+  {
+    id: "admin",
+    labelKey: "adminZone" as const,
+    keys: ["admin", "accounting", "lhdn"] as const,
+  },
+];
 
 export type NavKey =
   | (typeof nicheNavKeys)["clinic"][number]
