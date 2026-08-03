@@ -229,16 +229,70 @@ export async function upsertCustomerAction(formData: FormData) {
 
   if (error) return { error: error.message };
 
+  const customerId = data?.id || id;
+
+  // Tuition: enrol subjects + optional student portal account (from Students form)
+  const { hasCapability } = await import("@/lib/niches");
+  if (hasCapability(organization.niche, "class_schedule") && customerId) {
+    const classIds = formData
+      .getAll("class_ids")
+      .map((v) => String(v))
+      .filter(Boolean);
+    if (classIds.length) {
+      await supabase.from("tuition_enrollments").upsert(
+        classIds.map((class_id) => ({
+          organization_id: organization.id,
+          class_id,
+          customer_id: customerId,
+        })),
+        { onConflict: "class_id,customer_id", ignoreDuplicates: true }
+      );
+    }
+
+    const createPortal = formData.get("create_portal") === "on";
+    if (createPortal && !id) {
+      const portalPassword = String(formData.get("portal_password") || "");
+      const portalEmail = emailRaw || String(formData.get("portal_email") || "").trim();
+      if (!portalEmail) {
+        return { error: "Email required to create student Allvisor account" };
+      }
+      const { provisionStudentPortal } = await import("@/app/tuition-actions");
+      const portal = await provisionStudentPortal({
+        organizationId: organization.id,
+        customerId,
+        email: portalEmail,
+        password: portalPassword,
+        fullName: name,
+        byProfileId: profile.id,
+      });
+      if (portal.error) {
+        return {
+          error: `Student saved, but portal account failed: ${portal.error}`,
+        };
+      }
+    }
+  }
+
   await logActivity({
     action: id ? "customer.update" : "customer.create",
     summary: id
       ? `Updated patient/customer: ${payload.name}`
       : `Registered patient/customer: ${payload.name}`,
     entityType: "customer",
-    entityId: data?.id || id || null,
+    entityId: customerId || null,
   });
 
-  revalidateApp("/customers", "/dashboard", "/appointments", "/invoices", "/pos", "/staff", "/admin");
+  revalidateApp(
+    "/customers",
+    "/dashboard",
+    "/appointments",
+    "/invoices",
+    "/pos",
+    "/staff",
+    "/admin",
+    "/classes",
+    "/student"
+  );
   return { success: true };
 }
 

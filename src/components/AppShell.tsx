@@ -210,6 +210,13 @@ export function AppShell({
         /* fall through */
       }
     }
+    if (key === "customers" && hasCapability(niche, "class_schedule")) {
+      try {
+        return t("students");
+      } catch {
+        /* fall through */
+      }
+    }
     try {
       return t(key as "dashboard");
     } catch {

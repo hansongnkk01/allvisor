@@ -276,7 +276,6 @@ export const NICHE_DEFINITIONS: Record<Niche, NicheDefinition> = {
           "classes",
           "attendance",
           "assessments",
-          "studentAccounts",
           "invoices",
         ],
       },

@@ -7,6 +7,7 @@ import { ActionForm } from "@/components/ActionForm";
 import { PatientsList } from "@/components/PatientsList";
 import { SectionActivityLog } from "@/components/SectionActivityLog";
 import { upsertCustomerAction } from "@/app/actions";
+import { createStudentAccountAction } from "@/app/tuition-actions";
 import { fetchSectionLogs } from "@/lib/section-logs";
 import { formatDateTime } from "@/lib/utils";
 import type { Customer } from "@/lib/types";
@@ -22,29 +23,74 @@ export default async function CustomersPage({
   const tc = await getTranslations("Common");
   const ctx = await requireOrg(locale);
   const supabase = await createClient();
-
-  const [{ data: customers }, { data: deletions }, logs] = await Promise.all([
-    supabase
-      .from("customers")
-      .select(
-        "id, name, email, phone, ic_number, address, notes, risk_level, allergies, created_by_name, created_at"
-      )
-      .eq("organization_id", ctx.organization.id)
-      .order("created_at", { ascending: false })
-      .limit(500),
-    supabase
-      .from("customer_deletions")
-      .select("id, customer_name, deleted_by_name, created_at")
-      .eq("organization_id", ctx.organization.id)
-      .order("created_at", { ascending: false })
-      .limit(20),
-    fetchSectionLogs(ctx.organization.id, ["customer"], 25),
-  ]);
-
-  const title = hasCapability(ctx.organization.niche, "allergies") ? t("titleClinic") : t("title");
+  const isTuition = hasCapability(ctx.organization.niche, "class_schedule");
   const isClinic = hasCapability(ctx.organization.niche, "allergies");
-  const deletedTitle = isClinic ? t("deletedTitleClinic") : t("deletedTitle");
-  const deletedHint = isClinic ? t("deletedHintClinic") : t("deletedHint");
+
+  const [{ data: customers }, { data: deletions }, logs, classesRes, portalsRes, enrollRes] =
+    await Promise.all([
+      supabase
+        .from("customers")
+        .select(
+          "id, name, email, phone, ic_number, address, notes, risk_level, allergies, created_by_name, created_at"
+        )
+        .eq("organization_id", ctx.organization.id)
+        .order("created_at", { ascending: false })
+        .limit(500),
+      supabase
+        .from("customer_deletions")
+        .select("id, customer_name, deleted_by_name, created_at")
+        .eq("organization_id", ctx.organization.id)
+        .order("created_at", { ascending: false })
+        .limit(20),
+      fetchSectionLogs(ctx.organization.id, ["customer"], 25),
+      isTuition
+        ? supabase
+            .from("tuition_classes")
+            .select("id, name")
+            .eq("organization_id", ctx.organization.id)
+            .order("name")
+        : Promise.resolve({ data: [] as Array<{ id: string; name: string }> }),
+      isTuition
+        ? supabase
+            .from("tuition_students")
+            .select("customer_id, email, active")
+            .eq("organization_id", ctx.organization.id)
+        : Promise.resolve({ data: [] as Array<{ customer_id: string; email: string; active: boolean }> }),
+      isTuition
+        ? supabase
+            .from("tuition_enrollments")
+            .select("customer_id, class_id, tuition_classes(name)")
+            .eq("organization_id", ctx.organization.id)
+        : Promise.resolve({
+            data: [] as Array<{
+              customer_id: string;
+              class_id: string;
+              tuition_classes: { name: string } | { name: string }[] | null;
+            }>,
+          }),
+    ]);
+
+  const classes = classesRes.data || [];
+  const portalByCustomer = new Map(
+    (portalsRes.data || []).map((p) => [p.customer_id, p] as const)
+  );
+  const subjectsByCustomer = new Map<string, string[]>();
+  for (const e of enrollRes.data || []) {
+    const cls = Array.isArray(e.tuition_classes) ? e.tuition_classes[0] : e.tuition_classes;
+    const name = cls?.name;
+    if (!name) continue;
+    const list = subjectsByCustomer.get(e.customer_id) || [];
+    list.push(name);
+    subjectsByCustomer.set(e.customer_id, list);
+  }
+
+  const title = isTuition
+    ? t("titleTuition")
+    : isClinic
+      ? t("titleClinic")
+      : t("title");
+  const deletedTitle = isClinic || isTuition ? t("deletedTitleClinic") : t("deletedTitle");
+  const deletedHint = isClinic || isTuition ? t("deletedHintClinic") : t("deletedHint");
   const rowLabels = {
     name: t("name"),
     email: t("email"),
@@ -77,10 +123,13 @@ export default async function CustomersPage({
 
   return (
     <div className="stack" style={{ gap: "1.25rem" }}>
-      <PageHeader title={title} />
+      <PageHeader
+        title={title}
+        subtitle={isTuition ? t("tuitionSubtitle") : undefined}
+      />
 
       <div className="surface" style={{ padding: "1.25rem" }}>
-        <h3 style={{ marginTop: 0 }}>{t("add")}</h3>
+        <h3 style={{ marginTop: 0 }}>{isTuition ? t("addStudent") : t("add")}</h3>
         <ActionForm action={upsertCustomerAction} className="stack">
           <div
             style={{
@@ -140,6 +189,73 @@ export default async function CustomersPage({
             <label>{t("notes")}</label>
             <textarea name="notes" className="textarea" />
           </div>
+
+          {isTuition ? (
+            <>
+              <div className="field">
+                <label>{t("subjects")}</label>
+                <p className="muted" style={{ margin: "0 0 0.5rem", fontSize: "0.9rem" }}>
+                  {t("subjectsHint")}
+                </p>
+                {classes.length ? (
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                      gap: "0.4rem",
+                    }}
+                  >
+                    {classes.map((c) => (
+                      <label key={c.id} className="row" style={{ gap: "0.4rem", alignItems: "center" }}>
+                        <input type="checkbox" name="class_ids" value={c.id} />
+                        <span>{c.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="muted" style={{ margin: 0 }}>
+                    {t("noClassesYet")}
+                  </p>
+                )}
+              </div>
+
+              <div
+                className="surface"
+                style={{
+                  padding: "1rem",
+                  background: "var(--accent-soft)",
+                  border: "none",
+                }}
+              >
+                <label className="row" style={{ gap: "0.5rem", alignItems: "center", fontWeight: 600 }}>
+                  <input type="checkbox" name="create_portal" defaultChecked />
+                  {t("createPortalAccount")}
+                </label>
+                <p className="muted" style={{ margin: "0.4rem 0 0.75rem", fontSize: "0.9rem" }}>
+                  {t("createPortalHint")}
+                </p>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                    gap: "0.75rem",
+                  }}
+                >
+                  <div className="field">
+                    <label>{t("portalPassword")}</label>
+                    <input
+                      name="portal_password"
+                      type="password"
+                      className="input"
+                      minLength={6}
+                      placeholder={t("portalPasswordPlaceholder")}
+                    />
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : null}
+
           <button type="submit" className="btn btn-primary">
             {t("save")}
           </button>
@@ -150,12 +266,82 @@ export default async function CustomersPage({
         <PatientsList
           customers={(customers || []) as Customer[]}
           labels={rowLabels}
-          empty={t("empty")}
+          empty={isTuition ? t("emptyTuition") : t("empty")}
           searchPlaceholder={tc("search")}
           showAllergies={isClinic}
           showRisk={isClinic}
         />
       </div>
+
+      {isTuition ? (
+        <div className="surface" style={{ padding: "1.25rem" }}>
+          <h3 style={{ marginTop: 0 }}>{t("portalAndSubjects")}</h3>
+          <p className="muted">{t("portalAndSubjectsHint")}</p>
+          <div className="table-wrap">
+            <table className="data">
+              <thead>
+                <tr>
+                  <th>{t("name")}</th>
+                  <th>{t("subjects")}</th>
+                  <th>{t("portalStatus")}</th>
+                  <th>{t("portalLogin")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(customers || []).map((c) => {
+                  const portal = portalByCustomer.get(c.id);
+                  const subjects = subjectsByCustomer.get(c.id) || [];
+                  return (
+                    <tr key={c.id}>
+                      <td>{c.name}</td>
+                      <td>{subjects.length ? subjects.join(", ") : "—"}</td>
+                      <td>{portal?.active ? t("portalActive") : t("portalNone")}</td>
+                      <td>
+                        {portal ? (
+                          portal.email
+                        ) : (
+                          <ActionForm action={createStudentAccountAction} className="row" style={{ flexWrap: "wrap", gap: "0.4rem" }}>
+                            <input type="hidden" name="customer_id" value={c.id} />
+                            <input type="hidden" name="full_name" value={c.name} />
+                            <input
+                              name="email"
+                              type="email"
+                              className="input"
+                              required
+                              placeholder={c.email || "student@email.com"}
+                              defaultValue={c.email || ""}
+                              style={{ minWidth: 160 }}
+                            />
+                            <input
+                              name="password"
+                              type="password"
+                              className="input"
+                              required
+                              minLength={6}
+                              placeholder={t("portalPassword")}
+                              style={{ minWidth: 120 }}
+                            />
+                            <button type="submit" className="btn btn-soft">
+                              {t("createPortalShort")}
+                            </button>
+                          </ActionForm>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {!customers?.length ? (
+                  <tr>
+                    <td colSpan={4} className="muted">
+                      {t("emptyTuition")}
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : null}
 
       <div className="fluid-grid">
         <div className="surface history-zone" style={{ padding: "1.25rem" }}>

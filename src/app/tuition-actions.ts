@@ -164,14 +164,17 @@ export async function gradeSubmissionAction(formData: FormData) {
   return { success: true };
 }
 
-export async function createStudentAccountAction(formData: FormData) {
-  const { organization, profile } = await requireMemberWithCapability("student_accounts");
-  const customerId = String(formData.get("customer_id") || "");
-  const email = String(formData.get("email") || "").trim().toLowerCase();
-  const password = String(formData.get("password") || "");
-  const fullName = String(formData.get("full_name") || "").trim();
-
-  if (!customerId) return { error: "Select a student (customer) first" };
+/** Shared helper: link CRM customer → Auth student portal. */
+export async function provisionStudentPortal(opts: {
+  organizationId: string;
+  customerId: string;
+  email: string;
+  password: string;
+  fullName?: string;
+  byProfileId?: string;
+}) {
+  const email = opts.email.trim().toLowerCase();
+  const password = opts.password;
   if (!email) return { error: "Student email required" };
   if (!password || password.length < 6) return { error: "Password min 6 characters" };
 
@@ -180,20 +183,19 @@ export async function createStudentAccountAction(formData: FormData) {
     return { error: "Creating student accounts requires SUPABASE_SERVICE_ROLE_KEY on the server." };
   }
 
-  // Ensure customer belongs to org
   const { data: customer } = await admin
     .from("customers")
     .select("id, name, email")
-    .eq("id", customerId)
-    .eq("organization_id", organization.id)
+    .eq("id", opts.customerId)
+    .eq("organization_id", opts.organizationId)
     .maybeSingle();
   if (!customer) return { error: "Student not found" };
 
   const { data: existingLink } = await admin
     .from("tuition_students")
     .select("id")
-    .eq("organization_id", organization.id)
-    .eq("customer_id", customerId)
+    .eq("organization_id", opts.organizationId)
+    .eq("customer_id", opts.customerId)
     .maybeSingle();
   if (existingLink) return { error: "This student already has a portal account" };
 
@@ -207,9 +209,9 @@ export async function createStudentAccountAction(formData: FormData) {
       password,
       email_confirm: true,
       user_metadata: {
-        full_name: fullName || customer.name,
+        full_name: opts.fullName || customer.name,
         account_type: "allvisor-student",
-        organization_id: organization.id,
+        organization_id: opts.organizationId,
       },
     });
     if (createError || !created.user) {
@@ -217,11 +219,9 @@ export async function createStudentAccountAction(formData: FormData) {
     }
     userId = created.user.id;
   } else {
-    // Reset password for existing auth user if we created/linked
     await admin.auth.admin.updateUserById(userId, { password });
   }
 
-  // Block if this auth user is already staff somewhere
   const { data: staffMem } = await admin
     .from("memberships")
     .select("id")
@@ -235,12 +235,12 @@ export async function createStudentAccountAction(formData: FormData) {
   await admin.from("profiles").upsert({
     id: userId,
     email,
-    full_name: fullName || customer.name,
+    full_name: opts.fullName || customer.name,
   });
 
   const { error: linkError } = await admin.from("tuition_students").insert({
-    organization_id: organization.id,
-    customer_id: customerId,
+    organization_id: opts.organizationId,
+    customer_id: opts.customerId,
     user_id: userId,
     email,
     active: true,
@@ -248,18 +248,39 @@ export async function createStudentAccountAction(formData: FormData) {
   if (linkError) return { error: linkError.message };
 
   if (!customer.email) {
-    await admin.from("customers").update({ email }).eq("id", customerId);
+    await admin.from("customers").update({ email }).eq("id", opts.customerId);
   }
 
   await logActivity({
     action: "tuition.student_account.create",
     summary: `Created student portal for ${customer.name}`,
     entityType: "tuition_students",
-    entityId: customerId,
-    meta: { by: profile.id, email },
+    entityId: opts.customerId,
+    meta: { by: opts.byProfileId, email },
   });
-  revalidateApp("/student-accounts", "/customers");
-  return { success: true, email, hint: "Student can log in at /login then open Student portal." };
+  return { success: true as const, email };
+}
+
+export async function createStudentAccountAction(formData: FormData) {
+  const { organization, profile } = await requireMemberWithCapability("student_accounts");
+  const customerId = String(formData.get("customer_id") || "");
+  const email = String(formData.get("email") || "").trim().toLowerCase();
+  const password = String(formData.get("password") || "");
+  const fullName = String(formData.get("full_name") || "").trim();
+
+  if (!customerId) return { error: "Select a student first" };
+
+  const result = await provisionStudentPortal({
+    organizationId: organization.id,
+    customerId,
+    email,
+    password,
+    fullName,
+    byProfileId: profile.id,
+  });
+  if (result.error) return { error: result.error };
+  revalidateApp("/customers", "/student-accounts", "/classes");
+  return { success: true, email: result.email };
 }
 
 export async function resolvePostLoginPathAction(): Promise<string> {
