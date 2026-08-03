@@ -23,6 +23,10 @@ export function PrintInvoiceButton({
         }
         const body = document.body;
         body.classList.add("printing-invoice");
+        // Close any open allergy hover tip before print
+        if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+        }
 
         let cleaned = false;
         const cleanup = () => {

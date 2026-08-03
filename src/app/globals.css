@@ -558,53 +558,68 @@ table.data th {
     background: white !important;
   }
 
-  /* Print only the open invoice sheet (not the invoices list behind the modal) */
-  body.printing-invoice .app-grid {
+  /* Print only the open invoice — pin sheet to page 1 (no blank leading page) */
+  body.printing-invoice {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+
+  body.printing-invoice .app-grid,
+  body.printing-invoice .NavigationProgress {
     display: none !important;
   }
 
-  body.printing-invoice .modal-backdrop {
+  body.printing-invoice .modal-backdrop,
+  body.printing-invoice .invoice-print-modal,
+  body.printing-invoice .invoice-print-modal > .stack {
     position: static !important;
     inset: auto !important;
     display: block !important;
     background: transparent !important;
     padding: 0 !important;
-    z-index: auto !important;
-  }
-
-  body.printing-invoice .invoice-print-modal {
-    max-width: none !important;
-    max-height: none !important;
-    width: 100% !important;
-    overflow: visible !important;
-    padding: 0 !important;
+    margin: 0 !important;
     border: none !important;
     box-shadow: none !important;
     border-radius: 0 !important;
-    background: white !important;
+    max-width: none !important;
+    max-height: none !important;
+    width: auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    gap: 0 !important;
+    z-index: auto !important;
   }
 
-  body.printing-invoice .modal-backdrop > *:not(.invoice-print-modal) {
-    display: none !important;
-  }
-
-  body.printing-invoice .invoice-print-modal > *:not(.stack) {
-    display: none !important;
-  }
-
+  body.printing-invoice .modal-backdrop > *:not(.invoice-print-modal),
+  body.printing-invoice .invoice-print-modal > *:not(.stack),
   body.printing-invoice .invoice-print-modal > .stack > *:not(.invoice-sheet) {
     display: none !important;
   }
 
   body.printing-invoice .invoice-sheet {
-    display: block !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
     padding: 0 !important;
     box-shadow: none !important;
     border: none !important;
     background: white !important;
+    page-break-before: avoid !important;
+    break-before: avoid !important;
   }
 
-  body.printing-invoice .invoice-sheet .no-print {
+  body.printing-invoice .invoice-sheet .no-print,
+  body.printing-invoice .invoice-sheet .allergy-print-hide,
+  body.printing-invoice [role="tooltip"] {
     display: none !important;
+  }
+
+  body.printing-invoice .invoice-sheet .patient-name-allergy-text {
+    border-bottom: none !important;
+    cursor: default !important;
   }
 }

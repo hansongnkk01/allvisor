@@ -27,6 +27,7 @@ export function PatientSafetyBanner({
   return (
     <div
       role="alert"
+      className="allergy-print-hide"
       style={{
         margin: compact ? "0.35rem 0" : "0.65rem 0",
         padding: compact ? "0.4rem 0.55rem" : "0.55rem 0.75rem",

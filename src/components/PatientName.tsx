@@ -98,6 +98,7 @@ export function PatientName({
           <div
             id={tipId}
             role="tooltip"
+            className="allergy-print-hide"
             style={{
               position: "fixed",
               top: pos.top,
@@ -153,6 +154,7 @@ export function PatientName({
         }}
       >
         <span
+          className={allergyText ? "patient-name-allergy-text" : undefined}
           style={{
             borderBottom: allergyText
               ? "1px dotted rgba(185, 28, 28, 0.55)"
@@ -167,6 +169,7 @@ export function PatientName({
           <span
             aria-hidden
             title="Allergy"
+            className="allergy-print-hide"
             style={{
               color: "#b91c1c",
               fontSize: "0.72rem",
