@@ -117,6 +117,8 @@ export function AppShell({
     role === "supervisor" ||
     role === "manager";
   const keys = nicheNavKeys[niche].filter((key) => {
+    // Staff don't need Settings (admin settings live under Admin zone).
+    if (key === "settings" && role === "staff") return false;
     if (!ADMIN_ZONE_NAV_KEYS.has(key)) return true;
     return canSeeAdminZone;
   });

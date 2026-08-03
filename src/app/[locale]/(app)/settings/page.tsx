@@ -18,5 +18,6 @@ export default async function SettingsPage({
     redirect({ href: "/admin", locale });
   }
 
+  // Staff: Settings is not offered in nav; keep URL from landing on a dead page.
   redirect({ href: "/dashboard", locale });
 }
