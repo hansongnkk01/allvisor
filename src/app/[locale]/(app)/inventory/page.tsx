@@ -113,6 +113,10 @@ export default async function InventoryPage({
               <input name="sku" className="input" />
             </div>
             <div className="field">
+              <label>{t("barcode")}</label>
+              <input name="barcode" className="input" placeholder={t("barcodeHint")} />
+            </div>
+            <div className="field">
               <label>{t("price")}</label>
               <input name="unit_price" type="number" step="0.01" defaultValue={0} className="input" />
             </div>

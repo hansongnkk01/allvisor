@@ -361,6 +361,7 @@ export async function upsertProductAction(formData: FormData) {
     organization_id: organization.id,
     name: String(formData.get("name") || "").trim(),
     sku: String(formData.get("sku") || "") || null,
+    barcode: String(formData.get("barcode") || "").trim() || null,
     description: String(formData.get("description") || "") || null,
     unit_price: Number(formData.get("unit_price") || 0),
     cost_price: Number(formData.get("cost_price") || 0),
@@ -374,7 +375,27 @@ export async function upsertProductAction(formData: FormData) {
     ? await supabase.from("products").update(payload).eq("id", id).select("id").single()
     : await supabase.from("products").insert(payload).select("id").single();
 
-  if (error) return { error: error.message };
+  if (error) {
+    if (/barcode|schema cache|could not find/i.test(error.message)) {
+      // Retry without barcode if migration 018 not applied yet
+      const { barcode: _b, ...withoutBarcode } = payload;
+      const retry = id
+        ? await supabase.from("products").update(withoutBarcode).eq("id", id).select("id").single()
+        : await supabase.from("products").insert(withoutBarcode).select("id").single();
+      if (retry.error) return { error: retry.error.message };
+      await logActivity({
+        action: id ? "inventory.update" : "inventory.add",
+        summary: id
+          ? `Updated inventory item: ${payload.name}`
+          : `Added inventory item: ${payload.name} (qty ${payload.quantity})`,
+        entityType: "product",
+        entityId: retry.data?.id || id || null,
+      });
+      revalidateApp("/inventory", "/pos", "/dashboard", "/invoices");
+      return { success: true };
+    }
+    return { error: error.message };
+  }
 
   await logActivity({
     action: id ? "inventory.update" : "inventory.add",
@@ -1373,20 +1394,78 @@ export async function posCheckoutAction(formData: FormData) {
   if (organization.niche !== "retail") {
     return { error: "POS is only available for retail shops." };
   }
-  const productId = String(formData.get("product_id") || "");
-  const quantity = Number(formData.get("quantity") || 1);
-  const customerId = String(formData.get("customer_id") || "") || null;
 
-  const { data: product } = await supabase
+  const customerId = String(formData.get("customer_id") || "") || null;
+  const methodRaw = String(formData.get("payment_method") || "cash").toLowerCase();
+  const paymentMethod =
+    methodRaw === "card" ||
+    methodRaw === "ewallet" ||
+    methodRaw === "transfer" ||
+    methodRaw === "other"
+      ? methodRaw
+      : "cash";
+
+  type CartItem = { product_id: string; quantity: number };
+  let items: CartItem[] = [];
+  const cartJson = String(formData.get("cart_json") || "").trim();
+  if (cartJson) {
+    try {
+      const parsed = JSON.parse(cartJson) as CartItem[];
+      if (!Array.isArray(parsed) || !parsed.length) {
+        return { error: "Cart is empty" };
+      }
+      items = parsed
+        .map((row) => ({
+          product_id: String(row.product_id || ""),
+          quantity: Math.max(0, Math.floor(Number(row.quantity) || 0)),
+        }))
+        .filter((row) => row.product_id && row.quantity > 0);
+    } catch {
+      return { error: "Invalid cart data" };
+    }
+  } else {
+    // Legacy single-product checkout
+    const productId = String(formData.get("product_id") || "");
+    const quantity = Math.max(1, Math.floor(Number(formData.get("quantity") || 1)));
+    if (productId) items = [{ product_id: productId, quantity }];
+  }
+
+  if (!items.length) return { error: "Cart is empty" };
+
+  // Merge duplicate product lines
+  const merged = new Map<string, number>();
+  for (const row of items) {
+    merged.set(row.product_id, (merged.get(row.product_id) || 0) + row.quantity);
+  }
+
+  const productIds = [...merged.keys()];
+  const { data: productRows } = await supabase
     .from("products")
     .select("*")
-    .eq("id", productId)
-    .single();
+    .eq("organization_id", organization.id)
+    .in("id", productIds);
 
-  if (!product) return { error: "Product not found" };
-  if (product.quantity < quantity) return { error: "Insufficient stock" };
+  const productsById = new Map((productRows || []).map((p) => [p.id as string, p]));
+  const lines: Array<{
+    product: NonNullable<typeof productRows>[number];
+    quantity: number;
+    lineTotal: number;
+  }> = [];
 
-  const lineTotal = quantity * Number(product.unit_price);
+  for (const [pid, qty] of merged) {
+    const product = productsById.get(pid);
+    if (!product) return { error: `Product not found` };
+    if (Number(product.quantity) < qty) {
+      return { error: `Insufficient stock for ${product.name}` };
+    }
+    lines.push({
+      product,
+      quantity: qty,
+      lineTotal: qty * Number(product.unit_price),
+    });
+  }
+
+  const subtotal = lines.reduce((s, l) => s + l.lineTotal, 0);
   const { count } = await supabase
     .from("invoices")
     .select("*", { count: "exact", head: true })
@@ -1403,61 +1482,69 @@ export async function posCheckoutAction(formData: FormData) {
       organization_id: organization.id,
       customer_id: customerId,
       invoice_number: invoiceNumber,
+      title: `POS ${invoiceNumber}`,
       status: "paid",
-      subtotal: lineTotal,
+      subtotal,
       tax_amount: 0,
-      total: lineTotal,
-      amount_paid: lineTotal,
+      total: subtotal,
+      amount_paid: subtotal,
     })
     .select("*")
     .single();
 
   if (error || !invoice) return { error: error?.message || "Checkout failed" };
 
-  await supabase.from("invoice_lines").insert({
-    invoice_id: invoice.id,
-    organization_id: organization.id,
-    product_id: product.id,
-    description: product.name,
-    quantity,
-    unit_price: product.unit_price,
-    line_total: lineTotal,
-  });
+  await supabase.from("invoice_lines").insert(
+    lines.map((l) => ({
+      invoice_id: invoice.id,
+      organization_id: organization.id,
+      product_id: l.product.id,
+      description: l.product.name,
+      quantity: l.quantity,
+      unit_price: l.product.unit_price,
+      line_total: l.lineTotal,
+    }))
+  );
 
   await supabase.from("payments").insert({
     organization_id: organization.id,
     invoice_id: invoice.id,
-    amount: lineTotal,
-    method: "cash",
+    amount: subtotal,
+    method: paymentMethod,
   });
 
-  await supabase.from("stock_movements").insert({
-    organization_id: organization.id,
-    product_id: product.id,
-    type: "sale",
-    quantity,
-    note: `POS ${invoiceNumber}`,
-    created_by: profile.id,
-  });
-
-  await supabase
-    .from("products")
-    .update({ quantity: product.quantity - quantity })
-    .eq("id", product.id);
+  for (const l of lines) {
+    await supabase.from("stock_movements").insert({
+      organization_id: organization.id,
+      product_id: l.product.id,
+      type: "sale",
+      quantity: l.quantity,
+      note: `POS ${invoiceNumber}`,
+      created_by: profile.id,
+    });
+    await supabase
+      .from("products")
+      .update({ quantity: Number(l.product.quantity) - l.quantity })
+      .eq("id", l.product.id);
+  }
 
   await supabase.from("ledger_entries").insert({
     organization_id: organization.id,
     entry_type: "income",
     source: "pos",
     source_id: invoice.id,
-    amount: lineTotal,
+    amount: subtotal,
     entry_date: formatDayKeyMY(),
     description: `POS sale ${invoiceNumber}`,
   });
 
+  const summaryItems = lines
+    .map((l) => `${l.product.name} × ${l.quantity}`)
+    .join(", ");
+
   await logActivity({
     action: "pos.checkout",
-    summary: `POS sale ${invoiceNumber} · ${product.name} × ${quantity}`,
+    summary: `POS sale ${invoiceNumber} · ${summaryItems}`,
     entityType: "invoice",
     entityId: invoice.id,
   });

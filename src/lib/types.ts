@@ -112,6 +112,7 @@ export interface Product {
   organization_id: string;
   name: string;
   sku: string | null;
+  barcode?: string | null;
   description: string | null;
   unit_price: number;
   cost_price: number;

@@ -585,8 +585,19 @@ table.data th {
   }
 }
 
+.pos-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.9fr);
+  gap: 1rem;
+  align-items: start;
+}
+
 @media (max-width: 900px) {
   .app-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pos-grid {
     grid-template-columns: 1fr;
   }
 

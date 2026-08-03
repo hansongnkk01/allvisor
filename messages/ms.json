@@ -195,17 +195,33 @@
     "frequentlyUsed": "Sering dipakai",
     "frequentlyUsedHint": "Paling kerap dikeluarkan / dijual 90 hari lepas — mudah dicari.",
     "usedTimes": "kali",
-    "onHand": "dalam stok"
+    "onHand": "dalam stok",
+    "barcode": "Barcode",
+    "barcodeHint": "EAN / kod scan (pilihan)"
   },
   "POS": {
-    "title": "POS / Jualan pantas",
+    "title": "POS / Jualan",
+    "subtitle": "Scan atau cari produk, bina troli, kemudian sahkan bayaran.",
     "selectProduct": "Pilih produk",
     "qty": "Kuantiti",
     "customer": "Pelanggan (pilihan)",
     "checkout": "Sahkan jualan",
+    "checkingOut": "Memproses…",
     "success": "Jualan berjaya — invois dicipta & stok dikurangkan.",
     "cart": "Troli",
-    "total": "Jumlah"
+    "total": "Jumlah",
+    "search": "Cari / barcode",
+    "searchHint": "Taip nama, SKU atau barcode — Enter untuk tambah",
+    "payment": "Kaedah bayaran",
+    "cash": "Tunai",
+    "card": "Kad",
+    "ewallet": "E-wallet",
+    "transfer": "Transfer",
+    "emptyCart": "Troli kosong — tambah produk dahulu.",
+    "add": "Tambah",
+    "remove": "Buang",
+    "frequent": "Kerap dijual",
+    "stock": "Stok"
   },
   "Invoices": {
     "title": "Invois",
