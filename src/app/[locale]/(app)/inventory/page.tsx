@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { ActionForm } from "@/components/ActionForm";
 import { upsertProductAction } from "@/app/actions";
 import { InventoryStockTable } from "@/components/InventoryStockTable";
+import { InventoryBarcodeInput } from "@/components/InventoryBarcodeInput";
 import { FrequentlyUsedStock } from "@/components/FrequentlyUsedStock";
 import { SectionActivityLog } from "@/components/SectionActivityLog";
 import { fetchSectionLogs } from "@/lib/section-logs";
@@ -22,24 +23,38 @@ export default async function InventoryPage({
   const since = new Date();
   since.setDate(since.getDate() - 90);
 
-  const [{ data: products }, { data: movements }, logs] = await Promise.all([
-    supabase
+  const [{ data: productsRaw, error: productsError }, { data: movements }, logs] =
+    await Promise.all([
+      supabase
+        .from("products")
+        .select(
+          "id, name, sku, barcode, unit_price, quantity, low_stock_threshold, created_at"
+        )
+        .eq("organization_id", ctx.organization.id)
+        .order("created_at", { ascending: false })
+        .limit(500),
+      supabase
+        .from("stock_movements")
+        .select("product_id, quantity, products(id, name, sku, quantity)")
+        .eq("organization_id", ctx.organization.id)
+        .in("type", ["out", "sale"])
+        .gte("created_at", since.toISOString())
+        .limit(3000),
+      fetchSectionLogs(ctx.organization.id, ["inventory"], 25),
+    ]);
+
+  let products = productsRaw;
+  if (productsError && /barcode/i.test(productsError.message)) {
+    const fallback = await supabase
       .from("products")
       .select(
         "id, name, sku, unit_price, quantity, low_stock_threshold, created_at"
       )
       .eq("organization_id", ctx.organization.id)
       .order("created_at", { ascending: false })
-      .limit(500),
-    supabase
-      .from("stock_movements")
-      .select("product_id, quantity, products(id, name, sku, quantity)")
-      .eq("organization_id", ctx.organization.id)
-      .in("type", ["out", "sale"])
-      .gte("created_at", since.toISOString())
-      .limit(3000),
-    fetchSectionLogs(ctx.organization.id, ["inventory"], 25),
-  ]);
+      .limit(500);
+    products = (fallback.data || []).map((p) => ({ ...p, barcode: null }));
+  }
 
   const usage = new Map<
     string,
@@ -112,10 +127,7 @@ export default async function InventoryPage({
               <label>{t("sku")}</label>
               <input name="sku" className="input" />
             </div>
-            <div className="field">
-              <label>{t("barcode")}</label>
-              <input name="barcode" className="input" placeholder={t("barcodeHint")} />
-            </div>
+            <InventoryBarcodeInput label={t("barcode")} placeholder={t("barcodeHint")} />
             <div className="field">
               <label>{t("price")}</label>
               <input name="unit_price" type="number" step="0.01" defaultValue={0} className="input" />
@@ -145,6 +157,7 @@ export default async function InventoryPage({
             id: p.id,
             name: p.name,
             sku: p.sku,
+            barcode: (p as { barcode?: string | null }).barcode ?? null,
             unit_price: Number(p.unit_price),
             quantity: p.quantity,
             low_stock_threshold: p.low_stock_threshold,
@@ -153,6 +166,7 @@ export default async function InventoryPage({
           labels={{
             name: t("name"),
             sku: t("sku"),
+            barcode: t("barcode"),
             price: t("price"),
             qty: t("qty"),
             addedAt: t("addedAt"),

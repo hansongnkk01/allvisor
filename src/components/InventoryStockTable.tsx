@@ -12,6 +12,7 @@ type Product = {
   id: string;
   name: string;
   sku: string | null;
+  barcode: string | null;
   unit_price: number;
   quantity: number;
   low_stock_threshold: number;
@@ -26,6 +27,7 @@ export function InventoryStockTable({
   labels: {
     name: string;
     sku: string;
+    barcode: string;
     price: string;
     qty: string;
     addedAt: string;
@@ -48,7 +50,11 @@ export function InventoryStockTable({
     const needle = q.trim().toLowerCase();
     if (!needle) return products;
     return products.filter((p) =>
-      [p.name, p.sku].filter(Boolean).join(" ").toLowerCase().includes(needle)
+      [p.name, p.sku, p.barcode]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(needle)
     );
   }, [products, q]);
   const pager = useClientPager(filtered, 10);
@@ -149,6 +155,7 @@ export function InventoryStockTable({
               <th style={{ width: 40 }}>{labels.selectItem}</th>
               <th>{labels.name}</th>
               <th>{labels.sku}</th>
+              <th>{labels.barcode}</th>
               <th>{labels.price}</th>
               <th>{labels.qty}</th>
               <th>{labels.addedAt}</th>
@@ -173,6 +180,7 @@ export function InventoryStockTable({
                   ) : null}
                 </td>
                 <td>{p.sku || "—"}</td>
+                <td>{p.barcode || "—"}</td>
                 <td>{formatCurrency(Number(p.unit_price))}</td>
                 <td>{p.quantity}</td>
                 <td>{formatDateTime(p.created_at)}</td>
@@ -204,7 +212,7 @@ export function InventoryStockTable({
             ))}
             {!filtered.length ? (
               <tr>
-                <td colSpan={7} className="muted">
+                <td colSpan={8} className="muted">
                   {labels.empty}
                 </td>
               </tr>
