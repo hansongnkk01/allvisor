@@ -3413,6 +3413,7 @@ export async function importMigrationDataAction(
         organization_id: organization.id,
         name,
         sku: String(r.sku || "").trim() || null,
+        barcode: String(r.barcode || "").trim() || null,
         description: String(r.description || "").trim() || null,
         unit_price: toNumber(r.unit_price),
         cost_price: toNumber(r.cost_price),
@@ -3423,7 +3424,11 @@ export async function importMigrationDataAction(
     }
     for (let i = 0; i < payloads.length; i += 100) {
       const chunk = payloads.slice(i, i + 100);
-      const { error } = await supabase.from("products").insert(chunk);
+      let { error } = await supabase.from("products").insert(chunk);
+      if (error && /barcode|schema cache|could not find/i.test(error.message)) {
+        const withoutBarcode = chunk.map(({ barcode: _b, ...rest }) => rest);
+        ({ error } = await supabase.from("products").insert(withoutBarcode));
+      }
       if (error) return { error: error.message, inserted, skipped, errors };
       inserted += chunk.length;
     }

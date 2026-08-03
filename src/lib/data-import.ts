@@ -27,7 +27,8 @@ const ALIASES: Record<ImportKind, Record<string, string[]>> = {
   },
   products: {
     name: ["name", "product_name", "item_name", "medicine", "nama", "nama_item"],
-    sku: ["sku", "code", "item_code", "barcode", "kod"],
+    sku: ["sku", "code", "item_code", "kod"],
+    barcode: ["barcode", "ean", "upc", "scan_code", "kod_bar"],
     unit_price: ["unit_price", "price", "selling_price", "harga", "harga_jual"],
     cost_price: ["cost_price", "cost", "harga_kos", "kos"],
     quantity: ["quantity", "qty", "stock", "kuantiti", "stok"],
@@ -86,10 +87,19 @@ export const IMPORT_TEMPLATES: Record<
   },
   products: {
     filename: "allvisor-products-template.csv",
-    headers: ["name", "sku", "unit_price", "cost_price", "quantity", "low_stock_threshold", "description"],
+    headers: [
+      "name",
+      "sku",
+      "barcode",
+      "unit_price",
+      "cost_price",
+      "quantity",
+      "low_stock_threshold",
+      "description",
+    ],
     sample: [
-      ["Paracetamol 500mg", "MED-001", "5.00", "2.50", "100", "20", "Tablet"],
-      ["Surgical gloves M", "SUP-010", "12.00", "6.00", "50", "10", "Box of 100"],
+      ["Paracetamol 500mg", "MED-001", "9551234567890", "5.00", "2.50", "100", "20", "Tablet"],
+      ["Surgical gloves M", "SUP-010", "9559876543210", "12.00", "6.00", "50", "10", "Box of 100"],
     ],
   },
   service_categories: {
