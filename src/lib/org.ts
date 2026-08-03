@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { redirect } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { resolveOrgLogoUrl } from "@/lib/org-logo";
 import type { Membership, Organization, OrgContext, Profile } from "@/lib/types";
 
 /** Dedupes auth lookup within a single server request. */
@@ -98,15 +99,30 @@ export const getOrgContext = cache(async (): Promise<OrgContext | null> => {
     .select("logo_url, logo_shape")
     .eq("id", organization.id)
     .maybeSingle();
-  if (logoRow) {
-    organization = {
-      ...organization,
-      logo_url: logoRow.logo_url ?? null,
-      logo_shape: (logoRow.logo_shape === "square" ? "square" : "round") as
-        | "round"
-        | "square",
-    };
-  }
+
+  const admin = process.env.SUPABASE_SERVICE_ROLE_KEY
+    ? await (async () => {
+        const { createClient: createAdminClient } = await import("@supabase/supabase-js");
+        return createAdminClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+      })()
+    : null;
+
+  const resolvedLogoUrl = await resolveOrgLogoUrl(
+    admin || supabase,
+    organization.id,
+    logoRow?.logo_url ?? null
+  );
+
+  organization = {
+    ...organization,
+    logo_url: resolvedLogoUrl,
+    logo_shape: (logoRow?.logo_shape === "square" ? "square" : "round") as
+      | "round"
+      | "square",
+  };
 
   const profileRow = Array.isArray(membership.profiles)
     ? membership.profiles[0]

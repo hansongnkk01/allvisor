@@ -160,7 +160,14 @@ export function ClinicLogoEditor({
           setError("Could not crop image");
           return;
         }
-        fd.set("logo", new File([blob], "logo.png", { type: "image/png" }));
+        // Base64 is more reliable than File in Server Actions.
+        const buf = new Uint8Array(await blob.arrayBuffer());
+        let binary = "";
+        const chunk = 0x8000;
+        for (let i = 0; i < buf.length; i += chunk) {
+          binary += String.fromCharCode(...buf.subarray(i, i + chunk));
+        }
+        fd.set("logo_base64", btoa(binary));
       } else if (!savedUrl) {
         setError("Choose a logo image first");
         return;
@@ -173,8 +180,8 @@ export function ClinicLogoEditor({
       if (res && "data" in res && res.data?.logo_url) {
         setSavedUrl(res.data.logo_url);
         setSrc(null);
-      } else if (res && "data" in res && !res.data?.logo_url && src) {
-        setError("Save finished but no logo URL returned. Check migration 017 / storage bucket.");
+      } else if (src) {
+        setError("Save finished but no logo URL returned. Run migration 017 fully, then try again.");
         return;
       }
       router.refresh();
