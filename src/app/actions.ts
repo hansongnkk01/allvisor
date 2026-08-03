@@ -212,8 +212,12 @@ export async function upsertCustomerAction(formData: FormData) {
   }
 
   if (conflicts.length) {
+    const { hasCapability } = await import("@/lib/niches");
+    const isTuition = hasCapability(organization.niche, "class_schedule");
     return {
-      error: "A patient with the same name, IC, email, or phone already exists.",
+      error: isTuition
+        ? "A student with the same name, IC, or phone already exists."
+        : "A patient with the same name, IC, email, or phone already exists.",
       conflicts,
     };
   }
@@ -267,10 +271,21 @@ export async function upsertCustomerAction(formData: FormData) {
     const createPortal = formData.get("create_portal") === "on";
     if (createPortal && !id) {
       const portalPassword = String(formData.get("portal_password") || "");
-      const portalEmail = emailRaw || String(formData.get("portal_email") || "").trim();
-      if (!portalEmail) {
-        return { error: "Email required to create student Allvisor account" };
+      if (!portalPassword || portalPassword.length < 6) {
+        return { error: "Portal password required (min 6 characters)" };
       }
+      const icDigits = icRaw.replace(/\D/g, "");
+      const phoneDigits = phoneRaw.replace(/\D/g, "");
+      const loginKey = icDigits || phoneDigits || customerId.replace(/-/g, "").slice(0, 12);
+      if (!loginKey) {
+        return { error: "IC or phone required to create student login" };
+      }
+      const orgShort = organization.id.replace(/-/g, "").slice(0, 8);
+      const portalEmail = `s${orgShort}.${loginKey}@student.allvisor.app`;
+
+      // Persist generated login email on customer record for reference
+      await supabase.from("customers").update({ email: portalEmail }).eq("id", customerId);
+
       const { provisionStudentPortal } = await import("@/app/tuition-actions");
       const portal = await provisionStudentPortal({
         organizationId: organization.id,

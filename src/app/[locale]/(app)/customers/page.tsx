@@ -159,10 +159,24 @@ export default async function CustomersPage({
               <label>{t("ic")}</label>
               <input name="ic_number" className="input" placeholder="900101-14-5678" />
             </div>
-            <div className="field">
-              <label>{t("email")}</label>
-              <input name="email" type="email" className="input" />
-            </div>
+            {isTuition ? (
+              <div className="field">
+                <label>{t("portalPassword")}</label>
+                <input
+                  name="portal_password"
+                  type="password"
+                  className="input"
+                  minLength={6}
+                  required
+                  placeholder={t("portalPasswordPlaceholder")}
+                />
+              </div>
+            ) : (
+              <div className="field">
+                <label>{t("email")}</label>
+                <input name="email" type="email" className="input" />
+              </div>
+            )}
             <div className="field">
               <label>{t("phone")}</label>
               <input name="phone" className="input" />
@@ -236,27 +250,9 @@ export default async function CustomersPage({
                   <input type="checkbox" name="create_portal" defaultChecked />
                   {t("createPortalAccount")}
                 </label>
-                <p className="muted" style={{ margin: "0.4rem 0 0.75rem", fontSize: "0.9rem" }}>
-                  {t("createPortalHint")}
+                <p className="muted" style={{ margin: "0.4rem 0 0", fontSize: "0.9rem" }}>
+                  {t("createPortalHintTuition")}
                 </p>
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-                    gap: "0.75rem",
-                  }}
-                >
-                  <div className="field">
-                    <label>{t("portalPassword")}</label>
-                    <input
-                      name="portal_password"
-                      type="password"
-                      className="input"
-                      minLength={6}
-                      placeholder={t("portalPasswordPlaceholder")}
-                    />
-                  </div>
-                </div>
               </div>
             </>
           ) : null}
@@ -309,22 +305,13 @@ export default async function CustomersPage({
                             <input type="hidden" name="customer_id" value={c.id} />
                             <input type="hidden" name="full_name" value={c.name} />
                             <input
-                              name="email"
-                              type="email"
-                              className="input"
-                              required
-                              placeholder={c.email || "student@email.com"}
-                              defaultValue={c.email || ""}
-                              style={{ minWidth: 160 }}
-                            />
-                            <input
                               name="password"
                               type="password"
                               className="input"
                               required
                               minLength={6}
                               placeholder={t("portalPassword")}
-                              style={{ minWidth: 120 }}
+                              style={{ minWidth: 140 }}
                             />
                             <button type="submit" className="btn btn-soft">
                               {t("createPortalShort")}

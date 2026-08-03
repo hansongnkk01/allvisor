@@ -306,13 +306,33 @@ export async function provisionStudentPortal(opts: {
 }
 
 export async function createStudentAccountAction(formData: FormData) {
-  const { organization, profile } = await requireMemberWithCapability("student_accounts");
+  const { organization, profile, supabase } = await requireMemberWithCapability("student_accounts");
   const customerId = String(formData.get("customer_id") || "");
-  const email = String(formData.get("email") || "").trim().toLowerCase();
-  const password = String(formData.get("password") || "");
+  let email = String(formData.get("email") || "").trim().toLowerCase();
+  const password = String(formData.get("password") || formData.get("portal_password") || "");
   const fullName = String(formData.get("full_name") || "").trim();
 
   if (!customerId) return { error: "Select a student first" };
+
+  if (!email) {
+    const { data: customer } = await supabase
+      .from("customers")
+      .select("id, ic_number, phone, email")
+      .eq("id", customerId)
+      .eq("organization_id", organization.id)
+      .maybeSingle();
+    if (!customer) return { error: "Student not found" };
+    if (customer.email) {
+      email = customer.email;
+    } else {
+      const icDigits = String(customer.ic_number || "").replace(/\D/g, "");
+      const phoneDigits = String(customer.phone || "").replace(/\D/g, "");
+      const loginKey = icDigits || phoneDigits || customerId.replace(/-/g, "").slice(0, 12);
+      const orgShort = organization.id.replace(/-/g, "").slice(0, 8);
+      email = `s${orgShort}.${loginKey}@student.allvisor.app`;
+      await supabase.from("customers").update({ email }).eq("id", customerId);
+    }
+  }
 
   const result = await provisionStudentPortal({
     organizationId: organization.id,
