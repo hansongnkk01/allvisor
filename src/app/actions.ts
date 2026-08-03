@@ -3594,6 +3594,224 @@ export async function importMigrationDataAction(
       if (error) return { error: error.message, inserted, skipped, errors };
       inserted += chunk.length;
     }
+  } else if (kind === "past_sales") {
+    // Historical receipts/invoices for customer History. Does NOT adjust stock.
+    const [{ data: customers }, { data: products }] = await Promise.all([
+      supabase
+        .from("customers")
+        .select("id, name, ic_number, phone")
+        .eq("organization_id", organization.id),
+      supabase
+        .from("products")
+        .select("id, name, sku, barcode")
+        .eq("organization_id", organization.id),
+    ]);
+
+    const byIc = new Map(
+      (customers || [])
+        .filter((c) => c.ic_number)
+        .map((c) => [c.ic_number!.trim().toLowerCase(), c.id] as const)
+    );
+    const byPhone = new Map(
+      (customers || [])
+        .filter((c) => c.phone)
+        .map((c) => [c.phone!.replace(/\D/g, ""), c.id] as const)
+    );
+    const byName = new Map(
+      (customers || []).map((c) => [c.name.trim().toLowerCase(), c.id] as const)
+    );
+    const byBarcode = new Map(
+      (products || [])
+        .filter((p) => p.barcode)
+        .map((p) => [String(p.barcode).trim().toLowerCase(), p] as const)
+    );
+    const bySku = new Map(
+      (products || [])
+        .filter((p) => p.sku)
+        .map((p) => [String(p.sku).trim().toLowerCase(), p] as const)
+    );
+    const byProductName = new Map(
+      (products || []).map((p) => [p.name.trim().toLowerCase(), p] as const)
+    );
+
+    type SaleLine = {
+      product_id: string | null;
+      description: string;
+      quantity: number;
+      unit_price: number;
+      line_total: number;
+      row: number;
+    };
+    type SaleGroup = {
+      invoice_number: string;
+      issue_date: string;
+      created_at: string;
+      customer_id: string;
+      payment_method: string;
+      notes: string | null;
+      lines: SaleLine[];
+    };
+
+    const groups = new Map<string, SaleGroup>();
+
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      const invoiceNumber = String(r.invoice_number || "").trim();
+      const productName = String(r.product_name || "").trim();
+      const qty = toNumber(r.quantity, 1);
+      const unitPrice = toNumber(r.unit_price);
+      if (!invoiceNumber) {
+        skipped++;
+        errors.push({ row: i + 2, message: "invoice_number required" });
+        continue;
+      }
+      if (!productName || qty <= 0) {
+        skipped++;
+        errors.push({ row: i + 2, message: "product_name and quantity required" });
+        continue;
+      }
+
+      const customerName = String(r.customer_name || "").trim();
+      const customerIc = String(r.customer_ic || "").trim().toLowerCase();
+      const customerPhone = String(r.customer_phone || "").replace(/\D/g, "");
+      const customerId =
+        (customerIc && byIc.get(customerIc)) ||
+        (customerPhone && byPhone.get(customerPhone)) ||
+        (customerName && byName.get(customerName.toLowerCase())) ||
+        null;
+      if (!customerId) {
+        skipped++;
+        errors.push({
+          row: i + 2,
+          message: `Customer not found (${customerName || customerIc || customerPhone || "—"})`,
+        });
+        continue;
+      }
+
+      const barcode = String(r.barcode || "").trim().toLowerCase();
+      const sku = String(r.sku || "").trim().toLowerCase();
+      const product =
+        (barcode && byBarcode.get(barcode)) ||
+        (sku && bySku.get(sku)) ||
+        byProductName.get(productName.toLowerCase()) ||
+        null;
+
+      const issueRaw = String(r.issue_date || "").trim();
+      const parsed = parseDateTime(issueRaw) || parseDateTime(`${issueRaw} 12:00`);
+      const createdAt = parsed || new Date().toISOString();
+      const issueDate = createdAt.slice(0, 10);
+
+      const methodRaw = String(r.payment_method || "cash").toLowerCase();
+      const paymentMethod =
+        methodRaw === "card" ||
+        methodRaw === "ewallet" ||
+        methodRaw === "transfer" ||
+        methodRaw === "other"
+          ? methodRaw
+          : "cash";
+
+      const key = invoiceNumber.toLowerCase();
+      let group = groups.get(key);
+      if (!group) {
+        group = {
+          invoice_number: invoiceNumber,
+          issue_date: issueDate,
+          created_at: createdAt,
+          customer_id: customerId,
+          payment_method: paymentMethod,
+          notes: String(r.notes || "").trim() || "Imported past sale",
+          lines: [],
+        };
+        groups.set(key, group);
+      } else if (group.customer_id !== customerId) {
+        skipped++;
+        errors.push({
+          row: i + 2,
+          message: `Invoice ${invoiceNumber} has mixed customers`,
+        });
+        continue;
+      }
+
+      group.lines.push({
+        product_id: product?.id || null,
+        description: product?.name || productName,
+        quantity: qty,
+        unit_price: unitPrice,
+        line_total: qty * unitPrice,
+        row: i + 2,
+      });
+    }
+
+    for (const group of groups.values()) {
+      if (!group.lines.length) continue;
+      const { data: existing } = await supabase
+        .from("invoices")
+        .select("id")
+        .eq("organization_id", organization.id)
+        .eq("invoice_number", group.invoice_number)
+        .maybeSingle();
+      if (existing) {
+        skipped += group.lines.length;
+        errors.push({
+          row: group.lines[0].row,
+          message: `Invoice already exists: ${group.invoice_number}`,
+        });
+        continue;
+      }
+
+      const subtotal = group.lines.reduce((s, l) => s + l.line_total, 0);
+      const { data: invoice, error } = await supabase
+        .from("invoices")
+        .insert({
+          organization_id: organization.id,
+          customer_id: group.customer_id,
+          invoice_number: group.invoice_number,
+          title: `Past sale ${group.invoice_number}`,
+          status: "paid",
+          issue_date: group.issue_date,
+          subtotal,
+          tax_amount: 0,
+          total: subtotal,
+          amount_paid: subtotal,
+          notes: group.notes,
+          created_by: profile.id,
+          created_by_name: actor,
+          created_at: group.created_at,
+        })
+        .select("id")
+        .single();
+      if (error || !invoice) {
+        return {
+          error: error?.message || `Failed to create ${group.invoice_number}`,
+          inserted,
+          skipped,
+          errors,
+        };
+      }
+
+      const { error: lineErr } = await supabase.from("invoice_lines").insert(
+        group.lines.map((l) => ({
+          invoice_id: invoice.id,
+          organization_id: organization.id,
+          product_id: l.product_id,
+          description: l.description,
+          quantity: l.quantity,
+          unit_price: l.unit_price,
+          line_total: l.line_total,
+        }))
+      );
+      if (lineErr) return { error: lineErr.message, inserted, skipped, errors };
+
+      await supabase.from("payments").insert({
+        organization_id: organization.id,
+        invoice_id: invoice.id,
+        amount: subtotal,
+        method: group.payment_method,
+        note: group.notes,
+      });
+
+      inserted += group.lines.length;
+    }
   } else if (kind === "service_categories") {
     const payloads = [];
     for (let i = 0; i < rows.length; i++) {
@@ -3767,6 +3985,8 @@ export async function importMigrationDataAction(
     "/appointments",
     "/inventory",
     "/invoices",
+    "/receipts",
+    "/pos",
     "/dashboard",
     "/staff"
   );

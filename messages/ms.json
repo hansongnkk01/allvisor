@@ -495,11 +495,12 @@
     "shopSettingsTitle": "Tetapan caj kedai",
     "shopSettingsHint": "Caj perkhidmatan ikut cawangan yang dikenakan pada invois kedai ini.",
     "importHintRetail": "Export CSV atau Excel dari software kedai lama, kemudian upload di sini untuk migrate ke Allvisor.",
-    "importOrderHintRetail": "Susunan dicadangkan: Pelanggan → Kategori produk → Inventori → Pembekal.",
+    "importOrderHintRetail": "Susunan dicadangkan: Pelanggan → Kategori produk → Inventori → Pembekal → Jualan / resit lama.",
     "importCustomers": "Pelanggan",
     "importProductCategories": "Kategori produk",
     "importProductItems": "Item katalog",
-    "importSuppliers": "Pembekal"
+    "importSuppliers": "Pembekal",
+    "importPastSales": "Jualan / resit lama"
   },
   "Accounting": {
     "title": "Perakaunan klinik",

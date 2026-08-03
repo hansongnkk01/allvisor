@@ -1,19 +1,22 @@
 # Allvisor demo CSV files (20 rows each)
 
 ## Retail — import order in Admin
-1. `demo-customers.csv` → Data type: **Customers**
-2. `demo-product-categories.csv` → **Product categories** (parents first; subcategories use `parent`)
-3. `demo-products.csv` → **Inventory / products** (category names must match step 2)
+1. `demo-customers.csv` → **Customers**
+2. `demo-product-categories.csv` → **Product categories**
+3. `demo-products.csv` → **Inventory / products**
 4. `demo-suppliers.csv` → **Suppliers**
+5. `demo-past-sales.csv` → **Past sales / receipts** (fills customer History)
 
-## Clinic — full import set
-1. `demo-customers.csv` → Patients / customers
-2. `demo-service-categories.csv` → Service categories
-3. `demo-service-items.csv` → Service items
-4. `demo-products.csv` → Inventory / products (optional; category column needs product categories if used)
-5. `demo-appointments.csv` → Appointments (patients must exist)
+## Past sales CSV format
+One row = one line item. Same `invoice_number` groups into one receipt.
+Match customer by IC / phone / name. Match product by barcode / SKU / name.
+**Does not reduce stock** (historical import only).
+
+After import, open **Customers → History** (e.g. Daniel Teo) to see past purchases.
+
+## Clinic
+1. customers → service categories → service items → products → appointments
 
 ## Notes
-- Product barcodes like `8717` are for POS scan testing.
-- `price_on_sale=yes` on Custom cable cut = set price at POS.
-- Run migration `019_retail_ops.sql` before importing product categories / suppliers / retail product fields.
+- Barcode `8717` = Tali Nylon for POS scan tests
+- Run `019_retail_ops.sql` before retail category/supplier/product field imports

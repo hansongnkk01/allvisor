@@ -5,6 +5,7 @@ export type ImportKind =
   | "products"
   | "product_categories"
   | "suppliers"
+  | "past_sales"
   | "service_categories"
   | "service_items"
   | "appointments";
@@ -51,6 +52,20 @@ const ALIASES: Record<ImportKind, Record<string, string[]>> = {
     phone: ["phone", "tel", "mobile", "telefon"],
     email: ["email", "e_mail", "emel"],
     address: ["address", "alamat"],
+    notes: ["notes", "note", "remark", "catatan"],
+  },
+  past_sales: {
+    invoice_number: ["invoice_number", "receipt_number", "receipt_no", "inv", "no_resit"],
+    issue_date: ["issue_date", "date", "sale_date", "tarikh", "created_at"],
+    customer_name: ["customer_name", "name", "nama", "nama_pelanggan"],
+    customer_ic: ["customer_ic", "ic_number", "ic", "nric", "no_ic"],
+    customer_phone: ["customer_phone", "phone", "tel", "telefon"],
+    product_name: ["product_name", "item", "item_name", "nama_produk", "description"],
+    sku: ["sku", "code", "item_code", "kod"],
+    barcode: ["barcode", "ean", "scan_code"],
+    quantity: ["quantity", "qty", "kuantiti"],
+    unit_price: ["unit_price", "price", "harga"],
+    payment_method: ["payment_method", "method", "bayaran", "payment"],
     notes: ["notes", "note", "remark", "catatan"],
   },
   service_categories: {
@@ -164,6 +179,53 @@ export const IMPORT_TEMPLATES: Record<
     sample: [
       ["Syarikat Sumber Jaya", "0388881111", "sales@sumberjaya.my", "Shah Alam", "Main grocery supplier"],
       ["Tech Parts Sdn Bhd", "0377772222", "order@techparts.my", "Petaling Jaya", "Electronics"],
+    ],
+  },
+  past_sales: {
+    filename: "allvisor-past-sales-template.csv",
+    headers: [
+      "invoice_number",
+      "issue_date",
+      "customer_name",
+      "customer_ic",
+      "customer_phone",
+      "product_name",
+      "sku",
+      "barcode",
+      "quantity",
+      "unit_price",
+      "payment_method",
+      "notes",
+    ],
+    sample: [
+      [
+        "OLD-001",
+        "2026-01-15",
+        "Daniel Teo",
+        "940825145505",
+        "0172122334",
+        "Air Mineral 500ml",
+        "SKU-AIR",
+        "9556123456789",
+        "2",
+        "1.50",
+        "cash",
+        "Imported history",
+      ],
+      [
+        "OLD-001",
+        "2026-01-15",
+        "Daniel Teo",
+        "940825145505",
+        "0172122334",
+        "Biskut Coklat",
+        "SKU-BISKUT",
+        "9556987654321",
+        "1",
+        "6.90",
+        "cash",
+        "Imported history",
+      ],
     ],
   },
   service_categories: {
@@ -282,6 +344,7 @@ export const IMPORT_KIND_ORDER: ImportKind[] = [
   "product_categories",
   "products",
   "suppliers",
+  "past_sales",
   "service_categories",
   "service_items",
   "appointments",
@@ -292,4 +355,5 @@ export const RETAIL_IMPORT_KINDS: ImportKind[] = [
   "product_categories",
   "products",
   "suppliers",
+  "past_sales",
 ];
