@@ -328,12 +328,12 @@ export function InvoicesWorkspace({
     previewId && mounted
       ? createPortal(
           <div
-            className="modal-backdrop no-print"
+            className="modal-backdrop"
             onClick={() => requestClosePreview()}
             role="presentation"
           >
             <div
-              className="modal-panel"
+              className="modal-panel invoice-print-modal"
               onClick={(e) => e.stopPropagation()}
               role="dialog"
               aria-modal="true"

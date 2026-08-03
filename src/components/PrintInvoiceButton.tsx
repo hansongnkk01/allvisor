@@ -21,6 +21,25 @@ export function PrintInvoiceButton({
         if (invoiceId) {
           void logInvoicePrintAction(invoiceId);
         }
+        const body = document.body;
+        body.classList.add("printing-invoice");
+
+        let cleaned = false;
+        const cleanup = () => {
+          if (cleaned) return;
+          cleaned = true;
+          body.classList.remove("printing-invoice");
+          window.removeEventListener("afterprint", cleanup);
+          mql?.removeEventListener?.("change", onMql);
+        };
+
+        const onMql = (e: MediaQueryListEvent) => {
+          if (!e.matches) cleanup();
+        };
+        const mql = window.matchMedia?.("print");
+        mql?.addEventListener?.("change", onMql);
+        window.addEventListener("afterprint", cleanup);
+
         window.print();
       }}
     >
