@@ -23,6 +23,8 @@ export default async function AppLayout({
         <AppShell
           niche={ctx.organization.niche}
           orgName={ctx.organization.name}
+          orgLogoUrl={ctx.organization.logo_url}
+          orgLogoShape={ctx.organization.logo_shape}
           role={ctx.membership.role}
           adminZoneUnlocked={adminZoneUnlocked}
         >

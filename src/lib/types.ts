@@ -60,6 +60,8 @@ export interface Organization {
   invoice_next_seq?: number | null;
   invoice_seq_digits?: number | null;
   invoice_number_pattern?: string | null;
+  logo_url?: string | null;
+  logo_shape?: "round" | "square" | null;
   created_at: string;
 }
 

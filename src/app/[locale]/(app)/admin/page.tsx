@@ -26,6 +26,7 @@ import { FilterableRows } from "@/components/FilterableRows";
 import { InvoiceFormatForm } from "@/components/InvoiceFormatForm";
 import { BranchClinicSettings } from "@/components/BranchClinicSettings";
 import { BranchScorecard, type BranchScoreRow } from "@/components/BranchScorecard";
+import { ClinicLogoEditor } from "@/components/ClinicLogoEditor";
 import { TeamMembersSection } from "@/components/TeamMembersSection";
 import { formatCurrency } from "@/lib/utils";
 import { dayBoundsMY, formatDayKeyMY } from "@/lib/datetime-my";
@@ -449,6 +450,26 @@ export default async function AdminPage({
               </button>
             </ActionForm>
           </div>
+
+          <ClinicLogoEditor
+            initialUrl={org.logo_url}
+            initialShape={org.logo_shape === "square" ? "square" : "round"}
+            labels={{
+              title: t("logoTitle"),
+              hint: t("logoHint"),
+              choose: t("logoChoose"),
+              zoom: t("logoZoom"),
+              shape: t("logoShape"),
+              shapeRound: t("logoShapeRound"),
+              shapeSquare: t("logoShapeSquare"),
+              previewRound: t("logoPreviewRound"),
+              previewSquare: t("logoPreviewSquare"),
+              save: t("logoSave"),
+              remove: t("logoRemove"),
+              saving: t("logoSaving"),
+              dragHint: t("logoDragHint"),
+            }}
+          />
 
           <InvoiceFormatForm
             orgName={org.name}

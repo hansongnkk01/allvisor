@@ -11,6 +11,7 @@ import {
 import { ListPager, SearchField, useClientPager } from "@/components/ListControls";
 import { PatientName } from "@/components/PatientName";
 import { PatientSafetyBanner } from "@/components/PatientSafetyBanner";
+import { ClinicLogoMark } from "@/components/ClinicLogoMark";
 import { RecordPaymentForm } from "@/components/RecordPaymentForm";
 import { PrintInvoiceButton } from "@/components/PrintInvoiceButton";
 import { SubmitLhdnButton } from "@/components/SubmitLhdnButton";
@@ -75,6 +76,8 @@ type PreviewPayload = {
   orgName: string;
   orgAddress: string | null;
   orgPhone: string | null;
+  orgLogoUrl?: string | null;
+  orgLogoShape?: "round" | "square" | null;
   serviceChargePercent: number;
   customer: {
     name?: string;
@@ -775,13 +778,21 @@ function InvoicePreviewBody({
 
       <div className="surface invoice-sheet" style={{ padding: "1.25rem", boxShadow: "none" }}>
         <div className="row" style={{ justifyContent: "space-between", marginBottom: "1rem" }}>
-          <div>
-            <div className="display" style={{ fontSize: "1.4rem" }}>
-              {data.orgName}
-            </div>
-            <div className="muted" style={{ fontSize: "0.85rem" }}>
-              {data.orgAddress || ""}
-              {data.orgPhone ? ` · ${data.orgPhone}` : ""}
+          <div className="row" style={{ alignItems: "flex-start", gap: 12, minWidth: 0 }}>
+            <ClinicLogoMark
+              url={data.orgLogoUrl}
+              shape={data.orgLogoShape}
+              size={56}
+              alt={data.orgName}
+            />
+            <div style={{ minWidth: 0 }}>
+              <div className="display" style={{ fontSize: "1.4rem" }}>
+                {data.orgName}
+              </div>
+              <div className="muted" style={{ fontSize: "0.85rem" }}>
+                {data.orgAddress || ""}
+                {data.orgPhone ? ` · ${data.orgPhone}` : ""}
+              </div>
             </div>
           </div>
           <div style={{ textAlign: "right" }}>

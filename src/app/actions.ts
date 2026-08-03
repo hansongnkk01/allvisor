@@ -1611,6 +1611,100 @@ export async function updateOrgSettingsAction(formData: FormData) {
   return { success: true };
 }
 
+export async function saveOrgLogoAction(formData: FormData) {
+  const { supabase, organization, membership } = await requireMember();
+  if (!canAccessSensitive(membership.role)) {
+    return { error: "Forbidden — only owner/admin/supervisor/manager can update logo." };
+  }
+
+  const shapeRaw = String(formData.get("logo_shape") || "round");
+  const logo_shape = shapeRaw === "square" ? "square" : "round";
+  const file = formData.get("logo");
+
+  let logo_url = organization.logo_url || null;
+
+  if (file instanceof File && file.size > 0) {
+    if (file.size > 4 * 1024 * 1024) {
+      return { error: "Logo must be under 4MB" };
+    }
+    const admin = await getServiceAdmin();
+    const client = admin || supabase;
+    const path = `${organization.id}/logo.png`;
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const { error: upError } = await client.storage
+      .from("org-logos")
+      .upload(path, bytes, { contentType: "image/png", upsert: true });
+    if (upError) {
+      if (/bucket|not found|row-level security/i.test(upError.message)) {
+        return {
+          error:
+            "Logo storage not ready — run migration 017_org_logo.sql in Supabase SQL Editor.",
+        };
+      }
+      return { error: upError.message };
+    }
+
+    const { data: pub } = client.storage.from("org-logos").getPublicUrl(path);
+    logo_url = `${pub.publicUrl}?v=${Date.now()}`;
+  }
+
+  const { error } = await supabase
+    .from("organizations")
+    .update({ logo_url, logo_shape })
+    .eq("id", organization.id);
+  if (error) {
+    if (/logo_url|logo_shape/i.test(error.message)) {
+      return {
+        error:
+          "Database missing logo columns — run migration 017_org_logo.sql in Supabase SQL Editor.",
+      };
+    }
+    return { error: error.message };
+  }
+
+  await logActivity({
+    action: "org.logo",
+    summary:
+      file instanceof File && file.size > 0
+        ? `Updated clinic logo (${logo_shape})`
+        : `Updated logo shape (${logo_shape})`,
+    entityType: "organization",
+    entityId: organization.id,
+  });
+
+  revalidateAppLayout();
+  revalidateApp("/admin", "/invoices", "/dashboard");
+  return { success: true, data: { logo_url, logo_shape } };
+}
+
+export async function removeOrgLogoAction() {
+  const { supabase, organization, membership } = await requireMember();
+  if (!canAccessSensitive(membership.role)) {
+    return { error: "Forbidden" };
+  }
+
+  const admin = await getServiceAdmin();
+  const client = admin || supabase;
+  await client.storage.from("org-logos").remove([`${organization.id}/logo.png`]);
+
+  const { error } = await supabase
+    .from("organizations")
+    .update({ logo_url: null })
+    .eq("id", organization.id);
+  if (error) return { error: error.message };
+
+  await logActivity({
+    action: "org.logo_remove",
+    summary: "Removed clinic logo",
+    entityType: "organization",
+    entityId: organization.id,
+  });
+
+  revalidateAppLayout();
+  revalidateApp("/admin", "/invoices", "/dashboard");
+  return { success: true };
+}
+
 export async function upgradePlanAction(plan: SubscriptionPlan) {
   const { supabase, organization, membership } = await requireMember();
   if (membership.role === "staff") return { error: "Forbidden" };
@@ -2610,6 +2704,10 @@ export async function getInvoicePreviewAction(invoiceId: string) {
       orgName: organization.name,
       orgAddress: organization.address,
       orgPhone: organization.phone,
+      orgLogoUrl: organization.logo_url || null,
+      orgLogoShape: (organization.logo_shape === "square" ? "square" : "round") as
+        | "round"
+        | "square",
       serviceChargePercent: Number(organization.service_charge_percent ?? 0),
       customer,
       products: (products || []).map((p) => ({

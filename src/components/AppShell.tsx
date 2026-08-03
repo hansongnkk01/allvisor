@@ -23,6 +23,7 @@ import type { Niche } from "@/lib/types";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { NavigationProgress } from "./NavigationProgress";
 import { ExitAdminZoneButton } from "./ExitAdminZoneButton";
+import { ClinicLogoMark, type LogoShape } from "@/components/ClinicLogoMark";
 import { signOutAction } from "@/app/actions";
 import { cn } from "@/lib/utils";
 
@@ -98,12 +99,16 @@ function NavItem({
 export function AppShell({
   niche,
   orgName,
+  orgLogoUrl,
+  orgLogoShape,
   role,
   adminZoneUnlocked = false,
   children,
 }: {
   niche: Niche;
   orgName: string;
+  orgLogoUrl?: string | null;
+  orgLogoShape?: LogoShape | null;
   role?: string;
   adminZoneUnlocked?: boolean;
   children: React.ReactNode;
@@ -149,8 +154,19 @@ export function AppShell({
             <div className="display" style={{ fontSize: "1.55rem" }}>
               {tBrand("name")}
             </div>
-            <div className="muted" style={{ fontSize: "0.85rem", marginTop: 4 }}>
-              {orgName}
+            <div
+              className="row"
+              style={{ alignItems: "center", gap: 8, marginTop: 6, minWidth: 0 }}
+            >
+              <ClinicLogoMark
+                url={orgLogoUrl}
+                shape={orgLogoShape}
+                size={28}
+                alt={orgName}
+              />
+              <div className="muted" style={{ fontSize: "0.85rem", minWidth: 0 }}>
+                {orgName}
+              </div>
             </div>
           </div>
 
