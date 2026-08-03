@@ -61,25 +61,24 @@ export default async function CustomersPage({
       isTuition
         ? supabase
             .from("tuition_subject_enrollments")
-            .select("customer_id, subject_id, tuition_subjects(name)")
+            .select("customer_id, subject_id")
             .eq("organization_id", ctx.organization.id)
         : Promise.resolve({
             data: [] as Array<{
               customer_id: string;
               subject_id: string;
-              tuition_subjects: { name: string } | { name: string }[] | null;
             }>,
           }),
     ]);
 
   const subjects = subjectsRes.data || [];
+  const subjectNameById = new Map(subjects.map((s) => [s.id, s.name] as const));
   const portalByCustomer = new Map(
     (portalsRes.data || []).map((p) => [p.customer_id, p] as const)
   );
   const subjectsByCustomer = new Map<string, string[]>();
   for (const e of enrollRes.data || []) {
-    const sub = Array.isArray(e.tuition_subjects) ? e.tuition_subjects[0] : e.tuition_subjects;
-    const name = sub?.name;
+    const name = subjectNameById.get(e.subject_id);
     if (!name) continue;
     const list = subjectsByCustomer.get(e.customer_id) || [];
     list.push(name);

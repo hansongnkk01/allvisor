@@ -6,6 +6,7 @@ import { requireMemberWithCapability } from "@/lib/require-capability";
 import { getStudentContext, getStudentAdminClient } from "@/lib/tuition-student";
 import { getOrgContext } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
+import { hasCapability } from "@/lib/niche-capabilities";
 
 async function getServiceAdmin() {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -306,41 +307,63 @@ export async function provisionStudentPortal(opts: {
 }
 
 export async function resetStudentPasswordAction(formData: FormData) {
-  const { organization, profile } = await requireMemberWithCapability("student_accounts");
-  const customerId = String(formData.get("customer_id") || "");
-  const password = String(formData.get("password") || formData.get("new_password") || "");
+  try {
+    const ctx = await getOrgContext();
+    if (!ctx) return { error: "Not signed in" };
+    if (
+      !hasCapability(ctx.organization.niche, "student_accounts") &&
+      !hasCapability(ctx.organization.niche, "class_schedule")
+    ) {
+      return { error: "Not allowed for this business type" };
+    }
 
-  if (!customerId) return { error: "Student required" };
-  if (!password || password.length < 6) return { error: "New password min 6 characters" };
+    const customerId = String(formData.get("customer_id") || "");
+    const password = String(formData.get("password") || formData.get("new_password") || "");
 
-  const admin = await getServiceAdmin();
-  if (!admin) {
-    return { error: "Resetting passwords requires SUPABASE_SERVICE_ROLE_KEY on the server." };
+    if (!customerId) return { error: "Student required" };
+    if (!password || password.length < 6) return { error: "New password min 6 characters" };
+
+    const admin = await getServiceAdmin();
+    if (!admin) {
+      return { error: "Resetting passwords requires SUPABASE_SERVICE_ROLE_KEY on the server." };
+    }
+
+    const { data: link, error: linkError } = await admin
+      .from("tuition_students")
+      .select("id, user_id, email")
+      .eq("organization_id", ctx.organization.id)
+      .eq("customer_id", customerId)
+      .eq("active", true)
+      .maybeSingle();
+
+    if (linkError) return { error: linkError.message };
+    if (!link?.user_id) return { error: "No active student portal account for this student" };
+
+    const { data: customer } = await admin
+      .from("customers")
+      .select("name")
+      .eq("id", customerId)
+      .maybeSingle();
+
+    const { error } = await admin.auth.admin.updateUserById(link.user_id, { password });
+    if (error) return { error: error.message };
+
+    await logActivity({
+      action: "tuition.student_password.reset",
+      summary: `Reset portal password for ${customer?.name || link.email}`,
+      entityType: "tuition_students",
+      entityId: customerId,
+      meta: { by: ctx.profile.id, email: link.email },
+    });
+    revalidateApp("/customers");
+    return { success: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Reset failed";
+    if (/Server Components|digest/i.test(message)) {
+      return { error: "Could not reset password. Check server env (SUPABASE_SERVICE_ROLE_KEY) and try again." };
+    }
+    return { error: message };
   }
-
-  const { data: link } = await admin
-    .from("tuition_students")
-    .select("id, user_id, email, customers(name)")
-    .eq("organization_id", organization.id)
-    .eq("customer_id", customerId)
-    .eq("active", true)
-    .maybeSingle();
-
-  if (!link?.user_id) return { error: "No active student portal account for this student" };
-
-  const { error } = await admin.auth.admin.updateUserById(link.user_id, { password });
-  if (error) return { error: error.message };
-
-  const cust = Array.isArray(link.customers) ? link.customers[0] : link.customers;
-  await logActivity({
-    action: "tuition.student_password.reset",
-    summary: `Reset portal password for ${cust?.name || link.email}`,
-    entityType: "tuition_students",
-    entityId: customerId,
-    meta: { by: profile.id, email: link.email },
-  });
-  revalidateApp("/customers");
-  return { success: true };
 }
 
 export async function createStudentAccountAction(formData: FormData) {

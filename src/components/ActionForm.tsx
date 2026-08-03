@@ -58,7 +58,12 @@ export function ActionForm({
             router.refresh();
             onSuccess?.();
           } catch (err) {
-            setError(err instanceof Error ? err.message : "Something went wrong");
+            const raw = err instanceof Error ? err.message : "Something went wrong";
+            setError(
+              /Server Components|digest|omitted in production/i.test(raw)
+                ? "Something went wrong. Please try again."
+                : raw
+            );
           }
         });
       }}
