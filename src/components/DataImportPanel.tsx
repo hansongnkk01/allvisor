@@ -49,6 +49,7 @@ async function parseFile(file: File): Promise<ImportRow[]> {
 
 export function DataImportPanel({
   labels,
+  allowedKinds,
 }: {
   labels: {
     title: string;
@@ -70,9 +71,14 @@ export function DataImportPanel({
     success: string;
     partial: string;
   };
+  /** When set, only these import kinds are offered (e.g. retail omits appointments). */
+  allowedKinds?: ImportKind[];
 }) {
+  const kinds = allowedKinds?.length
+    ? IMPORT_KIND_ORDER.filter((k) => allowedKinds.includes(k))
+    : IMPORT_KIND_ORDER;
   const router = useRouter();
-  const [kind, setKind] = useState<ImportKind>("patients");
+  const [kind, setKind] = useState<ImportKind>(kinds[0] || "patients");
   const [rows, setRows] = useState<ImportRow[]>([]);
   const [fileName, setFileName] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -121,7 +127,7 @@ export function DataImportPanel({
               setError(null);
             }}
           >
-            {IMPORT_KIND_ORDER.map((k) => (
+            {kinds.map((k) => (
               <option key={k} value={k}>
                 {kindLabel(k)}
               </option>

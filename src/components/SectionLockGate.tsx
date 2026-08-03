@@ -20,7 +20,7 @@ export async function SectionLockGate({
         <p className="muted">
           Only admin / supervisor / manager can open this section. One unlock
           opens Admin, Accounting and LHDN together (same password; default =
-          clinic name without spaces + year).
+          business name without spaces + year).
         </p>
         <p className="muted" style={{ fontSize: "0.85rem" }}>
           Default / hint: <code>{hint}</code>

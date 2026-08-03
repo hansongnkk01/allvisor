@@ -105,11 +105,13 @@ export function InvoicesWorkspace({
   loadPreview,
   labels,
   initialPreviewId,
+  showAllergies = true,
 }: {
   invoices: InvoiceListRow[];
   canLhdn: boolean;
   loadPreview: (id: string) => Promise<{ data?: PreviewPayload; error?: string }>;
   initialPreviewId?: string | null;
+  showAllergies?: boolean;
   labels: {
     number: string;
     customer: string;
@@ -348,6 +350,7 @@ export function InvoicesWorkspace({
                   data={preview}
                   labels={labels}
                   canLhdn={canLhdn}
+                  showAllergies={showAllergies}
                   onSubmitted={reloadPreview}
                 />
               ) : null}
@@ -521,7 +524,7 @@ export function InvoicesWorkspace({
                         <PatientName
                           name={inv.customers.name}
                           risk={inv.customers.risk_level}
-                          allergies={inv.customers.allergies}
+                          allergies={showAllergies ? inv.customers.allergies : null}
                         />
                       ) : (
                         "—"
@@ -627,11 +630,13 @@ function InvoicePreviewBody({
   labels,
   canLhdn,
   onSubmitted,
+  showAllergies = true,
 }: {
   data: PreviewPayload;
   labels: PreviewLabels;
   canLhdn: boolean;
   onSubmitted: () => void;
+  showAllergies?: boolean;
 }) {
   const invoice = data.invoice;
   const editable = invoice.status !== "paid" && invoice.status !== "void";
@@ -811,7 +816,7 @@ function InvoicePreviewBody({
               <PatientName
                 name={data.customer.name}
                 risk={data.customer.risk_level}
-                allergies={data.customer.allergies}
+                allergies={showAllergies ? data.customer.allergies : null}
               />
             ) : (
               "—"
@@ -819,7 +824,8 @@ function InvoicePreviewBody({
           </strong>
           <PatientSafetyBanner
             risk={data.customer?.risk_level}
-            allergies={data.customer?.allergies}
+            allergies={showAllergies ? data.customer?.allergies : null}
+            showAllergies={showAllergies}
           />
           <div className="muted" style={{ fontSize: "0.85rem" }}>
             {[data.customer?.address, data.customer?.phone, data.customer?.email]

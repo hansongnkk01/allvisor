@@ -30,6 +30,8 @@ const TONE_STYLE: Record<TipTone, { bg: string; border: string }> = {
 function buildInsights(data: InsightInput): Tip[] {
   const tips: Tip[] = [];
   const profit = data.income - data.expense;
+  const isRetail = data.niche === "retail";
+  const people = isRetail ? "customers" : "patients";
 
   if (data.lowStock > 0) {
     const names = (data.lowStockNames || []).filter(Boolean);
@@ -37,7 +39,9 @@ function buildInsights(data: InsightInput): Tip[] {
     const extra = names.length > shown.length ? ` (+${names.length - shown.length} more)` : "";
     const namePart = shown.length
       ? `Low stock: ${shown.join(", ")}${extra}.`
-      : `${data.lowStock} medicine/supply item(s) are low.`;
+      : isRetail
+        ? `${data.lowStock} product(s) are low.`
+        : `${data.lowStock} medicine/supply item(s) are low.`;
     tips.push({
       tone: "alert",
       text: `${namePart} Restock before weekend demand spikes.`,
@@ -47,14 +51,16 @@ function buildInsights(data: InsightInput): Tip[] {
   if (data.unpaidInvoices > 0) {
     tips.push({
       tone: "alert",
-      text: `${data.unpaidInvoices} unpaid invoice(s). Call or WhatsApp patients today to improve cash collection.`,
+      text: `${data.unpaidInvoices} unpaid invoice(s). Call or WhatsApp ${people} today to improve cash collection.`,
     });
   }
 
   if (profit < 0) {
     tips.push({
       tone: "alert",
-      text: "Cash flow is negative this period. Review expenses (rent, supplies) and raise high-demand service prices carefully.",
+      text: isRetail
+        ? "Cash flow is negative this period. Review expenses (rent, COGS) and push high-margin products."
+        : "Cash flow is negative this period. Review expenses (rent, supplies) and raise high-demand service prices carefully.",
     });
   }
 
@@ -80,14 +86,20 @@ function buildInsights(data: InsightInput): Tip[] {
   if (data.patients < 5) {
     tips.push({
       tone: "info",
-      text:
-        data.niche === "clinic"
-          ? "Patient base is still small. Push WhatsApp reminders and follow-ups after each visit to grow repeat patients."
-          : "Customer base is still small. Run a simple promo and capture every walk-in into CRM.",
+      text: isRetail
+        ? "Customer base is still small. Run a simple promo and capture every walk-in into CRM."
+        : "Patient base is still small. Push WhatsApp reminders and follow-ups after each visit to grow repeat patients.",
     });
   }
 
-  if (data.niche === "clinic" && data.appointmentsToday === 0) {
+  if (isRetail && data.income === 0) {
+    tips.push({
+      tone: "info",
+      text: "No sales recorded today yet. Open POS and log walk-in purchases so daily close stays accurate.",
+    });
+  }
+
+  if (!isRetail && data.appointmentsToday === 0) {
     tips.push({
       tone: "info",
       text: "No appointments today. Fill empty slots with short-notice openings for walk-ins.",

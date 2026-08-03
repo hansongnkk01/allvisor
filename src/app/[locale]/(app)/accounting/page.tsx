@@ -39,6 +39,24 @@ const CLINIC_INCOME_CATS = [
   "Other income",
 ];
 
+const RETAIL_EXPENSE_CATS = [
+  "Rent",
+  "Utilities",
+  "Cost of goods (COGS)",
+  "Staff wages",
+  "Marketing",
+  "Logistics / Delivery",
+  "Equipment",
+  "Other",
+];
+
+const RETAIL_INCOME_CATS = [
+  "Product sales",
+  "POS sales",
+  "Wholesale",
+  "Other income",
+];
+
 const PERIODS: AccountingPeriod[] = [
   "today",
   "this_week",
@@ -64,6 +82,7 @@ export default async function AccountingPage({
   setRequestLocale(locale);
   const t = await getTranslations("Accounting");
   const ctx = await requireOrg(locale);
+  const isClinic = ctx.organization.niche === "clinic";
 
   if (!canAccessSensitive(ctx.membership.role)) {
     redirect({ href: "/dashboard", locale });
@@ -74,7 +93,7 @@ export default async function AccountingPage({
     return (
       <SectionLockGate
         section="accounting"
-        title={t("title")}
+        title={isClinic ? t("title") : t("titleRetail")}
         subtitle={t("lockSubtitle")}
       />
     );
@@ -84,7 +103,8 @@ export default async function AccountingPage({
   const { startDay, endDay } = accountingPeriodRange(period);
 
   const supabase = await createClient();
-  const isClinic = ctx.organization.niche === "clinic";
+  const incomeCats = isClinic ? CLINIC_INCOME_CATS : RETAIL_INCOME_CATS;
+  const expenseCats = isClinic ? CLINIC_EXPENSE_CATS : RETAIL_EXPENSE_CATS;
 
   const [{ data: expenses }, { data: ledger }, logs] = await Promise.all([
     supabase
@@ -124,7 +144,10 @@ export default async function AccountingPage({
 
   return (
     <div className="stack" style={{ gap: "1.25rem" }}>
-      <PageHeader title={t("title")} subtitle={t("subtitle")} />
+      <PageHeader
+        title={isClinic ? t("title") : t("titleRetail")}
+        subtitle={isClinic ? t("subtitle") : t("subtitleRetail")}
+      />
 
       <div className="surface" style={{ padding: "0.9rem 1.1rem" }}>
         <div className="row" style={{ flexWrap: "wrap", gap: "0.5rem", alignItems: "center" }}>
@@ -169,17 +192,13 @@ export default async function AccountingPage({
           <ActionForm action={createIncomeAction} className="stack">
             <div className="field">
               <label>{t("category")}</label>
-              {isClinic ? (
-                <select name="category" className="select" defaultValue={CLINIC_INCOME_CATS[0]}>
-                  {CLINIC_INCOME_CATS.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <input name="category" required className="input" placeholder="Sales / Other" />
-              )}
+              <select name="category" className="select" defaultValue={incomeCats[0]}>
+                {incomeCats.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="field">
               <label>{t("amount")}</label>
@@ -209,17 +228,13 @@ export default async function AccountingPage({
           <ActionForm action={createExpenseAction} className="stack">
             <div className="field">
               <label>{t("category")}</label>
-              {isClinic ? (
-                <select name="category" className="select" defaultValue={CLINIC_EXPENSE_CATS[0]}>
-                  {CLINIC_EXPENSE_CATS.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <input name="category" required className="input" placeholder="Rent / Supplies" />
-              )}
+              <select name="category" className="select" defaultValue={expenseCats[0]}>
+                {expenseCats.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="field">
               <label>{t("amount")}</label>

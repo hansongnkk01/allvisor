@@ -6,6 +6,14 @@ export function isNiche(value: string | null | undefined): value is Niche {
   return value === "clinic" || value === "retail";
 }
 
+export function isClinicNiche(niche: Niche | string | null | undefined): boolean {
+  return niche === "clinic";
+}
+
+export function isRetailNiche(niche: Niche | string | null | undefined): boolean {
+  return niche === "retail";
+}
+
 /** Staff zone first, then Admin zone (Admin / Accounting / LHDN). */
 export const nicheNavKeys = {
   clinic: [

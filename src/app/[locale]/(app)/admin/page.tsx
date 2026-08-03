@@ -233,6 +233,8 @@ export default async function AdminPage({
 
   const isSuper = branchOrgs.length > 1;
   const org = ctx.organization;
+  const isClinic = org.niche === "clinic";
+  const isRetail = org.niche === "retail";
 
   // Multi-branch scorecard (today + month-to-date)
   let scoreRows: BranchScoreRow[] = [];
@@ -255,6 +257,7 @@ export default async function AdminPage({
           { data: unpaidRows },
           { count: apptToday },
           { count: noShowToday },
+          { data: products },
         ] = await Promise.all([
           admin
             .from("payments")
@@ -273,19 +276,30 @@ export default async function AdminPage({
             .select("total, amount_paid")
             .eq("organization_id", b.id)
             .in("status", ["unpaid", "partial"]),
-          admin
-            .from("appointments")
-            .select("id", { count: "exact", head: true })
-            .eq("organization_id", b.id)
-            .gte("starts_at", todayStart.toISOString())
-            .lte("starts_at", todayEnd.toISOString()),
-          admin
-            .from("appointments")
-            .select("id", { count: "exact", head: true })
-            .eq("organization_id", b.id)
-            .eq("status", "no_show")
-            .gte("starts_at", todayStart.toISOString())
-            .lte("starts_at", todayEnd.toISOString()),
+          isClinic
+            ? admin
+                .from("appointments")
+                .select("id", { count: "exact", head: true })
+                .eq("organization_id", b.id)
+                .gte("starts_at", todayStart.toISOString())
+                .lte("starts_at", todayEnd.toISOString())
+            : Promise.resolve({ count: 0 }),
+          isClinic
+            ? admin
+                .from("appointments")
+                .select("id", { count: "exact", head: true })
+                .eq("organization_id", b.id)
+                .eq("status", "no_show")
+                .gte("starts_at", todayStart.toISOString())
+                .lte("starts_at", todayEnd.toISOString())
+            : Promise.resolve({ count: 0 }),
+          isRetail
+            ? admin
+                .from("products")
+                .select("quantity, low_stock_threshold")
+                .eq("organization_id", b.id)
+                .eq("is_active", true)
+            : Promise.resolve({ data: [] as { quantity: number; low_stock_threshold: number | null }[] }),
         ]);
 
         const unpaidTotal = (unpaidRows || []).reduce(
@@ -293,6 +307,10 @@ export default async function AdminPage({
             sum + Math.max(0, Number(inv.total) - Number(inv.amount_paid || 0)),
           0
         );
+
+        const lowStockCount = (products || []).filter(
+          (p) => Number(p.quantity) <= Number(p.low_stock_threshold ?? 5)
+        ).length;
 
         return {
           id: b.id,
@@ -304,6 +322,8 @@ export default async function AdminPage({
           unpaidTotal,
           appointmentsToday: apptToday || 0,
           noShowToday: noShowToday || 0,
+          txnToday: paidToday?.length || 0,
+          lowStockCount,
         };
       })
     );
@@ -455,7 +475,7 @@ export default async function AdminPage({
             initialUrl={org.logo_url}
             initialShape={org.logo_shape === "square" ? "square" : "round"}
             labels={{
-              title: t("logoTitle"),
+              title: isRetail ? t("logoTitleRetail") : t("logoTitle"),
               hint: t("logoHint"),
               choose: t("logoChoose"),
               zoom: t("logoZoom"),
@@ -493,9 +513,14 @@ export default async function AdminPage({
           />
 
           <DataImportPanel
+            allowedKinds={
+              isRetail
+                ? ["patients", "products", "service_categories", "service_items"]
+                : undefined
+            }
             labels={{
               title: t("importTitle"),
-              hint: t("importHint"),
+              hint: isRetail ? t("importHintRetail") : t("importHint"),
               steps: t("importSteps"),
               kind: t("importKind"),
               downloadTemplate: t("importDownloadTemplate"),
@@ -503,12 +528,14 @@ export default async function AdminPage({
               preview: t("importPreview"),
               importBtn: t("importBtn"),
               importing: t("importing"),
-              patients: t("importPatients"),
+              patients: isRetail ? t("importCustomers") : t("importPatients"),
               products: t("importProducts"),
-              serviceCategories: t("importServiceCategories"),
-              serviceItems: t("importServiceItems"),
+              serviceCategories: isRetail
+                ? t("importProductCategories")
+                : t("importServiceCategories"),
+              serviceItems: isRetail ? t("importProductItems") : t("importServiceItems"),
               appointments: t("importAppointments"),
-              orderHint: t("importOrderHint"),
+              orderHint: isRetail ? t("importOrderHintRetail") : t("importOrderHint"),
               noRows: t("importNoRows"),
               success: t("importSuccess"),
               partial: t("importPartial"),
@@ -517,13 +544,13 @@ export default async function AdminPage({
 
           <div className="surface" style={{ padding: "1.25rem" }}>
             <h3 style={{ marginTop: 0 }}>{t("addBranch")}</h3>
-            <p className="muted">{t("addBranchHint")}</p>
+            <p className="muted">{isRetail ? t("addBranchHintRetail") : t("addBranchHint")}</p>
             <ActionForm action={requestBranchLinkAction} className="row">
               <input
                 name="branch_name"
                 className="input"
                 required
-                placeholder="Superclinic KL"
+                placeholder={isRetail ? "ProSupply JB" : "Superclinic KL"}
                 style={{ maxWidth: 320 }}
               />
               <button type="submit" className="btn btn-primary">
@@ -539,8 +566,9 @@ export default async function AdminPage({
 
       {isSuper ? (
         <BranchScorecard
+          variant={isRetail ? "retail" : "clinic"}
           title={t("scorecardTitle")}
-          subtitle={t("scorecardHint")}
+          subtitle={isRetail ? t("scorecardHintRetail") : t("scorecardHint")}
           rows={scoreRows}
           labels={{
             branch: t("scorecardBranch"),
@@ -549,7 +577,9 @@ export default async function AdminPage({
             unpaid: t("scorecardUnpaid"),
             appointmentsToday: t("scorecardApptsToday"),
             noShow: t("scorecardNoShow"),
-            thisClinic: t("thisClinic"),
+            thisClinic: isRetail ? t("thisShop") : t("thisClinic"),
+            txnToday: t("scorecardTxnToday"),
+            lowStock: t("scorecardLowStock"),
           }}
         />
       ) : null}
@@ -557,13 +587,14 @@ export default async function AdminPage({
       {branchOrgs.map((branch, idx) => (
         <BranchGroup
           key={branch.id}
-          title={`${idx + 1}. ${branch.name}${branch.id === orgId ? ` (${t("thisClinic")})` : ""}`}
+          title={`${idx + 1}. ${branch.name}${branch.id === orgId ? ` (${isRetail ? t("thisShop") : t("thisClinic")})` : ""}`}
           defaultOpen={idx === 0}
           toneIndex={idx}
         >
           <div className="stack" style={{ gap: "0.85rem" }}>
             <BranchClinicSettings
               branchId={branch.id}
+              showHours={isClinic}
               settings={{
                 serviceChargePercent: branch.service_charge_percent,
                 openHour: branch.clinic_open_hour,
@@ -571,8 +602,8 @@ export default async function AdminPage({
                 closedWeekdays: branch.closed_weekdays,
               }}
               labels={{
-                title: t("clinicHoursTitle"),
-                hint: t("clinicHoursHint"),
+                title: isRetail ? t("shopSettingsTitle") : t("clinicHoursTitle"),
+                hint: isRetail ? t("shopSettingsHint") : t("clinicHoursHint"),
                 serviceChargePercent: t("serviceChargePercent"),
                 serviceChargeHint: t("serviceChargeHint"),
                 saveServiceCharge: t("saveServiceCharge"),
@@ -590,7 +621,10 @@ export default async function AdminPage({
                 saveHours: t("saveHours"),
               }}
             />
-            <ExpandSection title={t("categoriesTitle")} defaultOpen>
+            <ExpandSection
+              title={isRetail ? t("categoriesTitleRetail") : t("categoriesTitle")}
+              defaultOpen
+            >
               <ActionForm
                 action={
                   branch.id === orgId
@@ -653,7 +687,7 @@ export default async function AdminPage({
               </FilterableRows>
             </ExpandSection>
 
-            <ExpandSection title={t("servicesTitle")}>
+            <ExpandSection title={isRetail ? t("servicesTitleRetail") : t("servicesTitle")}>
               <ActionForm
                 action={
                   branch.id === orgId

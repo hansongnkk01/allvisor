@@ -11,6 +11,7 @@ export function PatientsList({
   labels,
   empty,
   searchPlaceholder,
+  showAllergies = true,
 }: {
   customers: Customer[];
   labels: {
@@ -31,19 +32,29 @@ export function PatientsList({
   };
   empty: string;
   searchPlaceholder: string;
+  showAllergies?: boolean;
 }) {
   const [q, setQ] = useState("");
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     if (!needle) return customers;
-    return customers.filter((c) =>
-      [c.name, c.email, c.phone, c.ic_number, c.address, c.notes, c.allergies]
-        .filter(Boolean)
+    return customers.filter((c) => {
+      const fields: Array<string | null | undefined> = [
+        c.name,
+        c.email,
+        c.phone,
+        c.ic_number,
+        c.address,
+        c.notes,
+      ];
+      if (showAllergies) fields.push(c.allergies);
+      return fields
+        .filter((v): v is string => Boolean(v))
         .join(" ")
         .toLowerCase()
-        .includes(needle)
-    );
-  }, [customers, q]);
+        .includes(needle);
+    });
+  }, [customers, q, showAllergies]);
   const pager = useClientPager(filtered, 10);
 
   return (
@@ -72,7 +83,12 @@ export function PatientsList({
           </thead>
           <tbody>
             {pager.slice.map((c) => (
-              <CustomerRow key={c.id} customer={c} labels={labels} />
+              <CustomerRow
+                key={c.id}
+                customer={c}
+                labels={labels}
+                showAllergies={showAllergies}
+              />
             ))}
             {!filtered.length ? (
               <tr>

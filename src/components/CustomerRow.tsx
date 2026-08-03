@@ -31,11 +31,14 @@ type Labels = {
 export function CustomerRow({
   customer,
   labels,
+  showAllergies = true,
 }: {
   customer: Customer;
   labels: Labels;
+  showAllergies?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
+  const allergies = showAllergies ? customer.allergies : null;
 
   if (editing) {
     return (
@@ -104,15 +107,17 @@ export function CustomerRow({
                 placeholder="Street, city, postcode, state"
               />
             </div>
-            <div className="field">
-              <label>{labels.allergies}</label>
-              <input
-                name="allergies"
-                className="input"
-                defaultValue={customer.allergies || ""}
-                placeholder="Penicillin, seafood…"
-              />
-            </div>
+            {showAllergies ? (
+              <div className="field">
+                <label>{labels.allergies}</label>
+                <input
+                  name="allergies"
+                  className="input"
+                  defaultValue={customer.allergies || ""}
+                  placeholder="Penicillin, seafood…"
+                />
+              </div>
+            ) : null}
             <div className="field">
               <label>{labels.notes}</label>
               <textarea name="notes" className="textarea" defaultValue={customer.notes || ""} />
@@ -141,11 +146,12 @@ export function CustomerRow({
         <PatientName
           name={customer.name}
           risk={customer.risk_level}
-          allergies={customer.allergies}
+          allergies={allergies}
         />
         <PatientSafetyBanner
           risk={customer.risk_level}
-          allergies={customer.allergies}
+          allergies={allergies}
+          showAllergies={showAllergies}
           compact
         />
         {customer.notes ? (

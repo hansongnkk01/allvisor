@@ -7,7 +7,7 @@ import { Link } from "@/i18n/navigation";
 import { DayHourTimetable } from "@/components/DayHourTimetable";
 import { DashboardAiPanel } from "@/components/DashboardAiPanel";
 import { DailyClosePanel } from "@/components/DailyClosePanel";
-import { DashboardRecentInvoices, DashboardUpcomingAppointments } from "@/components/DashboardLists";
+import { DashboardRecentInvoices, DashboardUpcomingAppointments, DashboardTodaySales, DashboardTopSellers } from "@/components/DashboardLists";
 import { dayBoundsMY, formatDayKeyMY } from "@/lib/datetime-my";
 
 type ApptRow = {
@@ -84,6 +84,8 @@ export default async function DashboardPage({
     { data: upcomingData },
     { data: todayData },
     { data: paidToday },
+    { data: paidTodayDetail },
+    { data: saleMovements },
   ] = await Promise.all([
     supabase
       .from("customers")
@@ -163,6 +165,25 @@ export default async function DashboardPage({
       .eq("organization_id", orgId)
       .gte("paid_at", todayStart.toISOString())
       .lte("paid_at", todayEnd.toISOString()),
+    niche === "retail"
+      ? supabase
+          .from("payments")
+          .select("id, amount, paid_at, invoices(invoice_number, title, customers(name))")
+          .eq("organization_id", orgId)
+          .gte("paid_at", todayStart.toISOString())
+          .lte("paid_at", todayEnd.toISOString())
+          .order("paid_at", { ascending: false })
+          .limit(40)
+      : Promise.resolve({ data: [] as never[] }),
+    niche === "retail"
+      ? supabase
+          .from("stock_movements")
+          .select("quantity, products(name)")
+          .eq("organization_id", orgId)
+          .eq("type", "sale")
+          .gte("created_at", new Date(Date.now() - 30 * 86400000).toISOString())
+          .limit(500)
+      : Promise.resolve({ data: [] as never[] }),
   ]);
 
   const unpaidCount = unpaidRows?.length || 0;
@@ -172,8 +193,36 @@ export default async function DashboardPage({
   );
   const appointmentsToday = appointmentsTodayCount || 0;
   const salesToday = (paidToday || []).reduce((sum, p) => sum + Number(p.amount), 0);
+  const txnToday = paidToday?.length || 0;
   const upcoming = (upcomingData || []).map(mapAppt);
   const todayAppts = (todayData || []).map(mapAppt);
+
+  const todaySalesRows = (paidTodayDetail || []).map((p) => {
+    const inv = Array.isArray(p.invoices) ? p.invoices[0] : p.invoices;
+    const cust = inv
+      ? Array.isArray(inv.customers)
+        ? inv.customers[0]
+        : inv.customers
+      : null;
+    return {
+      id: p.id as string,
+      label: (inv?.title || inv?.invoice_number || "Sale") as string,
+      customer: (cust?.name as string | undefined) || null,
+      amount: Number(p.amount),
+      paid_at: p.paid_at as string,
+    };
+  });
+
+  const topSellerMap = new Map<string, number>();
+  for (const m of saleMovements || []) {
+    const prod = Array.isArray(m.products) ? m.products[0] : m.products;
+    const name = String(prod?.name || "").trim() || "Item";
+    topSellerMap.set(name, (topSellerMap.get(name) || 0) + Number(m.quantity || 0));
+  }
+  const topSellers = [...topSellerMap.entries()]
+    .map(([name, units]) => ({ name, units }))
+    .sort((a, b) => b.units - a.units)
+    .slice(0, 8);
 
   const lowStockItems = (stockRows || [])
     .filter((p) => Number(p.quantity) <= Number(p.low_stock_threshold))
@@ -265,6 +314,7 @@ export default async function DashboardPage({
         unpaidCount={unpaidCount}
         unpaidTotal={unpaidTotal}
         noShowToday={niche === "clinic" ? noShowTodayCount || 0 : -1}
+        txnToday={niche === "retail" ? txnToday : -1}
         lowStockNames={lowStockItems}
         lhdnPendingCount={lhdnPending || 0}
         lhdnRejectedCount={lhdnRejected || 0}
@@ -272,6 +322,7 @@ export default async function DashboardPage({
           income: t("closeIncome"),
           unpaid: t("closeUnpaid"),
           noShow: t("closeNoShow"),
+          txnToday: t("closeTxnToday"),
           lowStock: t("closeLowStock"),
           lhdnPending: t("closeLhdnPending"),
           lhdnRejected: t("closeLhdnRejected"),
@@ -279,6 +330,7 @@ export default async function DashboardPage({
           openInvoices: t("closeOpenInvoices"),
           openInventory: t("closeOpenInventory"),
           openLhdn: t("closeOpenLhdn"),
+          openPos: niche === "retail" ? t("closeOpenPos") : undefined,
         }}
       />
 
@@ -337,8 +389,22 @@ export default async function DashboardPage({
 
         {niche === "clinic" ? (
           <DashboardUpcomingAppointments title={t("upcomingAppointments")} items={upcoming} />
-        ) : null}
+        ) : (
+          <DashboardTodaySales
+            title={t("todaySales")}
+            empty={t("todaySalesEmpty")}
+            rows={todaySalesRows}
+          />
+        )}
       </div>
+
+      {niche === "retail" ? (
+        <DashboardTopSellers
+          title={t("topSellers")}
+          empty={t("topSellersEmpty")}
+          rows={topSellers}
+        />
+      ) : null}
     </div>
   );
 }

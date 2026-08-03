@@ -8,6 +8,7 @@ export function DailyClosePanel({
   unpaidCount,
   unpaidTotal,
   noShowToday,
+  txnToday,
   lowStockNames,
   lhdnPendingCount,
   lhdnRejectedCount,
@@ -18,7 +19,10 @@ export function DailyClosePanel({
   incomeToday: number;
   unpaidCount: number;
   unpaidTotal: number;
+  /** Clinic no-shows; pass -1 to hide. */
   noShowToday: number;
+  /** Retail txn count; pass -1 to hide. */
+  txnToday?: number;
   lowStockNames: string[];
   lhdnPendingCount: number;
   lhdnRejectedCount: number;
@@ -26,6 +30,7 @@ export function DailyClosePanel({
     income: string;
     unpaid: string;
     noShow: string;
+    txnToday?: string;
     lowStock: string;
     lhdnPending: string;
     lhdnRejected: string;
@@ -33,10 +38,12 @@ export function DailyClosePanel({
     openInvoices: string;
     openInventory: string;
     openLhdn: string;
+    openPos?: string;
   };
 }) {
   const stockPreview = lowStockNames.slice(0, 4);
   const stockExtra = lowStockNames.length - stockPreview.length;
+  const showTxn = typeof txnToday === "number" && txnToday >= 0;
 
   return (
     <div
@@ -76,6 +83,13 @@ export function DailyClosePanel({
             tone={noShowToday > 0 ? "warn" : "good"}
           />
         ) : null}
+        {showTxn ? (
+          <CloseStat
+            label={labels.txnToday || "Txns today"}
+            value={String(txnToday)}
+            tone={txnToday === 0 ? "warn" : "good"}
+          />
+        ) : null}
         <CloseStat
           label={labels.lhdnPending}
           value={String(lhdnPendingCount)}
@@ -112,6 +126,11 @@ export function DailyClosePanel({
         <Link href="/lhdn" className="btn btn-soft">
           {labels.openLhdn}
         </Link>
+        {labels.openPos ? (
+          <Link href="/pos" className="btn btn-soft">
+            {labels.openPos}
+          </Link>
+        ) : null}
       </div>
     </div>
   );

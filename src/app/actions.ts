@@ -275,7 +275,7 @@ export async function deleteCustomerAction(id: string) {
 
 export async function getPatientTimelineAction(customerId: string) {
   const { supabase, organization } = await requireMember();
-  if (!customerId) return { error: "Missing patient" };
+  if (!customerId) return { error: "Missing customer" };
 
   const { data: customer } = await supabase
     .from("customers")
@@ -286,16 +286,27 @@ export async function getPatientTimelineAction(customerId: string) {
     .eq("organization_id", organization.id)
     .maybeSingle();
 
-  if (!customer) return { error: "Patient not found" };
+  if (!customer) return { error: "Customer not found" };
+
+  const isClinic = organization.niche === "clinic";
 
   const [{ data: appointments }, { data: invoices }] = await Promise.all([
-    supabase
-      .from("appointments")
-      .select("id, title, starts_at, ends_at, status, notes")
-      .eq("organization_id", organization.id)
-      .eq("customer_id", customerId)
-      .order("starts_at", { ascending: false })
-      .limit(80),
+    isClinic
+      ? supabase
+          .from("appointments")
+          .select("id, title, starts_at, ends_at, status, notes")
+          .eq("organization_id", organization.id)
+          .eq("customer_id", customerId)
+          .order("starts_at", { ascending: false })
+          .limit(80)
+      : Promise.resolve({ data: [] as Array<{
+          id: string;
+          title: string | null;
+          starts_at: string;
+          ends_at: string | null;
+          status: string;
+          notes: string | null;
+        }> }),
     supabase
       .from("invoices")
       .select(
@@ -318,7 +329,7 @@ export async function getPatientTimelineAction(customerId: string) {
         address: customer.address,
         notes: customer.notes,
         risk_level: customer.risk_level as "high" | "medium" | "low" | null,
-        allergies: customer.allergies,
+        allergies: isClinic ? customer.allergies : null,
         created_at: customer.created_at,
       },
       appointments: (appointments || []).map((a) => ({
@@ -1359,6 +1370,9 @@ export async function deleteAppointmentAction(id: string) {
 
 export async function posCheckoutAction(formData: FormData) {
   const { supabase, organization, profile } = await requireMember();
+  if (organization.niche !== "retail") {
+    return { error: "POS is only available for retail shops." };
+  }
   const productId = String(formData.get("product_id") || "");
   const quantity = Number(formData.get("quantity") || 1);
   const customerId = String(formData.get("customer_id") || "") || null;

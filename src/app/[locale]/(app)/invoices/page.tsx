@@ -24,6 +24,7 @@ export default async function InvoicesPage({
   const td = await getTranslations("InvoiceDetail");
   const ctx = await requireOrg(locale);
   const supabase = await createClient();
+  const isClinic = ctx.organization.niche === "clinic";
 
   const [{ data: invoices }, logs] = await Promise.all([
     supabase
@@ -68,6 +69,7 @@ export default async function InvoicesPage({
         canLhdn={canLhdn}
         loadPreview={getInvoicePreviewAction}
         initialPreviewId={preview || null}
+        showAllergies={isClinic}
         labels={{
           number: t("number"),
           customer: t("customer"),
@@ -112,7 +114,7 @@ export default async function InvoicesPage({
           amount: td("amount"),
           subtotal: td("subtotal"),
           tax: td("tax"),
-          medicine: td("medicine"),
+          medicine: isClinic ? td("medicine") : td("medicineRetail"),
           additional: td("additional"),
           productService: td("productService"),
           serviceTax: td("serviceTax"),
@@ -124,7 +126,7 @@ export default async function InvoicesPage({
           costItem: td("costItem"),
           costQty: td("costQty"),
           noInventory: td("noInventory"),
-          extrasHint: td("extrasHint"),
+          extrasHint: isClinic ? td("extrasHint") : td("extrasHintRetail"),
           exitWarn: t("exitWarn"),
           exitReasonTitle: t("exitReasonTitle"),
           exitReasonHint: t("exitReasonHint"),

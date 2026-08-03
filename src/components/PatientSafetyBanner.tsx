@@ -8,18 +8,21 @@ export function needsSafetyBanner(
   return risk === "high" || hasAllergy;
 }
 
-/** Red banner for high risk and/or known allergies. */
+/** Red banner for high risk and/or known allergies (allergies clinic-only). */
 export function PatientSafetyBanner({
   risk,
   allergies,
   compact = false,
+  showAllergies = true,
 }: {
   risk?: RiskLevel | null;
   allergies?: string | null;
   compact?: boolean;
+  /** When false (retail), only high-risk is shown — no allergy text. */
+  showAllergies?: boolean;
 }) {
-  if (!needsSafetyBanner(risk, allergies)) return null;
-  const allergyText = (allergies || "").trim();
+  const allergyText = showAllergies ? (allergies || "").trim() : "";
+  if (!needsSafetyBanner(risk, allergyText || null)) return null;
   const parts: string[] = [];
   if (risk === "high") parts.push("HIGH RISK");
   if (allergyText) parts.push(`Allergy: ${allergyText}`);

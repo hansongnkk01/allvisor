@@ -11,6 +11,7 @@ export function BranchClinicSettings({
   branchId,
   settings,
   labels,
+  showHours = true,
 }: {
   branchId: string;
   settings: {
@@ -38,6 +39,8 @@ export function BranchClinicSettings({
     holidayNote: string;
     saveHours: string;
   };
+  /** Clinic-only: open/close hours and weekly off. Retail keeps service charge. */
+  showHours?: boolean;
 }) {
   const weekdays = [
     [1, labels.mon],
@@ -57,7 +60,7 @@ export function BranchClinicSettings({
       <ActionForm
         action={updateServiceChargeAction}
         className="stack"
-        style={{ marginBottom: "1.25rem" }}
+        style={{ marginBottom: showHours ? "1.25rem" : 0 }}
       >
         <input type="hidden" name="target_org_id" value={branchId} />
         <div className="field" style={{ maxWidth: 260 }}>
@@ -79,67 +82,69 @@ export function BranchClinicSettings({
           {labels.saveServiceCharge}
         </button>
       </ActionForm>
-      <ActionForm action={updateClinicHoursAction} className="stack">
-        <input type="hidden" name="target_org_id" value={branchId} />
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-            gap: "0.75rem",
-          }}
-        >
-          <div className="field">
-            <label>{labels.openHour}</label>
-            <select
-              name="clinic_open_hour"
-              className="select"
-              defaultValue={String(settings.openHour)}
-            >
-              {Array.from({ length: 24 }, (_, h) => (
-                <option key={h} value={h}>
-                  {String(h).padStart(2, "0")}:00
-                </option>
+      {showHours ? (
+        <ActionForm action={updateClinicHoursAction} className="stack">
+          <input type="hidden" name="target_org_id" value={branchId} />
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+              gap: "0.75rem",
+            }}
+          >
+            <div className="field">
+              <label>{labels.openHour}</label>
+              <select
+                name="clinic_open_hour"
+                className="select"
+                defaultValue={String(settings.openHour)}
+              >
+                {Array.from({ length: 24 }, (_, h) => (
+                  <option key={h} value={h}>
+                    {String(h).padStart(2, "0")}:00
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="field">
+              <label>{labels.closeHour}</label>
+              <select
+                name="clinic_close_hour"
+                className="select"
+                defaultValue={String(settings.closeHour)}
+              >
+                {Array.from({ length: 24 }, (_, h) => (
+                  <option key={h} value={h}>
+                    {String(h).padStart(2, "0")}:00
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div>
+            <strong style={{ fontSize: "0.9rem" }}>{labels.weeklyOff}</strong>
+            <div className="row" style={{ marginTop: 8 }}>
+              {weekdays.map(([day, label]) => (
+                <label key={day} className="row" style={{ gap: 6 }}>
+                  <input
+                    type="checkbox"
+                    name="closed_weekdays"
+                    value={day}
+                    defaultChecked={settings.closedWeekdays.includes(day)}
+                  />
+                  <span>{label}</span>
+                </label>
               ))}
-            </select>
+            </div>
           </div>
-          <div className="field">
-            <label>{labels.closeHour}</label>
-            <select
-              name="clinic_close_hour"
-              className="select"
-              defaultValue={String(settings.closeHour)}
-            >
-              {Array.from({ length: 24 }, (_, h) => (
-                <option key={h} value={h}>
-                  {String(h).padStart(2, "0")}:00
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-        <div>
-          <strong style={{ fontSize: "0.9rem" }}>{labels.weeklyOff}</strong>
-          <div className="row" style={{ marginTop: 8 }}>
-            {weekdays.map(([day, label]) => (
-              <label key={day} className="row" style={{ gap: 6 }}>
-                <input
-                  type="checkbox"
-                  name="closed_weekdays"
-                  value={day}
-                  defaultChecked={settings.closedWeekdays.includes(day)}
-                />
-                <span>{label}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-        <p className="muted" style={{ fontSize: "0.85rem", margin: 0 }}>
-          {labels.holidayNote}
-        </p>
-        <button type="submit" className="btn btn-primary">
-          {labels.saveHours}
-        </button>
-      </ActionForm>
+          <p className="muted" style={{ fontSize: "0.85rem", margin: 0 }}>
+            {labels.holidayNote}
+          </p>
+          <button type="submit" className="btn btn-primary">
+            {labels.saveHours}
+          </button>
+        </ActionForm>
+      ) : null}
     </ExpandSection>
   );
 }

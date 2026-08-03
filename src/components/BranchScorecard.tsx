@@ -10,6 +10,10 @@ export type BranchScoreRow = {
   unpaidTotal: number;
   appointmentsToday: number;
   noShowToday: number;
+  /** Retail: paid transactions today */
+  txnToday?: number;
+  /** Retail: products at/below low threshold */
+  lowStockCount?: number;
 };
 
 export function BranchScorecard({
@@ -17,6 +21,7 @@ export function BranchScorecard({
   subtitle,
   rows,
   labels,
+  variant = "clinic",
 }: {
   title: string;
   subtitle: string;
@@ -29,11 +34,15 @@ export function BranchScorecard({
     appointmentsToday: string;
     noShow: string;
     thisClinic: string;
+    txnToday?: string;
+    lowStock?: string;
   };
+  variant?: "clinic" | "retail";
 }) {
   if (rows.length < 2) return null;
 
   const bestIncome = Math.max(...rows.map((r) => r.incomeMonth));
+  const isRetail = variant === "retail";
 
   return (
     <div
@@ -57,8 +66,17 @@ export function BranchScorecard({
               <th>{labels.incomeToday}</th>
               <th>{labels.incomeMonth}</th>
               <th>{labels.unpaid}</th>
-              <th>{labels.appointmentsToday}</th>
-              <th>{labels.noShow}</th>
+              {isRetail ? (
+                <>
+                  <th>{labels.txnToday || "Txns today"}</th>
+                  <th>{labels.lowStock || "Low stock"}</th>
+                </>
+              ) : (
+                <>
+                  <th>{labels.appointmentsToday}</th>
+                  <th>{labels.noShow}</th>
+                </>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -86,15 +104,31 @@ export function BranchScorecard({
                   <td>
                     {r.unpaidCount} · {formatCurrency(r.unpaidTotal)}
                   </td>
-                  <td>{r.appointmentsToday}</td>
-                  <td
-                    style={{
-                      fontWeight: r.noShowToday > 0 ? 700 : 400,
-                      color: r.noShowToday > 0 ? "#b45309" : undefined,
-                    }}
-                  >
-                    {r.noShowToday}
-                  </td>
+                  {isRetail ? (
+                    <>
+                      <td>{r.txnToday ?? 0}</td>
+                      <td
+                        style={{
+                          fontWeight: (r.lowStockCount || 0) > 0 ? 700 : 400,
+                          color: (r.lowStockCount || 0) > 0 ? "#b45309" : undefined,
+                        }}
+                      >
+                        {r.lowStockCount ?? 0}
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td>{r.appointmentsToday}</td>
+                      <td
+                        style={{
+                          fontWeight: r.noShowToday > 0 ? 700 : 400,
+                          color: r.noShowToday > 0 ? "#b45309" : undefined,
+                        }}
+                      >
+                        {r.noShowToday}
+                      </td>
+                    </>
+                  )}
                 </tr>
               );
             })}

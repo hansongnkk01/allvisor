@@ -85,7 +85,13 @@
     "closeNone": "Tiada",
     "closeOpenInvoices": "Invois",
     "closeOpenInventory": "Inventori",
-    "closeOpenLhdn": "LHDN"
+    "closeOpenLhdn": "LHDN",
+    "closeOpenPos": "POS",
+    "closeTxnToday": "Transaksi hari ini",
+    "todaySales": "Jualan hari ini",
+    "todaySalesEmpty": "Belum ada jualan hari ini.",
+    "topSellers": "Terlaris (30 hari)",
+    "topSellersEmpty": "Belum ada jualan produk."
   },
   "Customers": {
     "title": "Pelanggan",
@@ -103,8 +109,10 @@
     "edit": "Edit",
     "cancel": "Batal",
     "addedBy": "Ditambah oleh",
-    "deletedTitle": "Pesakit dipadam",
-    "deletedHint": "Audit siapa yang padam rekod pesakit.",
+    "deletedTitle": "Pelanggan dipadam",
+    "deletedHint": "Audit siapa yang padam rekod pelanggan.",
+    "deletedTitleClinic": "Pesakit dipadam",
+    "deletedHintClinic": "Audit siapa yang padam rekod pesakit.",
     "deletedBy": "Dipadam oleh",
     "deletedAt": "Dipadam pada",
     "risk": "Risiko",
@@ -118,6 +126,7 @@
     "timelineClose": "Tutup",
     "timelineLoading": "Memuat timeline…",
     "timelineEmpty": "Belum ada temujanji atau invois.",
+    "timelineEmptyRetail": "Belum ada belian atau invois.",
     "timelineVisits": "Lawatan",
     "timelineInvoices": "Invois",
     "timelineContact": "Tiada butiran kontak",
@@ -253,7 +262,8 @@
     "additionalDesc": "Penerangan tambahan",
     "additionalAmount": "Jumlah tambahan",
     "optional": "tidak wajib",
-    "activity": "Aktiviti invois"
+    "activity": "Aktiviti invois",
+    "howNameRetail": "Nama invois = label mesra untuk staf/pelanggan. Nama yang sama boleh muncul lebih dari sekali."
   },
   "InvoiceDetail": {
     "back": "Kembali ke invois",
@@ -312,7 +322,11 @@
     "cancelLhdn": "Batal hantar ke LHDN",
     "cancelLhdnHint": "Batal e-Invois di MyInvois (biasanya dalam 72 jam selepas Valid). Sebab wajib diisi.",
     "cancelLhdnPrompt": "Sebab batal e-Invois di MyInvois (wajib):",
-    "cancellingLhdn": "Membatalkan…"
+    "cancellingLhdn": "Membatalkan…",
+    "medicineRetail": "Tambahan produk",
+    "medicineDescRetail": "Penerangan tambahan",
+    "medicineAmountRetail": "Jumlah tambahan",
+    "extrasHintRetail": "Tambah kos produk tambahan. Item dan caj perkhidmatan kekal pada bil."
   },
   "Admin": {
     "title": "Admin",
@@ -332,13 +346,16 @@
     "plan": "Pelan",
     "status": "Status",
     "categoriesTitle": "Kategori",
+    "categoriesTitleRetail": "Kategori produk",
     "categoriesHint": "Cipta kategori dulu. Penerangan tidak wajib.",
     "categoryName": "Nama kategori",
     "optional": "tidak wajib",
     "addCategory": "Tambah kategori",
     "emptyCategories": "Belum ada kategori.",
     "servicesTitle": "Item / perkhidmatan",
+    "servicesTitleRetail": "Item katalog",
     "servicesHint": "Assign setiap servis ke kategori, tetapkan harga, dan penerangan (pilihan).",
+    "servicesHintRetail": "Item katalog pilihan untuk invois (stok inventori diurus berasingan).",
     "serviceName": "Nama perkhidmatan / item",
     "assignCategory": "Kategori",
     "description": "Penerangan",
@@ -445,7 +462,20 @@
     "importAppointments": "Temujanji",
     "importNoRows": "Tiada baris data dalam fail.",
     "importSuccess": "Import berjaya",
-    "importPartial": "Import siap dengan beberapa baris dilangkau"
+    "importPartial": "Import siap dengan beberapa baris dilangkau",
+    "addBranchHintRetail": "Masukkan nama tepat kedai Allvisor cawangan lain (daftar kedai itu berasingan dahulu). Jika anda admin kedua-dua kedai, ia terus di-link. Jika tidak, admin mereka perlu approve.",
+    "logoTitleRetail": "Logo kedai",
+    "thisShop": "kedai ini",
+    "scorecardHintRetail": "Banding pendapatan, invois belum bayar, transaksi dan stok rendah merentas kedai yang dilink.",
+    "scorecardTxnToday": "Transaksi hari ini",
+    "scorecardLowStock": "Stok rendah",
+    "shopSettingsTitle": "Tetapan caj kedai",
+    "shopSettingsHint": "Caj perkhidmatan ikut cawangan yang dikenakan pada invois kedai ini.",
+    "importHintRetail": "Export CSV atau Excel dari software kedai lama, kemudian upload di sini untuk migrate ke Allvisor.",
+    "importOrderHintRetail": "Susunan dicadangkan: Pelanggan → Kategori produk → Item katalog → Inventori.",
+    "importCustomers": "Pelanggan",
+    "importProductCategories": "Kategori produk",
+    "importProductItems": "Item katalog"
   },
   "Accounting": {
     "title": "Perakaunan klinik",
@@ -482,7 +512,9 @@
     "chartByHour": "Mengikut jam",
     "chartByDay": "Mengikut hari",
     "chartByWeek": "Mengikut minggu",
-    "chartByMonth": "Mengikut bulan"
+    "chartByMonth": "Mengikut bulan",
+    "titleRetail": "Perakaunan kedai",
+    "subtitleRetail": "Jejak semua wang masuk dan keluar untuk kedai."
   },
   "Lhdn": {
     "title": "e-Invois LHDN",
@@ -525,7 +557,8 @@
     "empty": "Tiada staf selain anda.",
     "ownerOnly": "Hanya owner/admin boleh urus staf.",
     "activity": "Log aktiviti staf",
-    "noActivity": "Belum ada aktiviti."
+    "noActivity": "Belum ada aktiviti.",
+    "readOnlySubtitleRetail": "Suapan aktiviti untuk kedai ini. Tambah/kick staf di Admin."
   },
   "Settings": {
     "title": "Tetapan perniagaan",

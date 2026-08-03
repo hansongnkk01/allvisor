@@ -41,6 +41,9 @@ export default async function CustomersPage({
   ]);
 
   const title = ctx.organization.niche === "clinic" ? t("titleClinic") : t("title");
+  const isClinic = ctx.organization.niche === "clinic";
+  const deletedTitle = isClinic ? t("deletedTitleClinic") : t("deletedTitle");
+  const deletedHint = isClinic ? t("deletedHintClinic") : t("deletedHint");
   const rowLabels = {
     name: t("name"),
     email: t("email"),
@@ -59,7 +62,7 @@ export default async function CustomersPage({
       timeline: t("timeline"),
       close: t("timelineClose"),
       loading: t("timelineLoading"),
-      empty: t("timelineEmpty"),
+      empty: isClinic ? t("timelineEmpty") : t("timelineEmptyRetail"),
       visits: t("timelineVisits"),
       invoices: t("timelineInvoices"),
       notes: t("notes"),
@@ -120,14 +123,16 @@ export default async function CustomersPage({
               placeholder="Street, city, postcode, state (e.g. 12 Jalan Ampang, KL, 50450, Wilayah Persekutuan)"
             />
           </div>
-          <div className="field">
-            <label>{t("allergies")}</label>
-            <input
-              name="allergies"
-              className="input"
-              placeholder={t("allergiesPlaceholder")}
-            />
-          </div>
+          {isClinic ? (
+            <div className="field">
+              <label>{t("allergies")}</label>
+              <input
+                name="allergies"
+                className="input"
+                placeholder={t("allergiesPlaceholder")}
+              />
+            </div>
+          ) : null}
           <div className="field">
             <label>{t("notes")}</label>
             <textarea name="notes" className="textarea" />
@@ -144,13 +149,14 @@ export default async function CustomersPage({
           labels={rowLabels}
           empty={t("empty")}
           searchPlaceholder={tc("search")}
+          showAllergies={isClinic}
         />
       </div>
 
       <div className="fluid-grid">
         <div className="surface history-zone" style={{ padding: "1.25rem" }}>
-          <h3 style={{ marginTop: 0 }}>{t("deletedTitle")}</h3>
-          <p className="muted">{t("deletedHint")}</p>
+          <h3 style={{ marginTop: 0 }}>{deletedTitle}</h3>
+          <p className="muted">{deletedHint}</p>
           <div className="table-wrap">
             <table className="data">
               <thead>
