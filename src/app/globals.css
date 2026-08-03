@@ -156,6 +156,70 @@ a {
   letter-spacing: -0.02em;
 }
 
+/* Sidebar + invoice: one tight brand unit (logo + text) */
+.brand-lockup {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 0;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.brand-lockup__text {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  justify-content: center;
+}
+
+.brand-lockup__product {
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 1.28rem;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+
+.brand-lockup__org {
+  font-size: 0.78rem;
+  line-height: 1.25;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.invoice-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.invoice-brand__text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  justify-content: center;
+}
+
+.invoice-brand__name {
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 1.28rem;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.invoice-brand__meta {
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
 .surface {
   background: var(--bg-elevated);
   border: 1px solid var(--line);

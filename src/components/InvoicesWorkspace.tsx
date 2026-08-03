@@ -777,25 +777,26 @@ function InvoicePreviewBody({
       ) : null}
 
       <div className="surface invoice-sheet" style={{ padding: "1.25rem", boxShadow: "none" }}>
-        <div className="row" style={{ justifyContent: "space-between", marginBottom: "1rem" }}>
-          <div className="row" style={{ alignItems: "center", gap: 12, minWidth: 0 }}>
+        <div className="row" style={{ justifyContent: "space-between", marginBottom: "1rem", gap: 16 }}>
+          <div className="invoice-brand">
             <ClinicLogoMark
               url={data.orgLogoUrl}
               shape={data.orgLogoShape}
-              size={56}
+              size={48}
               alt={data.orgName}
             />
-            <div style={{ minWidth: 0 }}>
-              <div className="display" style={{ fontSize: "1.4rem" }}>
-                {data.orgName}
-              </div>
-              <div className="muted" style={{ fontSize: "0.85rem" }}>
-                {data.orgAddress || ""}
-                {data.orgPhone ? ` · ${data.orgPhone}` : ""}
-              </div>
+            <div className="invoice-brand__text">
+              <div className="invoice-brand__name">{data.orgName}</div>
+              {(data.orgAddress || data.orgPhone) ? (
+                <div className="invoice-brand__meta">
+                  {data.orgAddress || ""}
+                  {data.orgAddress && data.orgPhone ? " · " : ""}
+                  {data.orgPhone || ""}
+                </div>
+              ) : null}
             </div>
           </div>
-          <div style={{ textAlign: "right" }}>
+          <div style={{ textAlign: "right", flexShrink: 0 }}>
             <div className="badge">{invoice.status}</div>
             <div style={{ marginTop: 8, fontWeight: 700 }}>{invoice.invoice_number}</div>
             <div className="muted">{formatDate(invoice.issue_date)}</div>

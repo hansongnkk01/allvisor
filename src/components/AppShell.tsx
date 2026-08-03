@@ -150,38 +150,19 @@ export function AppShell({
             gap: "1.25rem",
           }}
         >
-          <div
-            className="row"
-            style={{
-              alignItems: "center",
-              gap: 12,
-              minWidth: 0,
-            }}
-          >
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <div className="display" style={{ fontSize: "1.55rem", lineHeight: 1.15 }}>
-                {tBrand("name")}
-              </div>
-              <div className="muted" style={{ fontSize: "0.85rem", marginTop: 4 }}>
-                {orgName}
-              </div>
-            </div>
-            <div
-              aria-hidden
-              style={{
-                width: 1,
-                alignSelf: "stretch",
-                minHeight: 36,
-                background: "rgba(28, 27, 25, 0.28)",
-                flexShrink: 0,
-              }}
-            />
+          <div className="brand-lockup">
             <ClinicLogoMark
               url={orgLogoUrl}
               shape={orgLogoShape}
-              size={44}
+              size={42}
               alt={orgName}
             />
+            <div className="brand-lockup__text">
+              <div className="brand-lockup__product">{tBrand("name")}</div>
+              <div className="brand-lockup__org" title={orgName}>
+                {orgName}
+              </div>
+            </div>
           </div>
 
           <nav className="stack" style={{ gap: "0.35rem", flex: 1 }}>
