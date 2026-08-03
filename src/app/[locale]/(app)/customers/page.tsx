@@ -7,7 +7,7 @@ import { ActionForm } from "@/components/ActionForm";
 import { PatientsList } from "@/components/PatientsList";
 import { SectionActivityLog } from "@/components/SectionActivityLog";
 import { upsertCustomerAction } from "@/app/actions";
-import { createStudentAccountAction } from "@/app/tuition-actions";
+import { createStudentAccountAction, resetStudentPasswordAction } from "@/app/tuition-actions";
 import { fetchSectionLogs } from "@/lib/section-logs";
 import { formatDateTime } from "@/lib/utils";
 import type { Customer } from "@/lib/types";
@@ -286,6 +286,7 @@ export default async function CustomersPage({
                   <th>{t("subjects")}</th>
                   <th>{t("portalStatus")}</th>
                   <th>{t("portalLogin")}</th>
+                  <th>{t("resetPassword")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -319,12 +320,37 @@ export default async function CustomersPage({
                           </ActionForm>
                         )}
                       </td>
+                      <td>
+                        {portal ? (
+                          <ActionForm
+                            action={resetStudentPasswordAction}
+                            className="row"
+                            style={{ flexWrap: "wrap", gap: "0.4rem", alignItems: "center" }}
+                          >
+                            <input type="hidden" name="customer_id" value={c.id} />
+                            <input
+                              name="new_password"
+                              type="password"
+                              className="input"
+                              required
+                              minLength={6}
+                              placeholder={t("newPasswordPlaceholder")}
+                              style={{ minWidth: 140 }}
+                            />
+                            <button type="submit" className="btn btn-soft">
+                              {t("renewPassword")}
+                            </button>
+                          </ActionForm>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
                 {!customers?.length ? (
                   <tr>
-                    <td colSpan={4} className="muted">
+                    <td colSpan={5} className="muted">
                       {t("emptyTuition")}
                     </td>
                   </tr>

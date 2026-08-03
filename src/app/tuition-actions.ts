@@ -305,6 +305,44 @@ export async function provisionStudentPortal(opts: {
   return { success: true as const, email };
 }
 
+export async function resetStudentPasswordAction(formData: FormData) {
+  const { organization, profile } = await requireMemberWithCapability("student_accounts");
+  const customerId = String(formData.get("customer_id") || "");
+  const password = String(formData.get("password") || formData.get("new_password") || "");
+
+  if (!customerId) return { error: "Student required" };
+  if (!password || password.length < 6) return { error: "New password min 6 characters" };
+
+  const admin = await getServiceAdmin();
+  if (!admin) {
+    return { error: "Resetting passwords requires SUPABASE_SERVICE_ROLE_KEY on the server." };
+  }
+
+  const { data: link } = await admin
+    .from("tuition_students")
+    .select("id, user_id, email, customers(name)")
+    .eq("organization_id", organization.id)
+    .eq("customer_id", customerId)
+    .eq("active", true)
+    .maybeSingle();
+
+  if (!link?.user_id) return { error: "No active student portal account for this student" };
+
+  const { error } = await admin.auth.admin.updateUserById(link.user_id, { password });
+  if (error) return { error: error.message };
+
+  const cust = Array.isArray(link.customers) ? link.customers[0] : link.customers;
+  await logActivity({
+    action: "tuition.student_password.reset",
+    summary: `Reset portal password for ${cust?.name || link.email}`,
+    entityType: "tuition_students",
+    entityId: customerId,
+    meta: { by: profile.id, email: link.email },
+  });
+  revalidateApp("/customers");
+  return { success: true };
+}
+
 export async function createStudentAccountAction(formData: FormData) {
   const { organization, profile, supabase } = await requireMemberWithCapability("student_accounts");
   const customerId = String(formData.get("customer_id") || "");

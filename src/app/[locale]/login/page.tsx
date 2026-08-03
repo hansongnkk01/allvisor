@@ -89,6 +89,13 @@ export default function LoginPage() {
             {t("login")}
           </button>
         </form>
+        {isStudentPortal ? (
+          <p className="muted" style={{ marginTop: "1rem", lineHeight: 1.5 }}>
+            <strong>{t("forgotPassword")}</strong>
+            <br />
+            {t("studentForgotPasswordHint")}
+          </p>
+        ) : null}
         {!isStudentPortal ? (
           <p className="muted" style={{ marginTop: "1rem" }}>
             {t("noAccount")}{" "}
