@@ -63,6 +63,8 @@ export function DataImportPanel({
     importing: string;
     patients: string;
     products: string;
+    productCategories: string;
+    suppliers: string;
     serviceCategories: string;
     serviceItems: string;
     appointments: string;
@@ -91,6 +93,10 @@ export function DataImportPanel({
         return labels.patients;
       case "products":
         return labels.products;
+      case "product_categories":
+        return labels.productCategories;
+      case "suppliers":
+        return labels.suppliers;
       case "service_categories":
         return labels.serviceCategories;
       case "service_items":

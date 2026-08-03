@@ -1,0 +1,23 @@
+name,parent
+Beverages,
+Water,Beverages
+Coffee,Beverages
+Soft drinks,Beverages
+Snacks,
+Biscuits,Snacks
+Chips,Snacks
+Chocolate,Snacks
+Household,
+Cleaning,Household
+Tissue & paper,Household
+Personal care,
+Soap,Personal care
+Electronics,
+Cables,Electronics
+Batteries,Electronics
+Hardware,
+Tools,Hardware
+Fasteners,Hardware
+Stationery,
+Notebooks,Stationery
+Writing,Stationery

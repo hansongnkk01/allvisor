@@ -26,6 +26,7 @@ import type {
   SubscriptionPlan,
 } from "@/lib/types";
 import {
+  parseBoolFlag,
   parseDateTime,
   toNumber,
   type ImportKind,
@@ -3459,6 +3460,13 @@ export async function importMigrationDataAction(
       inserted += chunk.length;
     }
   } else if (kind === "products") {
+    const { data: cats } = await supabase
+      .from("product_categories")
+      .select("id, name")
+      .eq("organization_id", organization.id);
+    const catByName = new Map(
+      (cats || []).map((c) => [c.name.trim().toLowerCase(), c.id] as const)
+    );
     const payloads = [];
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
@@ -3468,26 +3476,121 @@ export async function importMigrationDataAction(
         errors.push({ row: i + 2, message: "Name required" });
         continue;
       }
+      const soldRaw = String(r.sold_by || "each").trim().toLowerCase();
+      const sold_by = ["each", "meter", "kg"].includes(soldRaw) ? soldRaw : "each";
+      const catName = String(r.category || "").trim();
+      const category_id = catName ? catByName.get(catName.toLowerCase()) || null : null;
+      if (catName && !category_id) {
+        errors.push({
+          row: i + 2,
+          message: `Category not found (imported without category): ${catName}`,
+        });
+      }
       payloads.push({
         organization_id: organization.id,
         name,
         sku: String(r.sku || "").trim() || null,
         barcode: String(r.barcode || "").trim() || null,
+        category_id,
+        sold_by,
         description: String(r.description || "").trim() || null,
         unit_price: toNumber(r.unit_price),
         cost_price: toNumber(r.cost_price),
-        quantity: Math.round(toNumber(r.quantity)),
+        quantity: toNumber(r.quantity),
         low_stock_threshold: Math.round(toNumber(r.low_stock_threshold, 5)),
+        available_to_sale: parseBoolFlag(r.available_to_sale, true),
+        track_stock: parseBoolFlag(r.track_stock, true),
+        price_on_sale: parseBoolFlag(r.price_on_sale, false),
         is_active: true,
       });
     }
     for (let i = 0; i < payloads.length; i += 100) {
       const chunk = payloads.slice(i, i + 100);
       let { error } = await supabase.from("products").insert(chunk);
-      if (error && /barcode|schema cache|could not find/i.test(error.message)) {
-        const withoutBarcode = chunk.map(({ barcode: _b, ...rest }) => rest);
-        ({ error } = await supabase.from("products").insert(withoutBarcode));
+      if (error && /barcode|sold_by|category_id|schema cache|could not find/i.test(error.message)) {
+        const stripped = chunk.map(
+          ({
+            barcode: _b,
+            sold_by: _s,
+            category_id: _c,
+            available_to_sale: _a,
+            track_stock: _t,
+            price_on_sale: _p,
+            ...rest
+          }) => rest
+        );
+        ({ error } = await supabase.from("products").insert(stripped));
       }
+      if (error) return { error: error.message, inserted, skipped, errors };
+      inserted += chunk.length;
+    }
+  } else if (kind === "product_categories") {
+    const parentsFirst = [...rows].sort((a, b) => {
+      const ap = String(a.parent || "").trim();
+      const bp = String(b.parent || "").trim();
+      if (!ap && bp) return -1;
+      if (ap && !bp) return 1;
+      return 0;
+    });
+    const idByName = new Map<string, string>();
+    const { data: existing } = await supabase
+      .from("product_categories")
+      .select("id, name")
+      .eq("organization_id", organization.id);
+    for (const c of existing || []) {
+      idByName.set(c.name.trim().toLowerCase(), c.id);
+    }
+    for (let i = 0; i < parentsFirst.length; i++) {
+      const r = parentsFirst[i];
+      const name = String(r.name || "").trim();
+      if (!name) {
+        skipped++;
+        errors.push({ row: i + 2, message: "Category name required" });
+        continue;
+      }
+      const key = name.toLowerCase();
+      if (idByName.has(key)) {
+        skipped++;
+        continue;
+      }
+      const parentName = String(r.parent || "").trim();
+      const parent_id = parentName ? idByName.get(parentName.toLowerCase()) || null : null;
+      if (parentName && !parent_id) {
+        skipped++;
+        errors.push({ row: i + 2, message: `Parent category not found: ${parentName}` });
+        continue;
+      }
+      const { data, error } = await supabase
+        .from("product_categories")
+        .insert({ organization_id: organization.id, name, parent_id })
+        .select("id")
+        .single();
+      if (error) return { error: error.message, inserted, skipped, errors };
+      idByName.set(key, data.id);
+      inserted++;
+    }
+  } else if (kind === "suppliers") {
+    const payloads = [];
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      const name = String(r.name || "").trim();
+      if (!name) {
+        skipped++;
+        errors.push({ row: i + 2, message: "Supplier name required" });
+        continue;
+      }
+      payloads.push({
+        organization_id: organization.id,
+        name,
+        phone: String(r.phone || "").trim() || null,
+        email: String(r.email || "").trim() || null,
+        address: String(r.address || "").trim() || null,
+        notes: String(r.notes || "").trim() || null,
+      });
+    }
+    for (let i = 0; i < payloads.length; i += 100) {
+      const chunk = payloads.slice(i, i + 100);
+      const { error } = await supabase.from("suppliers").insert(chunk);
       if (error) return { error: error.message, inserted, skipped, errors };
       inserted += chunk.length;
     }

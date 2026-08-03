@@ -515,7 +515,7 @@ export default async function AdminPage({
           <DataImportPanel
             allowedKinds={
               isRetail
-                ? ["patients", "products", "service_categories", "service_items"]
+                ? ["patients", "product_categories", "products", "suppliers"]
                 : undefined
             }
             labels={{
@@ -530,10 +530,10 @@ export default async function AdminPage({
               importing: t("importing"),
               patients: isRetail ? t("importCustomers") : t("importPatients"),
               products: t("importProducts"),
-              serviceCategories: isRetail
-                ? t("importProductCategories")
-                : t("importServiceCategories"),
-              serviceItems: isRetail ? t("importProductItems") : t("importServiceItems"),
+              productCategories: t("importProductCategories"),
+              suppliers: t("importSuppliers"),
+              serviceCategories: t("importServiceCategories"),
+              serviceItems: t("importServiceItems"),
               appointments: t("importAppointments"),
               orderHint: isRetail ? t("importOrderHintRetail") : t("importOrderHint"),
               noRows: t("importNoRows"),

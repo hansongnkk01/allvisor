@@ -3,6 +3,8 @@
 export type ImportKind =
   | "patients"
   | "products"
+  | "product_categories"
+  | "suppliers"
   | "service_categories"
   | "service_items"
   | "appointments";
@@ -29,11 +31,27 @@ const ALIASES: Record<ImportKind, Record<string, string[]>> = {
     name: ["name", "product_name", "item_name", "medicine", "nama", "nama_item"],
     sku: ["sku", "code", "item_code", "kod"],
     barcode: ["barcode", "ean", "upc", "scan_code", "kod_bar"],
+    category: ["category", "category_name", "kategori"],
+    sold_by: ["sold_by", "unit", "uom", "dijual_ikut"],
     unit_price: ["unit_price", "price", "selling_price", "harga", "harga_jual"],
     cost_price: ["cost_price", "cost", "harga_kos", "kos"],
     quantity: ["quantity", "qty", "stock", "kuantiti", "stok"],
     low_stock_threshold: ["low_stock_threshold", "low_stock", "reorder", "ambang"],
+    available_to_sale: ["available_to_sale", "for_sale", "available", "dijual"],
+    track_stock: ["track_stock", "track", "jejaki_stok"],
+    price_on_sale: ["price_on_sale", "open_price", "set_on_sale"],
     description: ["description", "desc", "keterangan"],
+  },
+  product_categories: {
+    name: ["name", "category", "category_name", "nama", "nama_kategori"],
+    parent: ["parent", "parent_name", "parent_category", "induk"],
+  },
+  suppliers: {
+    name: ["name", "supplier", "supplier_name", "nama", "nama_pembekal"],
+    phone: ["phone", "tel", "mobile", "telefon"],
+    email: ["email", "e_mail", "emel"],
+    address: ["address", "alamat"],
+    notes: ["notes", "note", "remark", "catatan"],
   },
   service_categories: {
     name: ["name", "category", "category_name", "nama", "nama_kategori"],
@@ -57,32 +75,37 @@ const ALIASES: Record<ImportKind, Record<string, string[]>> = {
   },
 };
 
+function yn(v: string | undefined, fallback = true) {
+  if (v == null || v === "") return fallback;
+  const s = String(v).trim().toLowerCase();
+  if (["0", "false", "no", "n", "off"].includes(s)) return false;
+  if (["1", "true", "yes", "y", "on"].includes(s)) return true;
+  return fallback;
+}
+
+export function parseBoolFlag(v: string | undefined, fallback = true) {
+  return yn(v, fallback);
+}
+
 export const IMPORT_TEMPLATES: Record<
   ImportKind,
   { headers: string[]; sample: string[][]; filename: string }
 > = {
   patients: {
-    filename: "allvisor-patients-template.csv",
+    filename: "allvisor-customers-template.csv",
     headers: ["name", "ic_number", "phone", "email", "address", "notes", "risk_level"],
     sample: [
-      [
-        "Ahmad bin Ali",
-        "900101145678",
-        "0123456789",
-        "ahmad@email.com",
-        "12 Jalan Melati, Kajang",
-        "Regular patient",
-        "low",
-      ],
-      [
-        "Siti Aminah",
-        "880202085432",
-        "0198765432",
-        "",
-        "45 Taman Sri Putra, Puchong",
-        "Allergy: penicillin",
-        "medium",
-      ],
+      ["Ahmad bin Ali", "900101145678", "0123456789", "ahmad@email.com", "12 Jalan Melati, Kajang", "Regular", "low"],
+      ["Siti Aminah", "880202085432", "0198765432", "", "45 Taman Sri Putra, Puchong", "", "medium"],
+    ],
+  },
+  product_categories: {
+    filename: "allvisor-product-categories-template.csv",
+    headers: ["name", "parent"],
+    sample: [
+      ["Beverages", ""],
+      ["Water", "Beverages"],
+      ["Snacks", ""],
     ],
   },
   products: {
@@ -91,15 +114,56 @@ export const IMPORT_TEMPLATES: Record<
       "name",
       "sku",
       "barcode",
+      "category",
+      "sold_by",
       "unit_price",
       "cost_price",
       "quantity",
       "low_stock_threshold",
+      "available_to_sale",
+      "track_stock",
+      "price_on_sale",
       "description",
     ],
     sample: [
-      ["Paracetamol 500mg", "MED-001", "9551234567890", "5.00", "2.50", "100", "20", "Tablet"],
-      ["Surgical gloves M", "SUP-010", "9559876543210", "12.00", "6.00", "50", "10", "Box of 100"],
+      [
+        "Tali Nylon 5m",
+        "SKU-TALI",
+        "8717",
+        "Hardware",
+        "each",
+        "8.50",
+        "3.20",
+        "120",
+        "15",
+        "yes",
+        "yes",
+        "no",
+        "Demo barcode 8717",
+      ],
+      [
+        "Custom cable",
+        "SKU-CUSTOM",
+        "999000111",
+        "Electronics",
+        "meter",
+        "0",
+        "0",
+        "50",
+        "5",
+        "yes",
+        "yes",
+        "yes",
+        "Price set on sale",
+      ],
+    ],
+  },
+  suppliers: {
+    filename: "allvisor-suppliers-template.csv",
+    headers: ["name", "phone", "email", "address", "notes"],
+    sample: [
+      ["Syarikat Sumber Jaya", "0388881111", "sales@sumberjaya.my", "Shah Alam", "Main grocery supplier"],
+      ["Tech Parts Sdn Bhd", "0377772222", "order@techparts.my", "Petaling Jaya", "Electronics"],
     ],
   },
   service_categories: {
@@ -201,10 +265,8 @@ export function toNumber(v: string | undefined, fallback = 0) {
 export function parseDateTime(v: string | undefined): string | null {
   if (!v) return null;
   const s = v.trim();
-  // Already ISO-ish
   const d = new Date(s.includes("T") ? s : s.replace(" ", "T"));
   if (!Number.isNaN(d.getTime())) return d.toISOString();
-  // Excel serial sometimes comes as number string
   const n = Number(s);
   if (Number.isFinite(n) && n > 20000 && n < 100000) {
     const excelEpoch = new Date(Date.UTC(1899, 11, 30));
@@ -214,10 +276,20 @@ export function parseDateTime(v: string | undefined): string | null {
   return null;
 }
 
+/** Clinic: full set. Retail order uses product_categories + suppliers. */
 export const IMPORT_KIND_ORDER: ImportKind[] = [
   "patients",
+  "product_categories",
+  "products",
+  "suppliers",
   "service_categories",
   "service_items",
-  "products",
   "appointments",
+];
+
+export const RETAIL_IMPORT_KINDS: ImportKind[] = [
+  "patients",
+  "product_categories",
+  "products",
+  "suppliers",
 ];
