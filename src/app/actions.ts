@@ -2651,6 +2651,13 @@ export async function getInvoicePreviewAction(invoiceId: string) {
 
   if (!invoice) return { error: "Invoice not found" };
 
+  // Fresh logo fetch (avoid stale org embed / schema-cache misses)
+  const { data: orgLogoRow } = await supabase
+    .from("organizations")
+    .select("logo_url, logo_shape, name, address, phone")
+    .eq("id", organization.id)
+    .maybeSingle();
+
   const customerRaw = Array.isArray(invoice.customers)
     ? invoice.customers[0]
     : invoice.customers;
@@ -2701,13 +2708,13 @@ export async function getInvoicePreviewAction(invoiceId: string) {
             ).myinvoisStatus,
           }
         : null,
-      orgName: organization.name,
-      orgAddress: organization.address,
-      orgPhone: organization.phone,
-      orgLogoUrl: organization.logo_url || null,
-      orgLogoShape: (organization.logo_shape === "square" ? "square" : "round") as
-        | "round"
-        | "square",
+      orgName: orgLogoRow?.name || organization.name,
+      orgAddress: orgLogoRow?.address ?? organization.address,
+      orgPhone: orgLogoRow?.phone ?? organization.phone,
+      orgLogoUrl: orgLogoRow?.logo_url || organization.logo_url || null,
+      orgLogoShape: ((orgLogoRow?.logo_shape || organization.logo_shape) === "square"
+        ? "square"
+        : "round") as "round" | "square",
       serviceChargePercent: Number(organization.service_charge_percent ?? 0),
       customer,
       products: (products || []).map((p) => ({

@@ -150,24 +150,42 @@ export function AppShell({
             gap: "1.25rem",
           }}
         >
-          <div>
-            <div className="display" style={{ fontSize: "1.55rem" }}>
-              {tBrand("name")}
-            </div>
-            <div
-              className="row"
-              style={{ alignItems: "center", gap: 8, marginTop: 6, minWidth: 0 }}
-            >
-              <ClinicLogoMark
-                url={orgLogoUrl}
-                shape={orgLogoShape}
-                size={28}
-                alt={orgName}
-              />
-              <div className="muted" style={{ fontSize: "0.85rem", minWidth: 0 }}>
+          <div
+            className="row"
+            style={{
+              alignItems: "center",
+              gap: 12,
+              minWidth: 0,
+            }}
+          >
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div className="display" style={{ fontSize: "1.55rem", lineHeight: 1.15 }}>
+                {tBrand("name")}
+              </div>
+              <div className="muted" style={{ fontSize: "0.85rem", marginTop: 4 }}>
                 {orgName}
               </div>
             </div>
+            {orgLogoUrl ? (
+              <>
+                <div
+                  aria-hidden
+                  style={{
+                    width: 1,
+                    alignSelf: "stretch",
+                    minHeight: 36,
+                    background: "rgba(28, 27, 25, 0.28)",
+                    flexShrink: 0,
+                  }}
+                />
+                <ClinicLogoMark
+                  url={orgLogoUrl}
+                  shape={orgLogoShape}
+                  size={44}
+                  alt={orgName}
+                />
+              </>
+            ) : null}
           </div>
 
           <nav className="stack" style={{ gap: "0.35rem", flex: 1 }}>

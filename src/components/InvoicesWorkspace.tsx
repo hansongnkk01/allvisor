@@ -778,7 +778,7 @@ function InvoicePreviewBody({
 
       <div className="surface invoice-sheet" style={{ padding: "1.25rem", boxShadow: "none" }}>
         <div className="row" style={{ justifyContent: "space-between", marginBottom: "1rem" }}>
-          <div className="row" style={{ alignItems: "flex-start", gap: 12, minWidth: 0 }}>
+          <div className="row" style={{ alignItems: "center", gap: 12, minWidth: 0 }}>
             <ClinicLogoMark
               url={data.orgLogoUrl}
               shape={data.orgLogoShape}

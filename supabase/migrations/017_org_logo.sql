@@ -1,15 +1,37 @@
 -- Clinic / shop logo for nav + invoices
+-- Tip: if SQL Editor shows deadlock (40P01), re-run this after a few seconds,
+-- or run STEP 1 then STEP 2 separately while the app is idle.
+
+-- ===== STEP 1: columns =====
 alter table public.organizations
-  add column if not exists logo_url text,
-  add column if not exists logo_shape text not null default 'round'
-    check (logo_shape in ('round', 'square'));
+  add column if not exists logo_url text;
+
+alter table public.organizations
+  add column if not exists logo_shape text;
+
+update public.organizations
+set logo_shape = 'round'
+where logo_shape is null;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'organizations_logo_shape_check'
+  ) then
+    alter table public.organizations
+      add constraint organizations_logo_shape_check
+      check (logo_shape in ('round', 'square'));
+  end if;
+end $$;
 
 comment on column public.organizations.logo_url is
   'Public URL of clinic logo (Supabase Storage org-logos bucket)';
 comment on column public.organizations.logo_shape is
   'Display frame for logo: round or square';
 
--- Public bucket so logos render in nav / printed invoices
+-- ===== STEP 2: storage bucket + policies =====
 insert into storage.buckets (id, name, public)
 values ('org-logos', 'org-logos', true)
 on conflict (id) do update set public = excluded.public;

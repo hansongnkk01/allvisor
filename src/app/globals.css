@@ -622,4 +622,10 @@ table.data th {
     border-bottom: none !important;
     cursor: default !important;
   }
+
+  body.printing-invoice .invoice-sheet img {
+    display: block !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
 }
