@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { CustomerRow } from "@/components/CustomerRow";
 import { ListPager, SearchField, useClientPager } from "@/components/ListControls";
+import type { TimelineLabels } from "@/components/PatientTimelinePanel";
 import type { Customer } from "@/lib/types";
 
 export function PatientsList({
@@ -26,6 +27,7 @@ export function PatientsList({
     addedBy: string;
     risk: string;
     allergies: string;
+    timeline: TimelineLabels;
   };
   empty: string;
   searchPlaceholder: string;
@@ -82,7 +84,11 @@ export function PatientsList({
           </tbody>
         </table>
       </div>
-      <ListPager page={pager.page} totalPages={pager.totalPages} onPage={pager.setPage} />
+      <ListPager
+        page={pager.page}
+        totalPages={pager.totalPages}
+        onPage={pager.setPage}
+      />
     </div>
   );
 }

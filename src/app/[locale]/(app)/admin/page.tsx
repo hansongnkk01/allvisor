@@ -25,8 +25,10 @@ import { AdminActivityLog } from "@/components/AdminActivityLog";
 import { FilterableRows } from "@/components/FilterableRows";
 import { InvoiceFormatForm } from "@/components/InvoiceFormatForm";
 import { BranchClinicSettings } from "@/components/BranchClinicSettings";
+import { BranchScorecard, type BranchScoreRow } from "@/components/BranchScorecard";
 import { TeamMembersSection } from "@/components/TeamMembersSection";
 import { formatCurrency } from "@/lib/utils";
+import { dayBoundsMY, formatDayKeyMY } from "@/lib/datetime-my";
 import { defaultAdminPassword } from "@/lib/admin-lock";
 import {
   assignableStaffRoles,
@@ -230,6 +232,81 @@ export default async function AdminPage({
 
   const isSuper = branchOrgs.length > 1;
   const org = ctx.organization;
+
+  // Multi-branch scorecard (today + month-to-date)
+  let scoreRows: BranchScoreRow[] = [];
+  if (isSuper && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    const { createClient: createAdminClient } = await import("@supabase/supabase-js");
+    const admin = createAdminClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+    const now = new Date();
+    const { start: todayStart, end: todayEnd } = dayBoundsMY(now);
+    const monthStart = `${formatDayKeyMY(now).slice(0, 7)}-01`;
+    const monthStartIso = new Date(`${monthStart}T00:00:00+08:00`).toISOString();
+
+    scoreRows = await Promise.all(
+      branchOrgs.map(async (b) => {
+        const [
+          { data: paidToday },
+          { data: paidMonth },
+          { data: unpaidRows },
+          { count: apptToday },
+          { count: noShowToday },
+        ] = await Promise.all([
+          admin
+            .from("payments")
+            .select("amount")
+            .eq("organization_id", b.id)
+            .gte("paid_at", todayStart.toISOString())
+            .lte("paid_at", todayEnd.toISOString()),
+          admin
+            .from("payments")
+            .select("amount")
+            .eq("organization_id", b.id)
+            .gte("paid_at", monthStartIso)
+            .lte("paid_at", todayEnd.toISOString()),
+          admin
+            .from("invoices")
+            .select("total, amount_paid")
+            .eq("organization_id", b.id)
+            .in("status", ["unpaid", "partial"]),
+          admin
+            .from("appointments")
+            .select("id", { count: "exact", head: true })
+            .eq("organization_id", b.id)
+            .gte("starts_at", todayStart.toISOString())
+            .lte("starts_at", todayEnd.toISOString()),
+          admin
+            .from("appointments")
+            .select("id", { count: "exact", head: true })
+            .eq("organization_id", b.id)
+            .eq("status", "no_show")
+            .gte("starts_at", todayStart.toISOString())
+            .lte("starts_at", todayEnd.toISOString()),
+        ]);
+
+        const unpaidTotal = (unpaidRows || []).reduce(
+          (sum, inv) =>
+            sum + Math.max(0, Number(inv.total) - Number(inv.amount_paid || 0)),
+          0
+        );
+
+        return {
+          id: b.id,
+          name: b.name,
+          isCurrent: b.id === orgId,
+          incomeToday: (paidToday || []).reduce((s, p) => s + Number(p.amount), 0),
+          incomeMonth: (paidMonth || []).reduce((s, p) => s + Number(p.amount), 0),
+          unpaidCount: unpaidRows?.length || 0,
+          unpaidTotal,
+          appointmentsToday: apptToday || 0,
+          noShowToday: noShowToday || 0,
+        };
+      })
+    );
+  }
 
   // Resolve pending request org names
   const pendingFromIds = (pendingRequests || []).map((r) => r.from_organization_id);
@@ -438,6 +515,23 @@ export default async function AdminPage({
               </p>
             ) : null}
           </div>
+
+      {isSuper ? (
+        <BranchScorecard
+          title={t("scorecardTitle")}
+          subtitle={t("scorecardHint")}
+          rows={scoreRows}
+          labels={{
+            branch: t("scorecardBranch"),
+            incomeToday: t("scorecardIncomeToday"),
+            incomeMonth: t("scorecardIncomeMonth"),
+            unpaid: t("scorecardUnpaid"),
+            appointmentsToday: t("scorecardApptsToday"),
+            noShow: t("scorecardNoShow"),
+            thisClinic: t("thisClinic"),
+          }}
+        />
+      ) : null}
 
       {branchOrgs.map((branch, idx) => (
         <BranchGroup

@@ -4,6 +4,10 @@ import { useState } from "react";
 import { ActionForm } from "@/components/ActionForm";
 import { PatientName } from "@/components/PatientName";
 import { PatientSafetyBanner } from "@/components/PatientSafetyBanner";
+import {
+  PatientTimelineButton,
+  type TimelineLabels,
+} from "@/components/PatientTimelinePanel";
 import { deleteCustomerAction, upsertCustomerAction } from "@/app/actions";
 import type { Customer } from "@/lib/types";
 
@@ -21,6 +25,7 @@ type Labels = {
   addedBy: string;
   risk: string;
   allergies: string;
+  timeline: TimelineLabels;
 };
 
 export function CustomerRow({
@@ -157,7 +162,8 @@ export function CustomerRow({
         </div>
       </td>
       <td>
-        <div className="row" style={{ justifyContent: "flex-end" }}>
+        <div className="row" style={{ justifyContent: "flex-end", flexWrap: "wrap" }}>
+          <PatientTimelineButton customer={customer} labels={labels.timeline} />
           <button
             type="button"
             className="btn btn-soft"

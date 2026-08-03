@@ -55,6 +55,20 @@ export default async function CustomersPage({
     addedBy: t("addedBy"),
     risk: t("risk"),
     allergies: t("allergies"),
+    timeline: {
+      timeline: t("timeline"),
+      close: t("timelineClose"),
+      loading: t("timelineLoading"),
+      empty: t("timelineEmpty"),
+      visits: t("timelineVisits"),
+      invoices: t("timelineInvoices"),
+      notes: t("notes"),
+      allergies: t("allergies"),
+      contact: t("timelineContact"),
+      status: t("timelineStatus"),
+      total: t("timelineTotal"),
+      paid: t("timelinePaid"),
+    },
   };
 
   return (

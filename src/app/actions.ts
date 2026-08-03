@@ -272,6 +272,76 @@ export async function deleteCustomerAction(id: string) {
   return { success: true };
 }
 
+export async function getPatientTimelineAction(customerId: string) {
+  const { supabase, organization } = await requireMember();
+  if (!customerId) return { error: "Missing patient" };
+
+  const { data: customer } = await supabase
+    .from("customers")
+    .select(
+      "id, name, email, phone, ic_number, address, notes, risk_level, allergies, created_at"
+    )
+    .eq("id", customerId)
+    .eq("organization_id", organization.id)
+    .maybeSingle();
+
+  if (!customer) return { error: "Patient not found" };
+
+  const [{ data: appointments }, { data: invoices }] = await Promise.all([
+    supabase
+      .from("appointments")
+      .select("id, title, starts_at, ends_at, status, notes")
+      .eq("organization_id", organization.id)
+      .eq("customer_id", customerId)
+      .order("starts_at", { ascending: false })
+      .limit(80),
+    supabase
+      .from("invoices")
+      .select(
+        "id, invoice_number, title, status, total, amount_paid, created_at, issue_date"
+      )
+      .eq("organization_id", organization.id)
+      .eq("customer_id", customerId)
+      .order("created_at", { ascending: false })
+      .limit(80),
+  ]);
+
+  return {
+    data: {
+      customer: {
+        id: customer.id,
+        name: customer.name,
+        email: customer.email,
+        phone: customer.phone,
+        ic_number: customer.ic_number,
+        address: customer.address,
+        notes: customer.notes,
+        risk_level: customer.risk_level as "high" | "medium" | "low" | null,
+        allergies: customer.allergies,
+        created_at: customer.created_at,
+      },
+      appointments: (appointments || []).map((a) => ({
+        id: a.id,
+        title: a.title,
+        starts_at: a.starts_at,
+        ends_at: a.ends_at,
+        status: a.status as string,
+        notes: a.notes as string | null,
+      })),
+      invoices: (invoices || []).map((inv) => ({
+        id: inv.id,
+        invoice_number: inv.invoice_number as string,
+        title: inv.title as string | null,
+        status: inv.status as string,
+        total: Number(inv.total),
+        amount_paid: Number(inv.amount_paid || 0),
+        created_at: inv.created_at as string,
+        issue_date: inv.issue_date as string | null,
+      })),
+    },
+  };
+}
+
 export async function upsertProductAction(formData: FormData) {
   const { supabase, organization } = await requireMember();
   const id = String(formData.get("id") || "");
