@@ -12,6 +12,7 @@ export function PatientsList({
   empty,
   searchPlaceholder,
   showAllergies = true,
+  showRisk = true,
 }: {
   customers: Customer[];
   labels: {
@@ -33,6 +34,7 @@ export function PatientsList({
   empty: string;
   searchPlaceholder: string;
   showAllergies?: boolean;
+  showRisk?: boolean;
 }) {
   const [q, setQ] = useState("");
   const filtered = useMemo(() => {
@@ -56,6 +58,7 @@ export function PatientsList({
     });
   }, [customers, q, showAllergies]);
   const pager = useClientPager(filtered, 10);
+  const colSpan = showRisk ? 8 : 7;
 
   return (
     <div>
@@ -72,7 +75,7 @@ export function PatientsList({
           <thead>
             <tr>
               <th>{labels.name}</th>
-              <th>{labels.risk}</th>
+              {showRisk ? <th>{labels.risk}</th> : null}
               <th>{labels.ic}</th>
               <th>{labels.address}</th>
               <th>{labels.phone}</th>
@@ -88,11 +91,12 @@ export function PatientsList({
                 customer={c}
                 labels={labels}
                 showAllergies={showAllergies}
+                showRisk={showRisk}
               />
             ))}
             {!filtered.length ? (
               <tr>
-                <td colSpan={8} className="muted">
+                <td colSpan={colSpan} className="muted">
                   {empty}
                 </td>
               </tr>

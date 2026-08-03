@@ -92,15 +92,17 @@ export default async function CustomersPage({
               <label>{t("name")}</label>
               <input name="name" required className="input" />
             </div>
-            <div className="field">
-              <label>{t("risk")}</label>
-              <select name="risk_level" className="select" defaultValue="">
-                <option value="">—</option>
-                <option value="low">{t("riskLow")}</option>
-                <option value="medium">{t("riskMedium")}</option>
-                <option value="high">{t("riskHigh")}</option>
-              </select>
-            </div>
+            {isClinic ? (
+              <div className="field">
+                <label>{t("risk")}</label>
+                <select name="risk_level" className="select" defaultValue="">
+                  <option value="">—</option>
+                  <option value="low">{t("riskLow")}</option>
+                  <option value="medium">{t("riskMedium")}</option>
+                  <option value="high">{t("riskHigh")}</option>
+                </select>
+              </div>
+            ) : null}
             <div className="field">
               <label>{t("ic")}</label>
               <input name="ic_number" className="input" placeholder="900101-14-5678" />
@@ -150,6 +152,7 @@ export default async function CustomersPage({
           empty={t("empty")}
           searchPlaceholder={tc("search")}
           showAllergies={isClinic}
+          showRisk={isClinic}
         />
       </div>
 

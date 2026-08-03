@@ -32,18 +32,22 @@ export function CustomerRow({
   customer,
   labels,
   showAllergies = true,
+  showRisk = true,
 }: {
   customer: Customer;
   labels: Labels;
   showAllergies?: boolean;
+  showRisk?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const allergies = showAllergies ? customer.allergies : null;
+  const risk = showRisk ? customer.risk_level : null;
+  const colSpan = showRisk ? 8 : 7;
 
   if (editing) {
     return (
       <tr>
-        <td colSpan={8}>
+        <td colSpan={colSpan}>
           <ActionForm
             action={upsertCustomerAction}
             onSuccess={() => setEditing(false)}
@@ -62,19 +66,21 @@ export function CustomerRow({
                 <label>{labels.name}</label>
                 <input name="name" required className="input" defaultValue={customer.name} />
               </div>
-              <div className="field">
-                <label>{labels.risk}</label>
-                <select
-                  name="risk_level"
-                  className="select"
-                  defaultValue={customer.risk_level || ""}
-                >
-                  <option value="">—</option>
-                  <option value="low">low</option>
-                  <option value="medium">medium</option>
-                  <option value="high">high</option>
-                </select>
-              </div>
+              {showRisk ? (
+                <div className="field">
+                  <label>{labels.risk}</label>
+                  <select
+                    name="risk_level"
+                    className="select"
+                    defaultValue={customer.risk_level || ""}
+                  >
+                    <option value="">—</option>
+                    <option value="low">low</option>
+                    <option value="medium">medium</option>
+                    <option value="high">high</option>
+                  </select>
+                </div>
+              ) : null}
               <div className="field">
                 <label>{labels.ic}</label>
                 <input
@@ -145,11 +151,11 @@ export function CustomerRow({
       <td>
         <PatientName
           name={customer.name}
-          risk={customer.risk_level}
+          risk={risk}
           allergies={allergies}
         />
         <PatientSafetyBanner
-          risk={customer.risk_level}
+          risk={risk}
           allergies={allergies}
           showAllergies={showAllergies}
           compact
@@ -160,7 +166,7 @@ export function CustomerRow({
           </div>
         ) : null}
       </td>
-      <td>{customer.risk_level || "—"}</td>
+      {showRisk ? <td>{customer.risk_level || "—"}</td> : null}
       <td>{customer.ic_number || "—"}</td>
       <td style={{ maxWidth: 180, whiteSpace: "normal" }}>{customer.address || "—"}</td>
       <td>{customer.phone || "—"}</td>
