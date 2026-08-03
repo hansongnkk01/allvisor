@@ -12,12 +12,15 @@ export function orgLogoStoragePath(orgId: string) {
   return `${orgId}/logo.png`;
 }
 
-/** If DB has no logo_url, recover from storage object when it exists. */
+/** Prefer DB logo_url (data URL or http). Else recover from Storage if present. */
 export async function resolveOrgLogoUrl(
   client: SupabaseClient,
   orgId: string,
   storedUrl?: string | null
 ): Promise<string | null> {
+  if (storedUrl?.startsWith("data:image/") || storedUrl?.startsWith("http")) {
+    return storedUrl;
+  }
   if (storedUrl) return storedUrl;
 
   const path = orgLogoStoragePath(orgId);

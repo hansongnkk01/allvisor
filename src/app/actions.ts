@@ -38,11 +38,7 @@ import {
   kickableStaffRoles,
 } from "@/lib/roles";
 import { formatDayKeyMY, parseClinicDateTimeToIso } from "@/lib/datetime-my";
-import {
-  orgLogoPublicUrl,
-  orgLogoStoragePath,
-  resolveOrgLogoUrl,
-} from "@/lib/org-logo";
+import { orgLogoStoragePath, resolveOrgLogoUrl } from "@/lib/org-logo";
 import {
   formatInvoiceNumber,
   nextInvoiceSeq,
@@ -1625,101 +1621,90 @@ export async function saveOrgLogoAction(formData: FormData) {
   const shapeRaw = String(formData.get("logo_shape") || "round");
   const logo_shape = shapeRaw === "square" ? "square" : "round";
 
-  // Prefer base64 (reliable across Server Actions); fall back to file blob.
+  // Primary path: data URL stored in organizations.logo_url (no Storage bucket required).
+  const dataUrlRaw = String(formData.get("logo_data_url") || "").trim();
   const b64 = String(formData.get("logo_base64") || "").trim();
-  const fileEntry = formData.get("logo");
-  const fileBlob =
-    !b64 &&
-    fileEntry &&
-    typeof fileEntry === "object" &&
-    "arrayBuffer" in fileEntry &&
-    typeof (fileEntry as Blob).arrayBuffer === "function" &&
-    Number((fileEntry as Blob).size || 0) > 0
-      ? (fileEntry as Blob)
-      : null;
 
-  let bytes: Uint8Array | null = null;
-  if (b64) {
+  let logo_url: string | null = organization.logo_url || null;
+  let wroteImage = false;
+
+  if (dataUrlRaw.startsWith("data:image/")) {
+    if (dataUrlRaw.length > 1_200_000) {
+      return { error: "Logo too large — try a simpler image" };
+    }
+    logo_url = dataUrlRaw;
+    wroteImage = true;
+  } else if (b64) {
     try {
-      bytes = Uint8Array.from(Buffer.from(b64, "base64"));
+      const bytes = Buffer.from(b64, "base64");
+      if (bytes.byteLength > 900_000) {
+        return { error: "Logo too large — try a simpler image" };
+      }
+      logo_url = `data:image/png;base64,${b64}`;
+      wroteImage = true;
     } catch {
       return { error: "Invalid logo data" };
     }
-  } else if (fileBlob) {
-    bytes = new Uint8Array(await fileBlob.arrayBuffer());
   }
 
-  if (!bytes && !organization.logo_url) {
-    // Allow shape-only update when a logo already exists in storage.
-    const admin = await getServiceAdmin();
-    const probe = await resolveOrgLogoUrl(
-      admin || supabase,
-      organization.id,
-      organization.logo_url
-    );
-    if (!probe && !bytes) {
-      return { error: "Choose a logo image first" };
-    }
+  if (!logo_url && !wroteImage) {
+    return { error: "Choose a logo image first" };
   }
 
   const admin = await getServiceAdmin();
-  const storage = admin || supabase;
   const db = admin || supabase;
-  const path = orgLogoStoragePath(organization.id);
-
-  let logo_url: string | null = organization.logo_url || null;
-
-  if (bytes) {
-    if (bytes.byteLength > 4 * 1024 * 1024) {
-      return { error: "Logo must be under 4MB" };
-    }
-    await storage.storage.from("org-logos").remove([path]);
-    const { error: upError } = await storage.storage
-      .from("org-logos")
-      .upload(path, bytes, { contentType: "image/png", upsert: true });
-    if (upError) {
-      if (/bucket|not found|row-level security|policy/i.test(upError.message)) {
-        return {
-          error:
-            "Logo storage not ready — run migration 017_org_logo.sql (full file, including STEP 2 bucket/policies) in Supabase SQL Editor.",
-        };
-      }
-      return { error: upError.message };
-    }
-    logo_url = orgLogoPublicUrl(organization.id, Date.now());
-  } else {
-    logo_url = await resolveOrgLogoUrl(storage, organization.id, organization.logo_url);
-  }
-
-  if (!logo_url) {
-    return { error: "Logo file missing after upload. Check org-logos bucket is public." };
-  }
 
   const { data: saved, error } = await db
     .from("organizations")
     .update({ logo_url, logo_shape })
     .eq("id", organization.id)
-    .select("logo_url, logo_shape")
+    .select("id, logo_url, logo_shape")
     .maybeSingle();
 
   if (error) {
-    if (/logo_url|logo_shape/i.test(error.message)) {
+    if (/logo_url|logo_shape|schema cache|could not find/i.test(error.message)) {
       return {
         error:
-          "Database missing logo columns — run migration 017_org_logo.sql STEP 1 in Supabase SQL Editor.",
+          "Database missing logo columns — run migration 017_org_logo.sql STEP 1 only in Supabase SQL Editor, then Save again.",
       };
     }
     return { error: error.message };
   }
 
-  // Even if SELECT omit columns (schema cache), keep storage URL for UI.
-  const finalUrl = saved?.logo_url || logo_url;
+  if (!saved) {
+    return { error: "Could not update organization logo (no row returned)." };
+  }
+
+  // Best-effort Storage mirror (optional — UI works from DB data URL alone).
+  if (wroteImage && logo_url?.startsWith("data:image/") && admin) {
+    try {
+      const comma = logo_url.indexOf(",");
+      const raw = comma >= 0 ? logo_url.slice(comma + 1) : "";
+      const bytes = Buffer.from(raw, "base64");
+      const path = orgLogoStoragePath(organization.id);
+      await admin.storage.from("org-logos").remove([path]);
+      await admin.storage
+        .from("org-logos")
+        .upload(path, bytes, { contentType: "image/jpeg", upsert: true });
+    } catch {
+      // ignore storage mirror failures
+    }
+  }
+
+  const finalUrl = saved.logo_url || logo_url;
+  if (!finalUrl) {
+    return {
+      error:
+        "Logo was not saved to the database. Confirm columns logo_url / logo_shape exist (migration 017 STEP 1).",
+    };
+  }
+
   const finalShape =
-    saved?.logo_shape === "square" ? "square" : logo_shape;
+    saved.logo_shape === "square" ? "square" : logo_shape;
 
   await logActivity({
     action: "org.logo",
-    summary: bytes
+    summary: wroteImage
       ? `Updated clinic logo (${finalShape})`
       : `Updated logo shape (${finalShape})`,
     entityType: "organization",
@@ -1742,7 +1727,11 @@ export async function removeOrgLogoAction() {
 
   const admin = await getServiceAdmin();
   const client = admin || supabase;
-  await client.storage.from("org-logos").remove([orgLogoStoragePath(organization.id)]);
+  try {
+    await client.storage.from("org-logos").remove([orgLogoStoragePath(organization.id)]);
+  } catch {
+    // Storage optional — logo may live only in DB as data URL.
+  }
 
   const { error } = await client
     .from("organizations")

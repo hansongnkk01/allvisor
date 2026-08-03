@@ -6,7 +6,7 @@ import { ClinicLogoMark, type LogoShape } from "@/components/ClinicLogoMark";
 import { removeOrgLogoAction, saveOrgLogoAction } from "@/app/actions";
 
 const VIEW = 280;
-const OUT = 512;
+const OUT = 256;
 
 type Labels = {
   title: string;
@@ -117,7 +117,7 @@ export function ClinicLogoEditor({
     drag.current = null;
   }
 
-  function exportBlob(): Promise<Blob | null> {
+  function exportDataUrl(): Promise<string | null> {
     return new Promise((resolve) => {
       if (!src || !natural.w) {
         resolve(null);
@@ -143,8 +143,10 @@ export function ClinicLogoEditor({
           drawW * ratio,
           drawH * ratio
         );
-        canvas.toBlob((b) => resolve(b), "image/png", 0.92);
+        // JPEG keeps payload small for Server Actions + DB text column.
+        resolve(canvas.toDataURL("image/jpeg", 0.88));
       };
+      img.onerror = () => resolve(null);
       img.src = src;
     });
   }
@@ -155,19 +157,16 @@ export function ClinicLogoEditor({
       const fd = new FormData();
       fd.set("logo_shape", shape);
       if (src) {
-        const blob = await exportBlob();
-        if (!blob) {
+        const dataUrl = await exportDataUrl();
+        if (!dataUrl) {
           setError("Could not crop image");
           return;
         }
-        // Base64 is more reliable than File in Server Actions.
-        const buf = new Uint8Array(await blob.arrayBuffer());
-        let binary = "";
-        const chunk = 0x8000;
-        for (let i = 0; i < buf.length; i += chunk) {
-          binary += String.fromCharCode(...buf.subarray(i, i + chunk));
+        if (dataUrl.length > 900_000) {
+          setError("Logo too large — try a simpler image");
+          return;
         }
-        fd.set("logo_base64", btoa(binary));
+        fd.set("logo_data_url", dataUrl);
       } else if (!savedUrl) {
         setError("Choose a logo image first");
         return;
@@ -181,7 +180,7 @@ export function ClinicLogoEditor({
         setSavedUrl(res.data.logo_url);
         setSrc(null);
       } else if (src) {
-        setError("Save finished but no logo URL returned. Run migration 017 fully, then try again.");
+        setError("Save finished but logo was not stored. Run migration 017 STEP 1 (logo columns).");
         return;
       }
       router.refresh();

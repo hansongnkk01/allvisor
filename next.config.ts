@@ -8,6 +8,9 @@ const nextConfig: NextConfig = {
   compress: true,
   experimental: {
     optimizePackageImports: ["lucide-react", "date-fns"],
+    serverActions: {
+      bodySizeLimit: "2mb",
+    },
   },
   headers: async () => [
     {

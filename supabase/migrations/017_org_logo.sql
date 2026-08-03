@@ -27,7 +27,7 @@ begin
 end $$;
 
 comment on column public.organizations.logo_url is
-  'Public URL of clinic logo (Supabase Storage org-logos bucket)';
+  'Clinic logo as data URL (preferred) or public Storage URL';
 comment on column public.organizations.logo_shape is
   'Display frame for logo: round or square';
 
