@@ -1,4 +1,4 @@
-import { setRequestLocale } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { redirect, Link } from "@/i18n/navigation";
 import { requireOrg } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
@@ -25,6 +25,7 @@ export default async function LogisticsPage({
   const { locale } = await params;
   const { tab: requestedTab } = await searchParams;
   setRequestLocale(locale);
+  const t = await getTranslations("RetailPages");
   const ctx = await requireOrg(locale);
   if (ctx.organization.niche !== "retail") redirect({ href: "/dashboard", locale });
   const tab = tabs.includes(requestedTab as (typeof tabs)[number])
@@ -43,7 +44,7 @@ export default async function LogisticsPage({
 
   return (
     <div className="stack" style={{ gap: "1.25rem" }}>
-      <PageHeader title="Logistics" subtitle="Suppliers, goods receipts, stock corrections and transfers." />
+      <PageHeader title={t("logisticsTitle")} subtitle={t("logisticsSubtitle")} />
       <div className="row" style={{ flexWrap: "wrap" }}>
         {tabs.map((name) => <Link key={name} href={`/logistics?tab=${name}`} className={`btn ${tab === name ? "btn-primary" : "btn-soft"}`}>{name === "grn" ? "GRN" : name[0].toUpperCase() + name.slice(1)}</Link>)}
       </div>

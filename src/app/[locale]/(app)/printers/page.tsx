@@ -1,4 +1,4 @@
-import { setRequestLocale } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { redirect } from "@/i18n/navigation";
 import { requireOrg } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
@@ -13,6 +13,7 @@ type StickerDesign = { widthMm?: number; heightMm?: number; showName?: boolean; 
 export default async function PrintersPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const t = await getTranslations("RetailPages");
   const ctx = await requireOrg(locale);
   if (ctx.organization.niche !== "retail") redirect({ href: "/dashboard", locale });
   const supabase = await createClient();
@@ -29,7 +30,7 @@ export default async function PrintersPage({ params }: { params: Promise<{ local
 
   return (
     <div className="stack" style={{ gap: "1.25rem" }}>
-      <PageHeader title="Printer settings" subtitle="Design browser-print receipts and product stickers." />
+      <PageHeader title={t("printersTitle")} subtitle={t("printersSubtitle")} />
       <ActionForm action={savePrintSettingsAction} className="stack">
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1rem" }}>
           <div className="surface stack" style={{ padding: "1.25rem" }}>

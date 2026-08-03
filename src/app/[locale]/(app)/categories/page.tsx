@@ -1,4 +1,4 @@
-import { setRequestLocale } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { redirect } from "@/i18n/navigation";
 import { requireOrg } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
@@ -16,6 +16,7 @@ export default async function CategoriesPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const t = await getTranslations("RetailPages");
   const ctx = await requireOrg(locale);
   if (ctx.organization.niche !== "retail") redirect({ href: "/dashboard", locale });
   const supabase = await createClient();
@@ -35,7 +36,7 @@ export default async function CategoriesPage({
 
   return (
     <div className="stack" style={{ gap: "1.25rem" }}>
-      <PageHeader title="Product categories" subtitle="Organize products and subcategories for POS." />
+      <PageHeader title={t("categoriesTitle")} subtitle={t("categoriesSubtitle")} />
       <div className="surface" style={{ padding: "1.25rem" }}>
         <h3 style={{ marginTop: 0 }}>Create category</h3>
         <ActionForm action={createProductCategoryAction} className="row" style={{ flexWrap: "wrap" }}>

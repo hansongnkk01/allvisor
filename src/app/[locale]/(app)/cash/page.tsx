@@ -1,4 +1,4 @@
-import { setRequestLocale } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { redirect } from "@/i18n/navigation";
 import { requireOrg } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
@@ -14,6 +14,7 @@ import { formatCurrency, formatDateTime } from "@/lib/utils";
 export default async function CashPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const t = await getTranslations("RetailPages");
   const ctx = await requireOrg(locale);
   if (ctx.organization.niche !== "retail") redirect({ href: "/dashboard", locale });
   const supabase = await createClient();
@@ -38,7 +39,7 @@ export default async function CashPage({ params }: { params: Promise<{ locale: s
 
   return (
     <div className="stack" style={{ gap: "1.25rem" }}>
-      <PageHeader title="Cash drawer" subtitle="Open a shift, record cash movements and reconcile the drawer." />
+      <PageHeader title={t("cashTitle")} subtitle={t("cashSubtitle")} />
       {!openSession ? (
         <div className="surface" style={{ padding: "1.25rem" }}>
           <h3 style={{ marginTop: 0 }}>Open cash session</h3>

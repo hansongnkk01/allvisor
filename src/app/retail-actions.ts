@@ -146,7 +146,7 @@ export async function refundInvoiceAction(formData: FormData) {
   const invoiceId = String(formData.get("invoice_id") || "");
   const note = String(formData.get("note") || "POS refund").trim();
   if (!invoiceId) return { error: "Invoice required" };
-  const [{ data: invoice }, { data: lines }, { data: existing }] = await Promise.all([
+  const [{ data: invoice }, { data: lines }, { data: existing }, { data: originalPayments }] = await Promise.all([
     supabase
       .from("invoices")
       .select("id, invoice_number, customer_id, total, subtotal, tax_amount")
@@ -163,6 +163,7 @@ export async function refundInvoiceAction(formData: FormData) {
       .eq("organization_id", organization.id)
       .eq("refund_of_invoice_id", invoiceId)
       .limit(1),
+    supabase.from("payments").select("method").eq("invoice_id", invoiceId),
   ]);
   if (!invoice) return { error: "Receipt not found" };
   if (existing?.length) return { error: "This receipt has already been refunded" };
@@ -208,6 +209,27 @@ export async function refundInvoiceAction(formData: FormData) {
     method: "other",
     note,
   });
+  if (originalPayments?.some((payment) => payment.method === "cash")) {
+    const { data: openSession } = await supabase
+      .from("cash_sessions")
+      .select("id")
+      .eq("organization_id", organization.id)
+      .eq("status", "open")
+      .order("opened_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (openSession) {
+      await supabase.from("cash_movements").insert({
+        organization_id: organization.id,
+        session_id: openSession.id,
+        type: "refund",
+        amount: Math.abs(Number(invoice.total)),
+        note,
+        created_by: profile.id,
+        created_by_name: actorName(profile),
+      });
+    }
+  }
   for (const line of lines || []) {
     if (!line.product_id) continue;
     const { data: product } = await supabase

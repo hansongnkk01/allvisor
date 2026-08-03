@@ -1,4 +1,4 @@
-import { setRequestLocale } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { redirect, Link } from "@/i18n/navigation";
 import { requireOrg } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
@@ -18,6 +18,7 @@ export default async function ReceiptsPage({
   const { locale } = await params;
   const filters = await searchParams;
   setRequestLocale(locale);
+  const t = await getTranslations("RetailPages");
   const ctx = await requireOrg(locale);
   if (ctx.organization.niche !== "retail") redirect({ href: "/dashboard", locale });
   const supabase = await createClient();
@@ -49,7 +50,7 @@ export default async function ReceiptsPage({
 
   return (
     <div className="stack" style={{ gap: "1.25rem" }}>
-      <PageHeader title="Past receipts" subtitle="Find, inspect, print and refund completed POS sales." />
+      <PageHeader title={t("receiptsTitle")} subtitle={t("receiptsSubtitle")} />
       <form className="surface row" style={{ padding: "1rem", flexWrap: "wrap" }}>
         <input className="input" type="date" name="from" defaultValue={filters.from} aria-label="From date" />
         <input className="input" type="date" name="to" defaultValue={filters.to} aria-label="To date" />
