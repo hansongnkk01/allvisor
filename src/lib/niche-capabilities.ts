@@ -31,6 +31,8 @@ export type Capability =
   | "class_schedule"
   | "attendance"
   | "term_fees"
+  | "assessments"
+  | "student_accounts"
   | "job_cards"
   | "vehicle_profile"
   | "memberships"
@@ -257,6 +259,8 @@ export const NICHE_DEFINITIONS: Record<Niche, NicheDefinition> = {
       "class_schedule",
       "attendance",
       "term_fees",
+      "assessments",
+      "student_accounts",
       "invoices",
       "admin",
       "accounting",
@@ -266,7 +270,15 @@ export const NICHE_DEFINITIONS: Record<Niche, NicheDefinition> = {
       {
         id: "operations",
         labelKey: "operationsZone",
-        keys: ["dashboard", "customers", "classes", "attendance", "invoices"],
+        keys: [
+          "dashboard",
+          "customers",
+          "classes",
+          "attendance",
+          "assessments",
+          "studentAccounts",
+          "invoices",
+        ],
       },
       CARE_ADMIN,
     ],
@@ -700,6 +712,8 @@ export const NAV_HREF: Record<string, string> = {
   labOrders: "/lab-orders",
   classes: "/classes",
   attendance: "/attendance",
+  assessments: "/assessments",
+  studentAccounts: "/student-accounts",
   jobs: "/jobs",
   vehicles: "/vehicles",
   memberships: "/memberships",

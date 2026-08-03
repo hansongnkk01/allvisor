@@ -43,6 +43,8 @@ import {
   Scale,
   PartyPopper,
   Sprout,
+  ClipboardCheck,
+  UserPlus,
   ScanBarcode,
 } from "lucide-react";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
@@ -81,6 +83,8 @@ const icons: Record<string, ReactNode> = {
   labOrders: <Microscope size={18} />,
   classes: <GraduationCap size={18} />,
   attendance: <ClipboardList size={18} />,
+  assessments: <ClipboardCheck size={18} />,
+  studentAccounts: <UserPlus size={18} />,
   jobs: <Wrench size={18} />,
   vehicles: <Car size={18} />,
   memberships: <BadgeCheck size={18} />,

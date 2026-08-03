@@ -32,7 +32,7 @@ const NICHE_CAPABILITIES = {
   ],
   tuition: [
     "dashboard", "customers", "class_schedule", "attendance", "term_fees",
-    "invoices", "admin", "accounting", "lhdn",
+    "assessments", "student_accounts", "invoices", "admin", "accounting", "lhdn",
   ],
   workshop: [
     "dashboard", "customers", "job_cards", "vehicle_profile", "pos", "inventory",
@@ -124,7 +124,7 @@ const SMOKE_ASSERTIONS = [
   },
   {
     niche: "tuition",
-    mustHave: ["class_schedule", "attendance", "term_fees"],
+    mustHave: ["class_schedule", "attendance", "term_fees", "assessments", "student_accounts"],
     mustNotHave: ["pos", "appointments"],
   },
   {
