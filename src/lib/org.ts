@@ -87,10 +87,26 @@ export const getOrgContext = cache(async (): Promise<OrgContext | null> => {
 
   if (!membership?.organizations) return null;
 
-  const organization = Array.isArray(membership.organizations)
+  let organization = Array.isArray(membership.organizations)
     ? membership.organizations[0]
     : membership.organizations;
   if (!organization) return null;
+
+  // Always load logo fields separately (membership embed / schema cache may omit them).
+  const { data: logoRow } = await supabase
+    .from("organizations")
+    .select("logo_url, logo_shape")
+    .eq("id", organization.id)
+    .maybeSingle();
+  if (logoRow) {
+    organization = {
+      ...organization,
+      logo_url: logoRow.logo_url ?? null,
+      logo_shape: (logoRow.logo_shape === "square" ? "square" : "round") as
+        | "round"
+        | "square",
+    };
+  }
 
   const profileRow = Array.isArray(membership.profiles)
     ? membership.profiles[0]

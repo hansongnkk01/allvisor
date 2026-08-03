@@ -13,6 +13,10 @@ export function revalidateApp(...paths: string[]) {
 
 export function revalidateAppLayout() {
   for (const locale of routing.locales) {
+    // Invalidate the whole locale app tree (nav shell reads org logo here).
+    revalidatePath(`/${locale}`, "layout");
     revalidatePath(`/${locale}/dashboard`, "layout");
+    revalidatePath(`/${locale}/admin`, "page");
+    revalidatePath(`/${locale}/invoices`, "page");
   }
 }

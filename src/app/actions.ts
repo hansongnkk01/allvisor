@@ -1619,18 +1619,27 @@ export async function saveOrgLogoAction(formData: FormData) {
 
   const shapeRaw = String(formData.get("logo_shape") || "round");
   const logo_shape = shapeRaw === "square" ? "square" : "round";
-  const file = formData.get("logo");
+  const fileEntry = formData.get("logo");
+  const fileBlob =
+    fileEntry &&
+    typeof fileEntry === "object" &&
+    "arrayBuffer" in fileEntry &&
+    typeof (fileEntry as Blob).arrayBuffer === "function" &&
+    Number((fileEntry as Blob).size || 0) > 0
+      ? (fileEntry as Blob)
+      : null;
 
+  const patch: Record<string, unknown> = { logo_shape };
   let logo_url = organization.logo_url || null;
 
-  if (file instanceof File && file.size > 0) {
-    if (file.size > 4 * 1024 * 1024) {
+  if (fileBlob) {
+    if (fileBlob.size > 4 * 1024 * 1024) {
       return { error: "Logo must be under 4MB" };
     }
     const admin = await getServiceAdmin();
     const client = admin || supabase;
     const path = `${organization.id}/logo.png`;
-    const bytes = new Uint8Array(await file.arrayBuffer());
+    const bytes = new Uint8Array(await fileBlob.arrayBuffer());
     const { error: upError } = await client.storage
       .from("org-logos")
       .upload(path, bytes, { contentType: "image/png", upsert: true });
@@ -1638,7 +1647,7 @@ export async function saveOrgLogoAction(formData: FormData) {
       if (/bucket|not found|row-level security/i.test(upError.message)) {
         return {
           error:
-            "Logo storage not ready — run migration 017_org_logo.sql in Supabase SQL Editor.",
+            "Logo storage not ready — run migration 017_org_logo.sql (STEP 2) in Supabase SQL Editor.",
         };
       }
       return { error: upError.message };
@@ -1646,11 +1655,13 @@ export async function saveOrgLogoAction(formData: FormData) {
 
     const { data: pub } = client.storage.from("org-logos").getPublicUrl(path);
     logo_url = `${pub.publicUrl}?v=${Date.now()}`;
+    patch.logo_url = logo_url;
   }
 
-  const { error } = await supabase
+  const writer = (await getServiceAdmin()) || supabase;
+  const { error } = await writer
     .from("organizations")
-    .update({ logo_url, logo_shape })
+    .update(patch)
     .eq("id", organization.id);
   if (error) {
     if (/logo_url|logo_shape/i.test(error.message)) {
@@ -1662,19 +1673,38 @@ export async function saveOrgLogoAction(formData: FormData) {
     return { error: error.message };
   }
 
+  // Confirm what was stored (catches silent schema / RLS mismatches).
+  const { data: saved } = await writer
+    .from("organizations")
+    .select("logo_url, logo_shape")
+    .eq("id", organization.id)
+    .maybeSingle();
+  logo_url = saved?.logo_url || logo_url;
+  const savedShape =
+    saved?.logo_shape === "square" ? "square" : logo_shape;
+
+  if (fileBlob && !logo_url) {
+    return {
+      error:
+        "Logo uploaded but URL was not saved. Re-run migration 017_org_logo.sql, then save again.",
+    };
+  }
+
   await logActivity({
     action: "org.logo",
-    summary:
-      file instanceof File && file.size > 0
-        ? `Updated clinic logo (${logo_shape})`
-        : `Updated logo shape (${logo_shape})`,
+    summary: fileBlob
+      ? `Updated clinic logo (${savedShape})`
+      : `Updated logo shape (${savedShape})`,
     entityType: "organization",
     entityId: organization.id,
   });
 
   revalidateAppLayout();
   revalidateApp("/admin", "/invoices", "/dashboard");
-  return { success: true, data: { logo_url, logo_shape } };
+  return {
+    success: true,
+    data: { logo_url, logo_shape: savedShape as "round" | "square" },
+  };
 }
 
 export async function removeOrgLogoAction() {

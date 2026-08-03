@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useRouter } from "@/i18n/navigation";
 import { ClinicLogoMark, type LogoShape } from "@/components/ClinicLogoMark";
 import { removeOrgLogoAction, saveOrgLogoAction } from "@/app/actions";
 
@@ -42,6 +43,7 @@ export function ClinicLogoEditor({
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const router = useRouter();
   const drag = useRef<{ x: number; y: number; ox: number; oy: number } | null>(
     null
   );
@@ -171,7 +173,11 @@ export function ClinicLogoEditor({
       if (res && "data" in res && res.data?.logo_url) {
         setSavedUrl(res.data.logo_url);
         setSrc(null);
+      } else if (res && "data" in res && !res.data?.logo_url && src) {
+        setError("Save finished but no logo URL returned. Check migration 017 / storage bucket.");
+        return;
       }
+      router.refresh();
     });
   }
 
@@ -185,6 +191,7 @@ export function ClinicLogoEditor({
       }
       setSavedUrl("");
       setSrc(null);
+      router.refresh();
     });
   }
 
