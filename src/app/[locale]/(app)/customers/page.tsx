@@ -26,7 +26,7 @@ export default async function CustomersPage({
   const isTuition = hasCapability(ctx.organization.niche, "class_schedule");
   const isClinic = hasCapability(ctx.organization.niche, "allergies");
 
-  const [{ data: customers }, { data: deletions }, logs, classesRes, portalsRes, enrollRes] =
+  const [{ data: customers }, { data: deletions }, logs, subjectsRes, portalsRes, enrollRes] =
     await Promise.all([
       supabase
         .from("customers")
@@ -45,11 +45,13 @@ export default async function CustomersPage({
       fetchSectionLogs(ctx.organization.id, ["customer"], 25),
       isTuition
         ? supabase
-            .from("tuition_classes")
-            .select("id, name")
+            .from("tuition_subjects")
+            .select("id, name, price, teacher_name")
             .eq("organization_id", ctx.organization.id)
             .order("name")
-        : Promise.resolve({ data: [] as Array<{ id: string; name: string }> }),
+        : Promise.resolve({
+            data: [] as Array<{ id: string; name: string; price: number; teacher_name: string | null }>,
+          }),
       isTuition
         ? supabase
             .from("tuition_students")
@@ -58,26 +60,26 @@ export default async function CustomersPage({
         : Promise.resolve({ data: [] as Array<{ customer_id: string; email: string; active: boolean }> }),
       isTuition
         ? supabase
-            .from("tuition_enrollments")
-            .select("customer_id, class_id, tuition_classes(name)")
+            .from("tuition_subject_enrollments")
+            .select("customer_id, subject_id, tuition_subjects(name)")
             .eq("organization_id", ctx.organization.id)
         : Promise.resolve({
             data: [] as Array<{
               customer_id: string;
-              class_id: string;
-              tuition_classes: { name: string } | { name: string }[] | null;
+              subject_id: string;
+              tuition_subjects: { name: string } | { name: string }[] | null;
             }>,
           }),
     ]);
 
-  const classes = classesRes.data || [];
+  const subjects = subjectsRes.data || [];
   const portalByCustomer = new Map(
     (portalsRes.data || []).map((p) => [p.customer_id, p] as const)
   );
   const subjectsByCustomer = new Map<string, string[]>();
   for (const e of enrollRes.data || []) {
-    const cls = Array.isArray(e.tuition_classes) ? e.tuition_classes[0] : e.tuition_classes;
-    const name = cls?.name;
+    const sub = Array.isArray(e.tuition_subjects) ? e.tuition_subjects[0] : e.tuition_subjects;
+    const name = sub?.name;
     if (!name) continue;
     const list = subjectsByCustomer.get(e.customer_id) || [];
     list.push(name);
@@ -197,7 +199,7 @@ export default async function CustomersPage({
                 <p className="muted" style={{ margin: "0 0 0.5rem", fontSize: "0.9rem" }}>
                   {t("subjectsHint")}
                 </p>
-                {classes.length ? (
+                {subjects.length ? (
                   <div
                     style={{
                       display: "grid",
@@ -205,10 +207,13 @@ export default async function CustomersPage({
                       gap: "0.4rem",
                     }}
                   >
-                    {classes.map((c) => (
+                    {subjects.map((c) => (
                       <label key={c.id} className="row" style={{ gap: "0.4rem", alignItems: "center" }}>
-                        <input type="checkbox" name="class_ids" value={c.id} />
-                        <span>{c.name}</span>
+                        <input type="checkbox" name="subject_ids" value={c.id} />
+                        <span>
+                          {c.name}
+                          {c.price != null ? ` (${Number(c.price).toFixed(0)})` : ""}
+                        </span>
                       </label>
                     ))}
                   </div>

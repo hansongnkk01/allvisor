@@ -273,6 +273,7 @@ export const NICHE_DEFINITIONS: Record<Niche, NicheDefinition> = {
         keys: [
           "dashboard",
           "customers",
+          "subjects",
           "classes",
           "attendance",
           "assessments",
@@ -710,6 +711,7 @@ export const NAV_HREF: Record<string, string> = {
   eyeRx: "/eye-rx",
   labOrders: "/lab-orders",
   classes: "/classes",
+  subjects: "/subjects",
   attendance: "/attendance",
   assessments: "/assessments",
   studentAccounts: "/student-accounts",

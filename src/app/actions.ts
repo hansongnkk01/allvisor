@@ -249,6 +249,21 @@ export async function upsertCustomerAction(formData: FormData) {
       );
     }
 
+    const subjectIds = formData
+      .getAll("subject_ids")
+      .map((v) => String(v))
+      .filter(Boolean);
+    if (subjectIds.length) {
+      await supabase.from("tuition_subject_enrollments").upsert(
+        subjectIds.map((subject_id) => ({
+          organization_id: organization.id,
+          subject_id,
+          customer_id: customerId,
+        })),
+        { onConflict: "subject_id,customer_id", ignoreDuplicates: true }
+      );
+    }
+
     const createPortal = formData.get("create_portal") === "on";
     if (createPortal && !id) {
       const portalPassword = String(formData.get("portal_password") || "");

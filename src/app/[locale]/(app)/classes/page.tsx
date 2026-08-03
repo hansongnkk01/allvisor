@@ -22,10 +22,10 @@ export default async function ClassesPage({ params }: { params: Promise<{ locale
   const ctx = await requireCapability(locale, "class_schedule");
   const supabase = await createClient();
 
-  const [{ data: classes }, { data: customers }, { data: enrollments }] = await Promise.all([
+  const [{ data: classes }, { data: customers }, { data: enrollments }, { data: subjectRows }] = await Promise.all([
     supabase
       .from("tuition_classes")
-      .select("id, name, teacher_name, weekday, start_time, end_time, room, fee, schedule")
+      .select("id, name, teacher_name, weekday, start_time, end_time, room, fee, schedule, subject_id")
       .eq("organization_id", ctx.organization.id)
       .order("weekday", { ascending: true }),
     supabase
@@ -39,6 +39,11 @@ export default async function ClassesPage({ params }: { params: Promise<{ locale
       .select("id, class_id, customer_id, customers(name)")
       .eq("organization_id", ctx.organization.id)
       .limit(500),
+    supabase
+      .from("tuition_subjects")
+      .select("id, name, teacher_name")
+      .eq("organization_id", ctx.organization.id)
+      .order("name"),
   ]);
 
   const byDay = new Map<number, typeof classes>();
@@ -66,6 +71,18 @@ export default async function ClassesPage({ params }: { params: Promise<{ locale
             <div className="field">
               <label>{t("className")}</label>
               <input name="name" className="input" required placeholder="Math Form 3" />
+            </div>
+            <div className="field">
+              <label>{t("linkedSubject")}</label>
+              <select name="subject_id" className="select" defaultValue="">
+                <option value="">—</option>
+                {(subjectRows || []).map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                    {s.teacher_name ? ` · ${s.teacher_name}` : ""}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="field">
               <label>{t("teacher")}</label>

@@ -41,6 +41,7 @@ export async function upsertTuitionClassAction(formData: FormData) {
     end_time: endTime,
     room: String(formData.get("room") || "").trim() || null,
     fee: Number(formData.get("fee") || 0),
+    subject_id: String(formData.get("subject_id") || "") || null,
     schedule: buildScheduleLabel(
       weekday === null || Number.isNaN(weekday) ? null : weekday,
       startTime,
@@ -62,6 +63,49 @@ export async function upsertTuitionClassAction(formData: FormData) {
     meta: { by: profile.id },
   });
   revalidateApp("/classes", "/student");
+  return { success: true };
+}
+
+export async function upsertTuitionSubjectAction(formData: FormData) {
+  const { supabase, organization, profile } = await requireMemberWithCapability("class_schedule");
+  const id = String(formData.get("id") || "");
+  const payload = {
+    organization_id: organization.id,
+    name: String(formData.get("name") || "").trim(),
+    price: Number(formData.get("price") || 0),
+    teacher_name: String(formData.get("teacher_name") || "").trim() || null,
+    teacher_salary: Number(formData.get("teacher_salary") || 0),
+    notes: String(formData.get("notes") || "").trim() || null,
+  };
+  if (!payload.name) return { error: "Subject name required" };
+
+  const { data, error } = id
+    ? await supabase.from("tuition_subjects").update(payload).eq("id", id).select("id").single()
+    : await supabase.from("tuition_subjects").insert(payload).select("id").single();
+
+  if (error) return { error: error.message };
+  await logActivity({
+    action: id ? "tuition.subject.update" : "tuition.subject.create",
+    summary: `${id ? "Updated" : "Created"} subject ${payload.name}`,
+    entityType: "tuition_subjects",
+    entityId: data.id,
+    meta: { by: profile.id },
+  });
+  revalidateApp("/subjects", "/customers", "/classes");
+  return { success: true };
+}
+
+export async function deleteTuitionSubjectAction(formData: FormData) {
+  const { supabase, organization } = await requireMemberWithCapability("class_schedule");
+  const id = String(formData.get("id") || "");
+  if (!id) return { error: "Subject required" };
+  const { error } = await supabase
+    .from("tuition_subjects")
+    .delete()
+    .eq("id", id)
+    .eq("organization_id", organization.id);
+  if (error) return { error: error.message };
+  revalidateApp("/subjects", "/customers", "/classes");
   return { success: true };
 }
 
