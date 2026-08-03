@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "@/i18n/navigation";
 import { posCheckoutAction } from "@/app/actions";
 import { formatCurrency } from "@/lib/utils";
@@ -44,6 +44,15 @@ type Labels = {
   checkingOut: string;
 };
 
+function barcodePrefixMatches(products: PosProduct[], needle: string) {
+  return products.filter((p) => {
+    if (p.quantity <= 0) return false;
+    const bc = (p.barcode || "").trim();
+    const sku = (p.sku || "").trim();
+    return (bc && bc.startsWith(needle)) || (sku && sku.startsWith(needle));
+  });
+}
+
 export function PosWorkspace({
   products,
   frequentIds,
@@ -57,6 +66,8 @@ export function PosWorkspace({
 }) {
   const router = useRouter();
   const searchRef = useRef<HTMLInputElement>(null);
+  const queryRef = useRef("");
+  const productsRef = useRef(products);
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [customerId, setCustomerId] = useState("");
@@ -64,6 +75,9 @@ export function PosWorkspace({
   const [error, setError] = useState<string | null>(null);
   const [okMsg, setOkMsg] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  productsRef.current = products;
+  queryRef.current = query;
 
   const byId = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
 
@@ -77,15 +91,21 @@ export function PosWorkspace({
   );
 
   const filtered = useMemo(() => {
-    const needle = query.trim().toLowerCase();
+    const needle = query.trim();
     if (!needle) return products.filter((p) => p.quantity > 0).slice(0, 40);
+
+    if (/^\d+$/.test(needle)) {
+      return barcodePrefixMatches(products, needle).slice(0, 40);
+    }
+
+    const q = needle.toLowerCase();
     return products
       .filter((p) => {
         const hay = [p.name, p.sku, p.barcode]
           .filter(Boolean)
           .join(" ")
           .toLowerCase();
-        return hay.includes(needle);
+        return hay.includes(q);
       })
       .slice(0, 40);
   }, [products, query]);
@@ -118,6 +138,20 @@ export function PosWorkspace({
         },
       ];
     });
+  }
+
+  function applySearch(value: string, catalog: PosProduct[] = products) {
+    const needle = value.trim();
+    if (/^\d+$/.test(needle)) {
+      const matches = barcodePrefixMatches(catalog, needle);
+      if (matches.length === 1) {
+        addProduct(matches[0], 1);
+        setQuery("");
+        queueMicrotask(() => searchRef.current?.focus());
+        return;
+      }
+    }
+    setQuery(value);
   }
 
   function setLineQty(productId: string, qty: number) {
@@ -181,6 +215,36 @@ export function PosWorkspace({
     });
   }
 
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (!/^[0-9]$/.test(e.key)) return;
+
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      const tag = target.tagName;
+      const isEditable =
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        tag === "SELECT" ||
+        target.isContentEditable;
+      const isSearch = searchRef.current === target;
+
+      // Don't steal digits from qty / other form fields
+      if (isEditable && !isSearch) return;
+      if (isSearch) return; // normal onChange handles digits in the search box
+
+      e.preventDefault();
+      searchRef.current?.focus();
+      const trimmed = queryRef.current.trim();
+      const next = !trimmed || /^\d+$/.test(trimmed) ? trimmed + e.key : e.key;
+      applySearch(next, productsRef.current);
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   return (
     <div className="pos-grid">
       <div className="stack" style={{ gap: "0.85rem" }}>
@@ -193,7 +257,7 @@ export function PosWorkspace({
               value={query}
               placeholder={labels.searchHint}
               autoFocus
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => applySearch(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
