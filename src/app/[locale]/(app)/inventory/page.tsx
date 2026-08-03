@@ -1,5 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { redirect } from "@/i18n/navigation";
 import { requireOrg } from "@/lib/org";
+import { hasCapability } from "@/lib/niches";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { ActionForm } from "@/components/ActionForm";
@@ -20,6 +22,9 @@ export default async function InventoryPage({
   setRequestLocale(locale);
   const t = await getTranslations("Inventory");
   const ctx = await requireOrg(locale);
+  if (!hasCapability(ctx.organization.niche, "inventory")) {
+    redirect({ href: "/dashboard", locale });
+  }
   const supabase = await createClient();
   const since = new Date();
   since.setDate(since.getDate() - 90);
@@ -101,7 +106,7 @@ export default async function InventoryPage({
     .sort((a, b) => b.usedQty - a.usedQty)
     .slice(0, 12);
 
-  const isClinic = ctx.organization.niche === "clinic";
+  const isClinic = !hasCapability(ctx.organization.niche, "pos");
 
   return (
     <div className="stack" style={{ gap: "1.25rem" }}>

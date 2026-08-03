@@ -1,9 +1,11 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { redirect } from "@/i18n/navigation";
 import { requireOrg } from "@/lib/org";
+import { hasCapability } from "@/lib/niches";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
-import { PosWorkspace, type PosProduct } from "@/components/PosWorkspace";
+import { PosWorkspaceLazy } from "@/components/PosWorkspaceLazy";
+import type { PosProduct } from "@/components/PosWorkspace";
 
 export default async function PosPage({
   params,
@@ -15,7 +17,7 @@ export default async function PosPage({
   const t = await getTranslations("POS");
   const ctx = await requireOrg(locale);
 
-  if (ctx.organization.niche !== "retail") {
+  if (!hasCapability(ctx.organization.niche, "pos")) {
     redirect({ href: "/dashboard", locale });
   }
 
@@ -102,7 +104,7 @@ export default async function PosPage({
   return (
     <div className="stack" style={{ gap: "1.25rem" }}>
       <PageHeader title={t("title")} subtitle={t("subtitle")} />
-      <PosWorkspace
+      <PosWorkspaceLazy
         products={catalog}
         frequentIds={frequentIds}
         customers={customers || []}

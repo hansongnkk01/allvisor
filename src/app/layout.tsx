@@ -22,7 +22,9 @@ export default async function RootLayout({
 }>) {
   const cookieStore = await cookies();
   const niche = cookieStore.get("allvisor_niche")?.value;
-  const dataNiche = niche === "retail" || niche === "clinic" ? niche : undefined;
+  const { isNiche } = await import("@/lib/niches");
+  const { nicheThemeAttr } = await import("@/lib/utils");
+  const dataNiche = isNiche(niche) ? nicheThemeAttr(niche) : undefined;
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
   return (

@@ -9,7 +9,18 @@ import { formatDayKeyMY } from "@/lib/datetime-my";
 async function requireRetailMember() {
   const ctx = await getOrgContext();
   if (!ctx) throw new Error("No organization");
-  if (ctx.organization.niche !== "retail") throw new Error("Retail access required");
+  const { hasCapability } = await import("@/lib/niches");
+  // Commerce-like niches that use retail ops tables
+  if (
+    !hasCapability(ctx.organization.niche, "pos") &&
+    !hasCapability(ctx.organization.niche, "cash_drawer") &&
+    !hasCapability(ctx.organization.niche, "logistics") &&
+    !hasCapability(ctx.organization.niche, "product_categories") &&
+    !hasCapability(ctx.organization.niche, "receipts") &&
+    !hasCapability(ctx.organization.niche, "printers")
+  ) {
+    throw new Error("Retail access required");
+  }
   return { ...ctx, supabase: await createClient() };
 }
 

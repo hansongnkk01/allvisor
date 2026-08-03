@@ -1,6 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { redirect } from "@/i18n/navigation";
 import { requireOrg } from "@/lib/org";
+import { hasCapability } from "@/lib/niches";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { ActionForm } from "@/components/ActionForm";
@@ -18,7 +19,7 @@ export default async function CategoriesPage({
   setRequestLocale(locale);
   const t = await getTranslations("RetailPages");
   const ctx = await requireOrg(locale);
-  if (ctx.organization.niche !== "retail") redirect({ href: "/dashboard", locale });
+  if (!hasCapability(ctx.organization.niche, "product_categories")) redirect({ href: "/dashboard", locale });
   const supabase = await createClient();
   const [{ data: categories }, { data: products }] = await Promise.all([
     supabase

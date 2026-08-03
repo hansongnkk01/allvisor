@@ -1,5 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { requireOrg } from "@/lib/org";
+import { hasCapability } from "@/lib/niches";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { SectionActivityLog } from "@/components/SectionActivityLog";
@@ -24,7 +25,7 @@ export default async function InvoicesPage({
   const td = await getTranslations("InvoiceDetail");
   const ctx = await requireOrg(locale);
   const supabase = await createClient();
-  const isClinic = ctx.organization.niche === "clinic";
+  const isClinic = hasCapability(ctx.organization.niche, "allergies");
 
   const [{ data: invoices }, logs] = await Promise.all([
     supabase

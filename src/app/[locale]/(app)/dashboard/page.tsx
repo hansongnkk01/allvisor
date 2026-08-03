@@ -9,6 +9,7 @@ import { DashboardAiPanel } from "@/components/DashboardAiPanel";
 import { DailyClosePanel } from "@/components/DailyClosePanel";
 import { DashboardRecentInvoices, DashboardUpcomingAppointments, DashboardTodaySales, DashboardTopSellers } from "@/components/DashboardLists";
 import { dayBoundsMY, formatDayKeyMY } from "@/lib/datetime-my";
+import { hasCapability } from "@/lib/niches";
 
 type ApptRow = {
   id: string;
@@ -67,6 +68,9 @@ export default async function DashboardPage({
   const supabase = await createClient();
   const orgId = ctx.organization.id;
   const niche = ctx.organization.niche;
+  const canAppointments = hasCapability(niche, "appointments");
+  const canPos = hasCapability(niche, "pos");
+  const patientStyle = hasCapability(niche, "allergies");
   const now = new Date();
   const { start: todayStart, end: todayEnd } = dayBoundsMY(now);
   const monthStart = `${formatDayKeyMY(now).slice(0, 7)}-01`;
@@ -123,7 +127,7 @@ export default async function DashboardPage({
       .eq("organization_id", orgId)
       .eq("status", "paid")
       .eq("lhdn_status", "rejected"),
-    niche === "clinic"
+    canAppointments
       ? supabase
           .from("appointments")
           .select("id", { count: "exact", head: true })
@@ -131,7 +135,7 @@ export default async function DashboardPage({
           .gte("starts_at", todayStart.toISOString())
           .lte("starts_at", todayEnd.toISOString())
       : Promise.resolve({ count: 0 }),
-    niche === "clinic"
+    canAppointments
       ? supabase
           .from("appointments")
           .select("id", { count: "exact", head: true })
@@ -140,7 +144,7 @@ export default async function DashboardPage({
           .gte("starts_at", todayStart.toISOString())
           .lte("starts_at", todayEnd.toISOString())
       : Promise.resolve({ count: 0 }),
-    niche === "clinic"
+    canAppointments
       ? supabase
           .from("appointments")
           .select("id, title, starts_at, ends_at, status, notes, customers(name, risk_level, allergies)")
@@ -150,7 +154,7 @@ export default async function DashboardPage({
           .order("starts_at", { ascending: true })
           .limit(20)
       : Promise.resolve({ data: [] as never[] }),
-    niche === "clinic"
+    canAppointments
       ? supabase
           .from("appointments")
           .select("id, title, starts_at, ends_at, status, notes, customers(name, risk_level, allergies)")
@@ -165,7 +169,7 @@ export default async function DashboardPage({
       .eq("organization_id", orgId)
       .gte("paid_at", todayStart.toISOString())
       .lte("paid_at", todayEnd.toISOString()),
-    niche === "retail"
+    canPos
       ? supabase
           .from("payments")
           .select("id, amount, paid_at, invoices(invoice_number, title, customers(name))")
@@ -175,7 +179,7 @@ export default async function DashboardPage({
           .order("paid_at", { ascending: false })
           .limit(40)
       : Promise.resolve({ data: [] as never[] }),
-    niche === "retail"
+    canPos
       ? supabase
           .from("stock_movements")
           .select("quantity, products(name)")
@@ -248,7 +252,7 @@ export default async function DashboardPage({
         minWidth: 0,
       }}
     >
-      {niche === "clinic" ? (
+      {canAppointments && !canPos ? (
         <div className="surface kpi" style={{ margin: 0 }}>
           <div className="kpi-label">{t("appointmentsToday")}</div>
           <div className="kpi-value">{appointmentsToday}</div>
@@ -264,7 +268,7 @@ export default async function DashboardPage({
         <div className="kpi-value">{unpaidCount}</div>
       </div>
       <div className="surface kpi" style={{ margin: 0 }}>
-        <div className="kpi-label">{niche === "clinic" ? t("patients") : t("customers")}</div>
+        <div className="kpi-label">{patientStyle ? t("patients") : t("customers")}</div>
         <div className="kpi-value">{customerCount || 0}</div>
       </div>
       <div className="surface kpi" style={{ margin: 0 }}>
@@ -313,8 +317,8 @@ export default async function DashboardPage({
         incomeToday={salesToday}
         unpaidCount={unpaidCount}
         unpaidTotal={unpaidTotal}
-        noShowToday={niche === "clinic" ? noShowTodayCount || 0 : -1}
-        txnToday={niche === "retail" ? txnToday : -1}
+        noShowToday={canAppointments ? noShowTodayCount || 0 : -1}
+        txnToday={canPos ? txnToday : -1}
         lowStockNames={lowStockItems}
         lhdnPendingCount={lhdnPending || 0}
         lhdnRejectedCount={lhdnRejected || 0}
@@ -330,30 +334,31 @@ export default async function DashboardPage({
           openInvoices: t("closeOpenInvoices"),
           openInventory: t("closeOpenInventory"),
           openLhdn: t("closeOpenLhdn"),
-          openPos: niche === "retail" ? t("closeOpenPos") : undefined,
+          openPos: canPos ? t("closeOpenPos") : undefined,
         }}
       />
 
       <div className="row">
         <span className="muted">{t("quickActions")}:</span>
         <Link href="/customers" className="btn btn-soft">
-          {niche === "clinic" ? t("patients") : t("customers")}
+          {patientStyle ? t("patients") : t("customers")}
         </Link>
         <Link href="/invoices" className="btn btn-soft">
           Invoices
         </Link>
-        {niche === "clinic" ? (
+        {canAppointments ? (
           <Link href="/appointments" className="btn btn-soft">
             Appointments
           </Link>
-        ) : (
+        ) : null}
+        {canPos ? (
           <Link href="/pos" className="btn btn-soft">
             POS
           </Link>
-        )}
+        ) : null}
       </div>
 
-      {niche === "clinic" ? (
+      {canAppointments ? (
         <DayHourTimetable
           date={now}
           appointments={todayAppts}
@@ -387,18 +392,20 @@ export default async function DashboardPage({
           }))}
         />
 
-        {niche === "clinic" ? (
+        {canAppointments && !canPos ? (
           <DashboardUpcomingAppointments title={t("upcomingAppointments")} items={upcoming} />
-        ) : (
+        ) : canPos ? (
           <DashboardTodaySales
             title={t("todaySales")}
             empty={t("todaySalesEmpty")}
             rows={todaySalesRows}
           />
+        ) : (
+          <DashboardUpcomingAppointments title={t("upcomingAppointments")} items={upcoming} />
         )}
       </div>
 
-      {niche === "retail" ? (
+      {canPos ? (
         <DashboardTopSellers
           title={t("topSellers")}
           empty={t("topSellersEmpty")}

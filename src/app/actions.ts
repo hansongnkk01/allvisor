@@ -3,7 +3,7 @@
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { getOrgContext } from "@/lib/org";
-import { isNiche } from "@/lib/niches";
+import { isNiche, hasCapability } from "@/lib/niches";
 import { getLhdnProvider } from "@/lib/lhdn";
 import { canUseLhdn } from "@/lib/subscription";
 import { revalidateApp, revalidateAppLayout } from "@/lib/revalidate";
@@ -289,10 +289,11 @@ export async function getPatientTimelineAction(customerId: string) {
 
   if (!customer) return { error: "Customer not found" };
 
-  const isClinic = organization.niche === "clinic";
+  const { hasCapability } = await import("@/lib/niches");
+  const canAppointments = hasCapability(organization.niche, "appointments");
 
   const [{ data: appointments }, { data: invoices }] = await Promise.all([
-    isClinic
+    canAppointments
       ? supabase
           .from("appointments")
           .select("id, title, starts_at, ends_at, status, notes")
@@ -330,7 +331,7 @@ export async function getPatientTimelineAction(customerId: string) {
         address: customer.address,
         notes: customer.notes,
         risk_level: customer.risk_level as "high" | "medium" | "low" | null,
-        allergies: isClinic ? customer.allergies : null,
+        allergies: hasCapability(organization.niche, "allergies") ? customer.allergies : null,
         created_at: customer.created_at,
       },
       appointments: (appointments || []).map((a) => ({
@@ -372,8 +373,8 @@ export async function upsertProductAction(formData: FormData) {
     is_active: true,
     sold_by: ["each", "meter", "kg"].includes(soldBy) ? soldBy : "each",
     available_to_sale:
-      organization.niche !== "retail" || formData.get("available_to_sale") === "on",
-    track_stock: organization.niche !== "retail" || formData.get("track_stock") === "on",
+      !hasCapability(organization.niche, "pos") || formData.get("available_to_sale") === "on",
+    track_stock: !hasCapability(organization.niche, "pos") || formData.get("track_stock") === "on",
     image_url: String(formData.get("image_url") || "").trim() || null,
     price_on_sale: formData.get("price_on_sale") === "on",
     category_id: String(formData.get("category_id") || "") || null,
@@ -902,6 +903,9 @@ export async function logInvoiceEarlyExitAction(formData: FormData) {
 
 export async function createAppointmentAction(formData: FormData) {
   const { supabase, organization } = await requireMember();
+  if (!hasCapability(organization.niche, "appointments")) {
+    return { error: "Appointments are not available for this business type." };
+  }
   const categoryId = String(formData.get("category_id") || "").trim();
   let title = String(formData.get("title") || "").trim();
 
@@ -1400,8 +1404,9 @@ export async function deleteAppointmentAction(id: string) {
 
 export async function posCheckoutAction(formData: FormData) {
   const { supabase, organization, profile } = await requireMember();
-  if (organization.niche !== "retail") {
-    return { error: "POS is only available for retail shops." };
+  const { hasCapability } = await import("@/lib/niches");
+  if (!hasCapability(organization.niche, "pos")) {
+    return { error: "POS is not available for this business type." };
   }
 
   const customerId = String(formData.get("customer_id") || "") || null;

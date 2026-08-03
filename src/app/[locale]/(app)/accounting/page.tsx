@@ -1,6 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link, redirect } from "@/i18n/navigation";
 import { requireOrg } from "@/lib/org";
+import { hasCapability } from "@/lib/niches";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { ActionForm } from "@/components/ActionForm";
@@ -82,7 +83,7 @@ export default async function AccountingPage({
   setRequestLocale(locale);
   const t = await getTranslations("Accounting");
   const ctx = await requireOrg(locale);
-  const isClinic = ctx.organization.niche === "clinic";
+  const isClinic = !hasCapability(ctx.organization.niche, "pos");
 
   if (!canAccessSensitive(ctx.membership.role)) {
     redirect({ href: "/dashboard", locale });

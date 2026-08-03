@@ -1,5 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { requireOrg } from "@/lib/org";
+import { hasCapability } from "@/lib/niches";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { ActionForm } from "@/components/ActionForm";
@@ -40,8 +41,8 @@ export default async function CustomersPage({
     fetchSectionLogs(ctx.organization.id, ["customer"], 25),
   ]);
 
-  const title = ctx.organization.niche === "clinic" ? t("titleClinic") : t("title");
-  const isClinic = ctx.organization.niche === "clinic";
+  const title = hasCapability(ctx.organization.niche, "allergies") ? t("titleClinic") : t("title");
+  const isClinic = hasCapability(ctx.organization.niche, "allergies");
   const deletedTitle = isClinic ? t("deletedTitleClinic") : t("deletedTitle");
   const deletedHint = isClinic ? t("deletedHintClinic") : t("deletedHint");
   const rowLabels = {

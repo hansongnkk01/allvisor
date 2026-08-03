@@ -11,8 +11,6 @@ import {
   FileText,
   Calculator,
   Stamp,
-  UserCog,
-  Settings,
   ShoppingCart,
   LogOut,
   Shield,
@@ -21,20 +19,46 @@ import {
   Tags,
   Truck,
   Printer,
+  Percent,
+  FlaskConical,
+  Eye,
+  Microscope,
+  GraduationCap,
+  Wrench,
+  Car,
+  BadgeCheck,
+  PawPrint,
+  Shirt,
+  Cpu,
+  Layers,
+  Droplets,
+  Boxes,
+  ClipboardList,
+  Utensils,
+  BedDouble,
+  Building2,
+  PackageSearch,
+  HardHat,
+  Factory,
+  Scale,
+  PartyPopper,
+  Sprout,
+  ScanBarcode,
 } from "lucide-react";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import {
   ADMIN_ZONE_NAV_KEYS,
-  nicheNavKeys,
-  retailNavSections,
+  getNavSectionsForNiche,
+  hasCapability,
 } from "@/lib/niches";
+import { NAV_HREF } from "@/lib/niche-capabilities";
 import type { Niche } from "@/lib/types";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { NavigationProgress } from "./NavigationProgress";
 import { ExitAdminZoneButton } from "./ExitAdminZoneButton";
 import { ClinicLogoMark, type LogoShape } from "@/components/ClinicLogoMark";
 import { signOutAction } from "@/app/actions";
-import { cn } from "@/lib/utils";
+import { cn, nicheThemeAttr } from "@/lib/utils";
 
 const icons: Record<string, ReactNode> = {
   dashboard: <LayoutDashboard size={18} />,
@@ -44,8 +68,6 @@ const icons: Record<string, ReactNode> = {
   invoices: <FileText size={18} />,
   accounting: <Calculator size={18} />,
   lhdn: <Stamp size={18} />,
-  staff: <UserCog size={18} />,
-  settings: <Settings size={18} />,
   admin: <Shield size={18} />,
   pos: <ShoppingCart size={18} />,
   receipts: <Receipt size={18} />,
@@ -53,25 +75,32 @@ const icons: Record<string, ReactNode> = {
   categories: <Tags size={18} />,
   logistics: <Truck size={18} />,
   printers: <Printer size={18} />,
-};
-
-const hrefMap: Record<string, string> = {
-  dashboard: "/dashboard",
-  customers: "/customers",
-  appointments: "/appointments",
-  inventory: "/inventory",
-  invoices: "/invoices",
-  accounting: "/accounting",
-  lhdn: "/lhdn",
-  staff: "/staff",
-  settings: "/settings",
-  admin: "/admin",
-  pos: "/pos",
-  receipts: "/receipts",
-  cash: "/cash",
-  categories: "/categories",
-  logistics: "/logistics",
-  printers: "/printers",
+  commissions: <Percent size={18} />,
+  batches: <FlaskConical size={18} />,
+  eyeRx: <Eye size={18} />,
+  labOrders: <Microscope size={18} />,
+  classes: <GraduationCap size={18} />,
+  attendance: <ClipboardList size={18} />,
+  jobs: <Wrench size={18} />,
+  vehicles: <Car size={18} />,
+  memberships: <BadgeCheck size={18} />,
+  checkins: <BadgeCheck size={18} />,
+  pets: <PawPrint size={18} />,
+  variants: <Shirt size={18} />,
+  serials: <Cpu size={18} />,
+  priceTiers: <Layers size={18} />,
+  laundry: <Droplets size={18} />,
+  packages: <Boxes size={18} />,
+  labResults: <FlaskConical size={18} />,
+  tables: <Utensils size={18} />,
+  rooms: <BedDouble size={18} />,
+  listings: <Building2 size={18} />,
+  shipments: <PackageSearch size={18} />,
+  projects: <HardHat size={18} />,
+  workOrders: <Factory size={18} />,
+  matters: <Scale size={18} />,
+  events: <PartyPopper size={18} />,
+  plots: <Sprout size={18} />,
 };
 
 function NavItem({
@@ -109,7 +138,7 @@ function NavItem({
         transition: "background 120ms ease, opacity 120ms ease",
       }}
     >
-      {icon}
+      {icon || <ScanBarcode size={18} />}
       <span>{label}</span>
     </Link>
   );
@@ -167,36 +196,32 @@ export function AppShell({
     role === "supervisor" ||
     role === "manager";
 
-  function labelFor(key: string) {
-    return key === "customers" && niche === "clinic"
-      ? t("patients")
-      : t(key as "dashboard");
-  }
+  const sections = getNavSectionsForNiche(niche);
 
-  function renderNavItem(key: string) {
-    const href = hrefMap[key];
-    if (!href) return null;
-    const active = pathname === href || pathname.startsWith(`${href}/`);
-    return (
-      <NavItem
-        key={key}
-        href={href}
-        active={active}
-        label={labelFor(key)}
-        icon={icons[key]}
-      />
-    );
+  function labelFor(key: string) {
+    if (key === "customers" && hasCapability(niche, "allergies")) {
+      try {
+        return t("patients");
+      } catch {
+        /* fall through */
+      }
+    }
+    try {
+      return t(key as "dashboard");
+    } catch {
+      return key;
+    }
   }
 
   useEffect(() => {
     const maxAge = 60 * 60 * 24 * 30;
     document.cookie = `allvisor_niche=${niche}; path=/; max-age=${maxAge}; SameSite=Lax`;
     document.cookie = `allvisor_org=${encodeURIComponent(orgName)}; path=/; max-age=${maxAge}; SameSite=Lax`;
-    document.documentElement.dataset.niche = niche;
+    document.documentElement.dataset.niche = nicheThemeAttr(niche);
   }, [niche, orgName]);
 
   return (
-    <div data-niche={niche} className="min-h-screen">
+    <div data-niche={nicheThemeAttr(niche)} className="min-h-screen">
       <NavigationProgress />
       <div className="app-grid">
         <aside
@@ -238,48 +263,37 @@ export function AppShell({
               paddingRight: 2,
             }}
           >
-            {niche === "retail"
-              ? retailNavSections.map((section, index) => {
-                  const keys = section.keys.filter((key) => {
-                    if (!ADMIN_ZONE_NAV_KEYS.has(key)) return true;
-                    return canSeeAdminZone;
-                  });
-                  if (!keys.length) return null;
-                  return (
-                    <div key={section.id} className="stack" style={{ gap: "0.35rem" }}>
-                      <SectionLabel first={index === 0}>
-                        {t(section.labelKey)}
-                      </SectionLabel>
-                      {keys.map((key) => renderNavItem(key))}
-                      {section.id === "admin" && adminZoneUnlocked ? (
-                        <div style={{ marginTop: "0.35rem" }}>
-                          <ExitAdminZoneButton label={t("exitAdminZone")} />
-                        </div>
-                      ) : null}
-                    </div>
-                  );
-                })
-              : nicheNavKeys.clinic
-                  .filter((key) => {
-                    if (!ADMIN_ZONE_NAV_KEYS.has(key)) return true;
-                    return canSeeAdminZone;
-                  })
-                  .map((key) => {
-                    const startAdminZone = key === "admin";
+            {sections.map((section, index) => {
+              const keys = section.keys.filter((key) => {
+                if (!ADMIN_ZONE_NAV_KEYS.has(key)) return true;
+                return canSeeAdminZone;
+              });
+              if (!keys.length) return null;
+              return (
+                <div key={section.id} className="stack" style={{ gap: "0.35rem" }}>
+                  <SectionLabel first={index === 0}>{t(section.labelKey)}</SectionLabel>
+                  {keys.map((key) => {
+                    const href = NAV_HREF[key];
+                    if (!href) return null;
+                    const active = pathname === href || pathname.startsWith(`${href}/`);
                     return (
-                      <div key={key} className="stack" style={{ gap: "0.35rem" }}>
-                        {startAdminZone ? (
-                          <SectionLabel>{t("adminZone")}</SectionLabel>
-                        ) : null}
-                        {renderNavItem(key)}
-                        {key === "lhdn" && canSeeAdminZone && adminZoneUnlocked ? (
-                          <div style={{ marginTop: "0.35rem" }}>
-                            <ExitAdminZoneButton label={t("exitAdminZone")} />
-                          </div>
-                        ) : null}
-                      </div>
+                      <NavItem
+                        key={key}
+                        href={href}
+                        active={active}
+                        label={labelFor(key)}
+                        icon={icons[key]}
+                      />
                     );
                   })}
+                  {section.id === "admin" && adminZoneUnlocked ? (
+                    <div style={{ marginTop: "0.35rem" }}>
+                      <ExitAdminZoneButton label={t("exitAdminZone")} />
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
           </nav>
 
           <div className="stack" style={{ gap: "0.75rem" }}>

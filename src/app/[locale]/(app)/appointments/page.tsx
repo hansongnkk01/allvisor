@@ -3,7 +3,7 @@ import { redirect } from "@/i18n/navigation";
 import { requireOrg } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
-import { AppointmentBoard } from "@/components/AppointmentBoard";
+import { AppointmentBoardLazy } from "@/components/AppointmentBoardLazy";
 import { SectionActivityLog } from "@/components/SectionActivityLog";
 import { fetchSectionLogs } from "@/lib/section-logs";
 import type { AppointmentStatus } from "@/lib/types";
@@ -18,7 +18,8 @@ export default async function AppointmentsPage({
   const t = await getTranslations("Appointments");
   const ctx = await requireOrg(locale);
 
-  if (ctx.organization.niche !== "clinic") {
+  const { hasCapability } = await import("@/lib/niches");
+  if (!hasCapability(ctx.organization.niche, "appointments")) {
     redirect({ href: "/dashboard", locale });
   }
 
@@ -61,7 +62,7 @@ export default async function AppointmentsPage({
       <PageHeader title={t("title")} />
 
       <div className="surface" style={{ padding: "1.25rem" }}>
-        <AppointmentBoard
+        <AppointmentBoardLazy
           appointments={(appointments || []).map((a) => ({
             id: a.id,
             title: a.title,

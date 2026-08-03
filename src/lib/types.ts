@@ -1,4 +1,28 @@
-export type Niche = "clinic" | "retail";
+export type Niche =
+  | "clinic"
+  | "retail"
+  | "salon"
+  | "pharmacy"
+  | "optical"
+  | "tuition"
+  | "workshop"
+  | "gym"
+  | "vet"
+  | "fashion"
+  | "electronics"
+  | "wholesale"
+  | "laundry"
+  | "physio"
+  | "lab"
+  | "fnb"
+  | "hotel"
+  | "property"
+  | "courier"
+  | "contractor"
+  | "manufacturing"
+  | "legal"
+  | "events"
+  | "farm";
 
 export type MembershipRole = "owner" | "admin" | "supervisor" | "manager" | "staff";
 

@@ -6,7 +6,9 @@ import { useLocale, useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { isNiche } from "@/lib/niches";
+import type { Niche } from "@/lib/types";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { NichePicker } from "@/components/NichePicker";
 
 export default function RegisterClient() {
   const t = useTranslations("Auth");
@@ -33,7 +35,7 @@ export default function RegisterClient() {
         padding: "1.5rem",
       }}
     >
-      <div className="surface" style={{ width: "100%", maxWidth: 480, padding: "1.75rem" }}>
+      <div className="surface" style={{ width: "100%", maxWidth: 640, padding: "1.75rem" }}>
         <div className="row" style={{ justifyContent: "space-between", marginBottom: "1.25rem" }}>
           <div className="display" style={{ fontSize: "1.6rem" }}>
             {brand("name")}
@@ -95,25 +97,8 @@ export default function RegisterClient() {
           }}
         >
           <div className="field">
-            <label>
-              {t("nicheClinic")} / {t("nicheRetail")}
-            </label>
-            <div className="row">
-              <button
-                type="button"
-                className={niche === "clinic" ? "btn btn-soft" : "btn btn-ghost"}
-                onClick={() => setNiche("clinic")}
-              >
-                {t("nicheClinic")}
-              </button>
-              <button
-                type="button"
-                className={niche === "retail" ? "btn btn-soft" : "btn btn-ghost"}
-                onClick={() => setNiche("retail")}
-              >
-                {t("nicheRetail")}
-              </button>
-            </div>
+            <label>{t("nicheLabel")}</label>
+            <NichePicker value={niche as Niche} onChange={setNiche} />
             <input type="hidden" name="niche" value={niche} />
           </div>
           <div className="field">

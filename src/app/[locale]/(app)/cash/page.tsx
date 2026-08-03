@@ -16,7 +16,8 @@ export default async function CashPage({ params }: { params: Promise<{ locale: s
   setRequestLocale(locale);
   const t = await getTranslations("RetailPages");
   const ctx = await requireOrg(locale);
-  if (ctx.organization.niche !== "retail") redirect({ href: "/dashboard", locale });
+  const { hasCapability } = await import("@/lib/niches");
+  if (!hasCapability(ctx.organization.niche, "cash_drawer")) redirect({ href: "/dashboard", locale });
   const supabase = await createClient();
   const { data: sessions } = await supabase
     .from("cash_sessions")

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 type InsightInput = {
-  niche: "clinic" | "retail";
+  niche: string;
   patients: number;
   unpaidInvoices: number;
   lowStock: number;
@@ -30,7 +30,7 @@ const TONE_STYLE: Record<TipTone, { bg: string; border: string }> = {
 function buildInsights(data: InsightInput): Tip[] {
   const tips: Tip[] = [];
   const profit = data.income - data.expense;
-  const isRetail = data.niche === "retail";
+  const isRetail = data.niche === "retail" || data.niche === "pharmacy" || data.niche === "fashion" || data.niche === "electronics" || data.niche === "wholesale" || data.niche === "laundry" || data.niche === "fnb";
   const people = isRetail ? "customers" : "patients";
 
   if (data.lowStock > 0) {

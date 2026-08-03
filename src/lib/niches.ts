@@ -1,9 +1,17 @@
 import type { Niche } from "./types";
+import {
+  getNavSectionsForNiche,
+  getNicheDef,
+  hasCapability,
+  NICHE_DEFINITIONS,
+  nicheNavKeysList,
+  type Capability,
+} from "./niche-capabilities";
 
-export const NICHES: Niche[] = ["clinic", "retail"];
+export const NICHES: Niche[] = Object.keys(NICHE_DEFINITIONS) as Niche[];
 
 export function isNiche(value: string | null | undefined): value is Niche {
-  return value === "clinic" || value === "retail";
+  return !!value && value in NICHE_DEFINITIONS;
 }
 
 export function isClinicNiche(niche: Niche | string | null | undefined): boolean {
@@ -14,57 +22,32 @@ export function isRetailNiche(niche: Niche | string | null | undefined): boolean
   return niche === "retail";
 }
 
-/** Flat nav keys (clinic: staff then admin). */
+/** @deprecated Prefer hasCapability — kept for gradual migration */
+export function isCareLikeNiche(niche: Niche | string | null | undefined): boolean {
+  return hasCapability(niche, "appointments") || hasCapability(niche, "allergies");
+}
+
+/** @deprecated Prefer hasCapability */
+export function isCommerceLikeNiche(niche: Niche | string | null | undefined): boolean {
+  return hasCapability(niche, "pos");
+}
+
 export const nicheNavKeys = {
-  clinic: [
-    "dashboard",
-    "customers",
-    "appointments",
-    "invoices",
-    "inventory",
-    "admin",
-    "accounting",
-    "lhdn",
-  ],
-  retail: [
-    "dashboard",
-    "customers",
-    "pos",
-    "cash",
-    "invoices",
-    "receipts",
-    "categories",
-    "inventory",
-    "logistics",
-    "printers",
-    "admin",
-    "accounting",
-    "lhdn",
-  ],
+  clinic: nicheNavKeysList("clinic"),
+  retail: nicheNavKeysList("retail"),
 } as const;
 
 export const ADMIN_ZONE_NAV_KEYS = new Set(["admin", "accounting", "lhdn"]);
 
-/** Grouped retail sidebar: Operations → Settings → Admin zone */
-export const retailNavSections = [
-  {
-    id: "operations",
-    labelKey: "operationsZone" as const,
-    keys: ["dashboard", "customers", "pos", "cash", "invoices"] as const,
-  },
-  {
-    id: "settings",
-    labelKey: "settingsZone" as const,
-    keys: ["receipts", "categories", "inventory", "logistics", "printers"] as const,
-  },
-  {
-    id: "admin",
-    labelKey: "adminZone" as const,
-    keys: ["admin", "accounting", "lhdn"] as const,
-  },
-];
+/** @deprecated Use getNavSectionsForNiche */
+export const retailNavSections = getNavSectionsForNiche("retail");
 
-export type NavKey =
-  | (typeof nicheNavKeys)["clinic"][number]
-  | (typeof nicheNavKeys)["retail"][number]
-  | "pos";
+export type NavKey = string;
+
+export {
+  hasCapability,
+  getNicheDef,
+  getNavSectionsForNiche,
+  NICHE_DEFINITIONS,
+  type Capability,
+};

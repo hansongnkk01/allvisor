@@ -1,6 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { redirect } from "@/i18n/navigation";
 import { requireOrg } from "@/lib/org";
+import { hasCapability } from "@/lib/niches";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { ActionForm } from "@/components/ActionForm";
@@ -233,8 +234,8 @@ export default async function AdminPage({
 
   const isSuper = branchOrgs.length > 1;
   const org = ctx.organization;
-  const isClinic = org.niche === "clinic";
-  const isRetail = org.niche === "retail";
+  const isClinic = hasCapability(org.niche, "appointments") || hasCapability(org.niche, "allergies");
+  const isRetail = hasCapability(org.niche, "pos");
 
   // Multi-branch scorecard (today + month-to-date)
   let scoreRows: BranchScoreRow[] = [];
@@ -515,7 +516,9 @@ export default async function AdminPage({
           <DataImportPanel
             allowedKinds={
               isRetail
-                ? ["patients", "product_categories", "products", "suppliers", "past_sales"]
+                ? hasCapability(org.niche, "logistics")
+                  ? ["patients", "product_categories", "products", "suppliers", "past_sales"]
+                  : ["patients", "product_categories", "products", "past_sales"]
                 : undefined
             }
             labels={{

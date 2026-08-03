@@ -7,11 +7,12 @@ import { useRouter } from "@/i18n/navigation";
 import { createOrganizationAction } from "@/app/actions";
 import { createClient } from "@/lib/supabase/client";
 import { isNiche } from "@/lib/niches";
+import type { Niche } from "@/lib/types";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { NichePicker } from "@/components/NichePicker";
 
 export default function OnboardingClient() {
   const t = useTranslations("Onboarding");
-  const auth = useTranslations("Auth");
   const locale = useLocale();
   const router = useRouter();
   const params = useSearchParams();
@@ -54,7 +55,7 @@ export default function OnboardingClient() {
         padding: "1.5rem",
       }}
     >
-      <div className="surface" style={{ width: "100%", maxWidth: 480, padding: "1.75rem" }}>
+      <div className="surface" style={{ width: "100%", maxWidth: 640, padding: "1.75rem" }}>
         <div className="row" style={{ justifyContent: "space-between", marginBottom: "1rem" }}>
           <h1 style={{ margin: 0 }}>{t("title")}</h1>
           <LanguageSwitcher />
@@ -85,22 +86,7 @@ export default function OnboardingClient() {
           </div>
           <div className="field">
             <label>{t("niche")}</label>
-            <div className="row">
-              <button
-                type="button"
-                className={niche === "clinic" ? "btn btn-soft" : "btn btn-ghost"}
-                onClick={() => setNiche("clinic")}
-              >
-                {auth("nicheClinic")}
-              </button>
-              <button
-                type="button"
-                className={niche === "retail" ? "btn btn-soft" : "btn btn-ghost"}
-                onClick={() => setNiche("retail")}
-              >
-                {auth("nicheRetail")}
-              </button>
-            </div>
+            <NichePicker value={niche as Niche} onChange={setNiche} />
           </div>
           {error ? <p style={{ color: "var(--danger)", margin: 0 }}>{error}</p> : null}
           <button className="btn btn-primary" type="submit" disabled={pending}>
