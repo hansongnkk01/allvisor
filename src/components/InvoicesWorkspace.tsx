@@ -33,7 +33,11 @@ export type InvoiceListRow = {
   issue_date: string;
   lhdn_status: string | null;
   tax_amount: number;
-  customers?: { name: string; risk_level?: "high" | "medium" | "low" | null } | null;
+  customers?: {
+    name: string;
+    risk_level?: "high" | "medium" | "low" | null;
+    allergies?: string | null;
+  } | null;
 };
 
 function displayInvoiceNotes(notes: string | null | undefined) {
@@ -514,6 +518,7 @@ export function InvoicesWorkspace({
                         <PatientName
                           name={inv.customers.name}
                           risk={inv.customers.risk_level}
+                          allergies={inv.customers.allergies}
                         />
                       ) : (
                         "—"
@@ -789,7 +794,17 @@ function InvoicePreviewBody({
           <div className="muted" style={{ fontSize: "0.8rem" }}>
             {labels.billTo}
           </div>
-          <strong>{data.customer?.name || "—"}</strong>
+          <strong>
+            {data.customer?.name ? (
+              <PatientName
+                name={data.customer.name}
+                risk={data.customer.risk_level}
+                allergies={data.customer.allergies}
+              />
+            ) : (
+              "—"
+            )}
+          </strong>
           <PatientSafetyBanner
             risk={data.customer?.risk_level}
             allergies={data.customer?.allergies}

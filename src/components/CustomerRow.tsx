@@ -138,7 +138,11 @@ export function CustomerRow({
   return (
     <tr>
       <td>
-        <PatientName name={customer.name} risk={customer.risk_level} />
+        <PatientName
+          name={customer.name}
+          risk={customer.risk_level}
+          allergies={customer.allergies}
+        />
         <PatientSafetyBanner
           risk={customer.risk_level}
           allergies={customer.allergies}

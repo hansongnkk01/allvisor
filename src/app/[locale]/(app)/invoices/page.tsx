@@ -29,7 +29,7 @@ export default async function InvoicesPage({
     supabase
       .from("invoices")
       .select(
-        "id, invoice_number, title, notes, status, total, amount_paid, created_at, issue_date, lhdn_status, tax_amount, customers(name, risk_level)"
+        "id, invoice_number, title, notes, status, total, amount_paid, created_at, issue_date, lhdn_status, tax_amount, customers(name, risk_level, allergies)"
       )
       .eq("organization_id", ctx.organization.id)
       .order("created_at", { ascending: false })

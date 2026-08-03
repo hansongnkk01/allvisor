@@ -133,7 +133,11 @@ export function PatientTimelineButton({
                 </button>
               </div>
 
-              <PatientName name={profile.name} risk={profile.risk_level} />
+              <PatientName
+                name={profile.name}
+                risk={profile.risk_level}
+                allergies={profile.allergies}
+              />
               <PatientSafetyBanner
                 risk={profile.risk_level}
                 allergies={profile.allergies}

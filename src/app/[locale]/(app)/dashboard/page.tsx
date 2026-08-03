@@ -17,7 +17,11 @@ type ApptRow = {
   ends_at: string;
   status?: string;
   notes?: string | null;
-  customers?: { name: string; risk_level?: "high" | "medium" | "low" | null } | null;
+  customers?: {
+    name: string;
+    risk_level?: "high" | "medium" | "low" | null;
+    allergies?: string | null;
+  } | null;
 };
 
 function mapAppt(a: {
@@ -28,8 +32,16 @@ function mapAppt(a: {
   status?: string;
   notes?: string | null;
   customers?:
-    | { name: string; risk_level?: "high" | "medium" | "low" | null }
-    | { name: string; risk_level?: "high" | "medium" | "low" | null }[]
+    | {
+        name: string;
+        risk_level?: "high" | "medium" | "low" | null;
+        allergies?: string | null;
+      }
+    | {
+        name: string;
+        risk_level?: "high" | "medium" | "low" | null;
+        allergies?: string | null;
+      }[]
     | null;
 }): ApptRow {
   return {
@@ -129,7 +141,7 @@ export default async function DashboardPage({
     niche === "clinic"
       ? supabase
           .from("appointments")
-          .select("id, title, starts_at, ends_at, status, notes, customers(name, risk_level)")
+          .select("id, title, starts_at, ends_at, status, notes, customers(name, risk_level, allergies)")
           .eq("organization_id", orgId)
           .gte("starts_at", now.toISOString())
           .lte("starts_at", todayEnd.toISOString())
@@ -139,7 +151,7 @@ export default async function DashboardPage({
     niche === "clinic"
       ? supabase
           .from("appointments")
-          .select("id, title, starts_at, ends_at, status, notes, customers(name, risk_level)")
+          .select("id, title, starts_at, ends_at, status, notes, customers(name, risk_level, allergies)")
           .eq("organization_id", orgId)
           .gte("starts_at", todayStart.toISOString())
           .lte("starts_at", todayEnd.toISOString())

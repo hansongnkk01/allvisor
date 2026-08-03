@@ -612,7 +612,10 @@ export function AppointmentBoard({
                       onChange={setPatientId}
                       placeholder={labels.searchPatient}
                       required
-                      options={patients.map((p) => ({ value: p.id, label: p.name }))}
+                      options={patients.map((p) => ({
+                        value: p.id,
+                        label: p.allergies?.trim() ? `${p.name} ⚠` : p.name,
+                      }))}
                     />
                   </div>
                   <div className="field">
@@ -764,6 +767,7 @@ function AppointmentList({
                   <PatientName
                     name={a.customers?.name || "—"}
                     risk={a.customers?.risk_level}
+                    allergies={a.customers?.allergies}
                   />
                 </strong>
                 <PatientSafetyBanner

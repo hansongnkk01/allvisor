@@ -70,7 +70,11 @@ export function DashboardUpcomingAppointments({
     id: string;
     title: string;
     starts_at: string;
-    customers?: { name: string; risk_level?: "high" | "medium" | "low" | null } | null;
+    customers?: {
+      name: string;
+      risk_level?: "high" | "medium" | "low" | null;
+      allergies?: string | null;
+    } | null;
   }>;
 }) {
   return (
@@ -82,7 +86,11 @@ export function DashboardUpcomingAppointments({
             <strong>{a.title}</strong>
             <div className="muted" style={{ fontSize: "0.9rem" }}>
               {a.customers?.name ? (
-                <PatientName name={a.customers.name} risk={a.customers.risk_level} />
+                <PatientName
+                  name={a.customers.name}
+                  risk={a.customers.risk_level}
+                  allergies={a.customers.allergies}
+                />
               ) : (
                 "—"
               )}{" "}

@@ -4,6 +4,7 @@ import { useMemo, useState, type MouseEvent } from "react";
 import { createPortal } from "react-dom";
 import { format, isSameDay } from "date-fns";
 import { getMyHolidayOn, holidayLabel } from "@/lib/my-holidays";
+import { PatientName } from "@/components/PatientName";
 
 type SlotAppt = {
   id: string;
@@ -12,7 +13,11 @@ type SlotAppt = {
   ends_at: string;
   status?: string;
   notes?: string | null;
-  customers?: { name: string; risk_level?: "high" | "medium" | "low" | null } | null;
+  customers?: {
+    name: string;
+    risk_level?: "high" | "medium" | "low" | null;
+    allergies?: string | null;
+  } | null;
 };
 
 export type TimetableHours = {
@@ -585,7 +590,15 @@ export function DayHourTimetable({
                   return (
                     <div key={a.id}>
                       <div style={{ fontSize: "0.9rem", fontWeight: 700 }}>
-                        {a.customers?.name || "—"}
+                        {a.customers?.name ? (
+                          <PatientName
+                            name={a.customers.name}
+                            risk={a.customers.risk_level}
+                            allergies={a.customers.allergies}
+                          />
+                        ) : (
+                          "—"
+                        )}
                       </div>
                       <div className="muted" style={{ fontSize: "0.8rem", marginTop: 3 }}>
                         Time: {timeLabel}
