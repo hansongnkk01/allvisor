@@ -1,19 +1,13 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Instrument_Serif } from "next/font/google";
+import { DM_Sans } from "next/font/google";
 import { cookies } from "next/headers";
 import "./globals.css";
 
-const plusJakarta = Plus_Jakarta_Sans({
-  variable: "--font-plus-jakarta",
+const dmSans = DM_Sans({
+  variable: "--font-dm-sans",
   subsets: ["latin"],
   display: "swap",
-});
-
-const instrument = Instrument_Serif({
-  variable: "--font-instrument",
-  subsets: ["latin"],
-  weight: "400",
-  display: "swap",
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -33,7 +27,7 @@ export default async function RootLayout({
 
   return (
     <html
-      className={`${plusJakarta.variable} ${instrument.variable} h-full`}
+      className={`${dmSans.variable} h-full`}
       data-niche={dataNiche}
     >
       <head>
