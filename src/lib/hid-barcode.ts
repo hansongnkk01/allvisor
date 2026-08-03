@@ -1,8 +1,10 @@
 /**
  * Distinguish USB/HID barcode-scanner keystrokes from human typing.
  *
- * Scanners type digits very fast (typically &lt;50ms apart) and often end with Enter.
- * Humans type slower with irregular gaps.
+ * - Digits typed within `continueWindowMs` (default 1s) belong to the same entry.
+ * - After `idleMs` (default 1s) with no new digit, that entry is settled.
+ * - Gaps ≤ `scanSpeedMs` mark the entry as a scanner burst → `onScan`.
+ * - Enter settles immediately.
  */
 
 export function isEditableTarget(el: EventTarget | null): boolean {
@@ -17,29 +19,39 @@ export function isEditableTarget(el: EventTarget | null): boolean {
 }
 
 export type HidBarcodeOptions = {
-  /** Fired when a barcode scan is detected (fast digit burst, optional Enter). */
+  /** Fired when a barcode scan is detected (fast digit burst) and settled. */
   onScan: (code: string) => void;
   /**
    * Manual digit while focus is not on an owned/protected field.
    * Return true if handled (listener will preventDefault).
    */
   onManualDigit?: (digit: string, e: KeyboardEvent) => boolean;
+  /** Optional: fired when a manual digit entry settles (1s idle / complete). */
+  onManualSettle?: (code: string) => void;
   /** Search / barcode inputs that may receive both scan and manual typing. */
   isOwnedInput?: (el: HTMLElement) => boolean;
   /** Qty/price fields — never intercept digits here. */
   isProtectedInput?: (el: HTMLElement) => boolean;
-  /** Minimum code length to treat as a scan (default 4). */
+  /** Minimum code length to treat as a complete code (default 3). */
   minLength?: number;
-  /** Max gap between keys still considered scanner speed (default 50ms). */
-  maxIntervalMs?: number;
-  /** After this idle in scan mode, flush as scan even without Enter (default 120ms). */
+  /** Gap ≤ this = scanner speed (default 50ms). */
+  scanSpeedMs?: number;
+  /**
+   * Digits within this window continue the same number entry (default 1000ms).
+   * After this much silence, the previous number is settled.
+   */
+  continueWindowMs?: number;
+  /** Alias kept for callers; same as continueWindowMs settle idle (default 1000ms). */
   idleMs?: number;
+  /** @deprecated use scanSpeedMs */
+  maxIntervalMs?: number;
 };
 
 export function attachHidBarcodeListener(opts: HidBarcodeOptions): () => void {
-  const minLength = opts.minLength ?? 4;
-  const maxIntervalMs = opts.maxIntervalMs ?? 50;
-  const idleMs = opts.idleMs ?? 120;
+  const minLength = opts.minLength ?? 3;
+  const scanSpeedMs = opts.scanSpeedMs ?? opts.maxIntervalMs ?? 50;
+  const continueWindowMs = opts.continueWindowMs ?? opts.idleMs ?? 1000;
+  const idleMs = opts.idleMs ?? continueWindowMs;
 
   let buffer = "";
   let lastTs = 0;
@@ -60,21 +72,23 @@ export function attachHidBarcodeListener(opts: HidBarcodeOptions): () => void {
     clearIdle();
   }
 
-  function emitScan() {
-    const code = buffer;
-    const ok = scanMode && code.length >= minLength;
+  /** Mark previous number as settled (keyed-in complete). */
+  function settle() {
+    const code = buffer.trim();
+    const wasScan = scanMode;
     reset();
-    if (ok) opts.onScan(code);
+    if (code.length < minLength) return;
+    if (wasScan) {
+      opts.onScan(code);
+    } else {
+      opts.onManualSettle?.(code);
+    }
   }
 
   function scheduleIdle() {
     clearIdle();
     idleTimer = setTimeout(() => {
-      if (scanMode && buffer.length >= minLength) {
-        emitScan();
-      } else {
-        reset();
-      }
+      settle();
     }, idleMs);
   }
 
@@ -89,10 +103,11 @@ export function attachHidBarcodeListener(opts: HidBarcodeOptions): () => void {
     }
 
     if (e.key === "Enter") {
+      // Only capture Enter for scanner bursts; manual Enter stays with the focused field
       if (scanMode && buffer.length >= minLength) {
         e.preventDefault();
         e.stopPropagation();
-        emitScan();
+        settle();
       } else {
         reset();
       }
@@ -109,35 +124,44 @@ export function attachHidBarcodeListener(opts: HidBarcodeOptions): () => void {
     const owned = !!(target && opts.isOwnedInput?.(target));
     const editable = isEditableTarget(target);
 
-    // Fast continuation → scanner
-    if (buffer && gap <= maxIntervalMs) {
-      scanMode = true;
+    // Continue same number if next digit arrives within 1s
+    if (buffer && gap <= continueWindowMs) {
+      const isFast = gap <= scanSpeedMs;
+      if (isFast) scanMode = true;
       buffer += e.key;
       lastTs = now;
-      e.preventDefault();
-      e.stopPropagation();
+
+      if (isFast) {
+        // Scanner burst — don't leak digits into random fields
+        e.preventDefault();
+        e.stopPropagation();
+      } else if (!editable || !owned) {
+        if (opts.onManualDigit?.(e.key, e)) {
+          e.preventDefault();
+        }
+      }
+      // owned + slow: let search/barcode receive the digit natively
+
       scheduleIdle();
       return;
     }
 
-    // Slow gap or first digit → start / continue as manual candidate
+    // Gap > 1s (or first digit): previous entry already settled via idle;
+    // start a new number.
     buffer = e.key;
     lastTs = now;
     scanMode = false;
 
     if (editable && owned) {
-      // Let the focused search/barcode input receive the digit normally
       scheduleIdle();
       return;
     }
 
     if (editable && !owned) {
-      // Name / other fields — leave alone
       reset();
       return;
     }
 
-    // Nothing focused (or body) — route manual digit
     if (opts.onManualDigit?.(e.key, e)) {
       e.preventDefault();
     }

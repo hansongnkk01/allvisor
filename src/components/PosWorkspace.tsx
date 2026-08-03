@@ -199,6 +199,9 @@ export function PosWorkspace({
   useEffect(() => {
     return attachHidBarcodeListener({
       minLength: 3,
+      idleMs: 1000,
+      continueWindowMs: 1000,
+      scanSpeedMs: 50,
       onScan(code) {
         // Clear any digits that leaked into the search box before scan was confirmed
         setQuery("");

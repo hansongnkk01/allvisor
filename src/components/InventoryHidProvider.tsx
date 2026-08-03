@@ -40,6 +40,9 @@ export function InventoryHidProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     return attachHidBarcodeListener({
       minLength: 3,
+      idleMs: 1000,
+      continueWindowMs: 1000,
+      scanSpeedMs: 50,
       onScan(code) {
         const searchEl = searchRef.current;
         const searchFocused = searchEl && document.activeElement === searchEl;
