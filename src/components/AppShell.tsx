@@ -166,26 +166,22 @@ export function AppShell({
                 {orgName}
               </div>
             </div>
-            {orgLogoUrl ? (
-              <>
-                <div
-                  aria-hidden
-                  style={{
-                    width: 1,
-                    alignSelf: "stretch",
-                    minHeight: 36,
-                    background: "rgba(28, 27, 25, 0.28)",
-                    flexShrink: 0,
-                  }}
-                />
-                <ClinicLogoMark
-                  url={orgLogoUrl}
-                  shape={orgLogoShape}
-                  size={44}
-                  alt={orgName}
-                />
-              </>
-            ) : null}
+            <div
+              aria-hidden
+              style={{
+                width: 1,
+                alignSelf: "stretch",
+                minHeight: 36,
+                background: "rgba(28, 27, 25, 0.28)",
+                flexShrink: 0,
+              }}
+            />
+            <ClinicLogoMark
+              url={orgLogoUrl}
+              shape={orgLogoShape}
+              size={44}
+              alt={orgName}
+            />
           </div>
 
           <nav className="stack" style={{ gap: "0.35rem", flex: 1 }}>
