@@ -5,6 +5,7 @@ import { useRouter } from "@/i18n/navigation";
 import { ActionForm } from "@/components/ActionForm";
 import { adjustStockAction, bulkAdjustStockAction } from "@/app/actions";
 import { ListPager, SearchField, useClientPager } from "@/components/ListControls";
+import { useInventoryHid } from "@/components/InventoryHidProvider";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
 
@@ -39,6 +40,7 @@ export function InventoryStockTable({
   };
 }) {
   const router = useRouter();
+  const hid = useInventoryHid();
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkType, setBulkType] = useState<"in" | "out">("in");
@@ -109,6 +111,13 @@ export function InventoryStockTable({
           pager.setPage(1);
         }}
         placeholder="Search item…"
+        data-inventory-search
+        inputRef={(el) => {
+          hid?.registerSearch(el, (next) => {
+            setQ(next);
+            pager.setPage(1);
+          });
+        }}
       />
       <div
         className="row"

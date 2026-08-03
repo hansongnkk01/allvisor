@@ -69,19 +69,25 @@ export function SearchField({
   value,
   onChange,
   placeholder,
+  inputRef,
+  "data-inventory-search": dataInventorySearch,
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholder: string;
+  inputRef?: (el: HTMLInputElement | null) => void;
+  "data-inventory-search"?: boolean;
 }) {
   return (
     <input
+      ref={inputRef}
       className="input"
       type="search"
       value={value}
       placeholder={placeholder}
       onChange={(e) => onChange(e.target.value)}
       style={{ maxWidth: 360, marginBottom: "0.75rem" }}
+      data-inventory-search={dataInventorySearch ? "" : undefined}
     />
   );
 }

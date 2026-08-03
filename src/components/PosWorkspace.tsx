@@ -3,6 +3,10 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "@/i18n/navigation";
 import { posCheckoutAction } from "@/app/actions";
+import {
+  attachHidBarcodeListener,
+  isEditableTarget,
+} from "@/lib/hid-barcode";
 import { formatCurrency } from "@/lib/utils";
 
 export type PosProduct = {
@@ -44,13 +48,14 @@ type Labels = {
   checkingOut: string;
 };
 
-function barcodePrefixMatches(products: PosProduct[], needle: string) {
-  return products.filter((p) => {
-    if (p.quantity <= 0) return false;
-    const bc = (p.barcode || "").trim();
-    const sku = (p.sku || "").trim();
-    return (bc && bc.startsWith(needle)) || (sku && sku.startsWith(needle));
-  });
+function findByBarcode(products: PosProduct[], code: string) {
+  const needle = code.trim().toLowerCase();
+  if (!needle) return null;
+  return (
+    products.find((p) => (p.barcode || "").trim().toLowerCase() === needle) ||
+    products.find((p) => (p.sku || "").trim().toLowerCase() === needle) ||
+    null
+  );
 }
 
 export function PosWorkspace({
@@ -66,8 +71,8 @@ export function PosWorkspace({
 }) {
   const router = useRouter();
   const searchRef = useRef<HTMLInputElement>(null);
-  const queryRef = useRef("");
   const productsRef = useRef(products);
+  const addProductRef = useRef<(p: PosProduct, qty?: number) => void>(() => {});
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [customerId, setCustomerId] = useState("");
@@ -77,7 +82,6 @@ export function PosWorkspace({
   const [pending, startTransition] = useTransition();
 
   productsRef.current = products;
-  queryRef.current = query;
 
   const byId = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
 
@@ -91,21 +95,15 @@ export function PosWorkspace({
   );
 
   const filtered = useMemo(() => {
-    const needle = query.trim();
+    const needle = query.trim().toLowerCase();
     if (!needle) return products.filter((p) => p.quantity > 0).slice(0, 40);
-
-    if (/^\d+$/.test(needle)) {
-      return barcodePrefixMatches(products, needle).slice(0, 40);
-    }
-
-    const q = needle.toLowerCase();
     return products
       .filter((p) => {
         const hay = [p.name, p.sku, p.barcode]
           .filter(Boolean)
           .join(" ")
           .toLowerCase();
-        return hay.includes(q);
+        return hay.includes(needle);
       })
       .slice(0, 40);
   }, [products, query]);
@@ -139,20 +137,7 @@ export function PosWorkspace({
       ];
     });
   }
-
-  function applySearch(value: string, catalog: PosProduct[] = products) {
-    const needle = value.trim();
-    if (/^\d+$/.test(needle)) {
-      const matches = barcodePrefixMatches(catalog, needle);
-      if (matches.length === 1) {
-        addProduct(matches[0], 1);
-        setQuery("");
-        queueMicrotask(() => searchRef.current?.focus());
-        return;
-      }
-    }
-    setQuery(value);
-  }
+  addProductRef.current = addProduct;
 
   function setLineQty(productId: string, qty: number) {
     setCart((prev) =>
@@ -166,15 +151,11 @@ export function PosWorkspace({
     );
   }
 
-  function tryScanAdd() {
+  function tryExactAdd() {
     const needle = query.trim().toLowerCase();
     if (!needle) return;
     const exact =
-      products.find(
-        (p) =>
-          (p.barcode && p.barcode.toLowerCase() === needle) ||
-          (p.sku && p.sku.toLowerCase() === needle)
-      ) ||
+      findByBarcode(products, needle) ||
       products.find((p) => p.name.toLowerCase() === needle);
     if (exact) {
       addProduct(exact, 1);
@@ -216,33 +197,40 @@ export function PosWorkspace({
   }
 
   useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.ctrlKey || e.metaKey || e.altKey) return;
-      if (!/^[0-9]$/.test(e.key)) return;
-
-      const target = e.target as HTMLElement | null;
-      if (!target) return;
-      const tag = target.tagName;
-      const isEditable =
-        tag === "INPUT" ||
-        tag === "TEXTAREA" ||
-        tag === "SELECT" ||
-        target.isContentEditable;
-      const isSearch = searchRef.current === target;
-
-      // Don't steal digits from qty / other form fields
-      if (isEditable && !isSearch) return;
-      if (isSearch) return; // normal onChange handles digits in the search box
-
-      e.preventDefault();
-      searchRef.current?.focus();
-      const trimmed = queryRef.current.trim();
-      const next = !trimmed || /^\d+$/.test(trimmed) ? trimmed + e.key : e.key;
-      applySearch(next, productsRef.current);
-    }
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    return attachHidBarcodeListener({
+      minLength: 3,
+      onScan(code) {
+        // Clear any digits that leaked into the search box before scan was confirmed
+        setQuery("");
+        const match = findByBarcode(productsRef.current, code);
+        if (match) {
+          addProductRef.current(match, 1);
+        } else {
+          setError(`No product for barcode ${code}`);
+        }
+        queueMicrotask(() => searchRef.current?.focus());
+      },
+      onManualDigit(digit) {
+        const el = searchRef.current;
+        if (!el) return false;
+        el.focus();
+        setQuery((prev) => {
+          const trimmed = prev.trim();
+          if (!trimmed || /^\d+$/.test(trimmed)) return trimmed + digit;
+          return digit;
+        });
+        return true;
+      },
+      isOwnedInput(el) {
+        return el === searchRef.current;
+      },
+      isProtectedInput(el) {
+        if (el === searchRef.current) return false;
+        if (!isEditableTarget(el)) return false;
+        // Cart qty / selects — don't steal digits
+        return true;
+      },
+    });
   }, []);
 
   return (
@@ -257,11 +245,12 @@ export function PosWorkspace({
               value={query}
               placeholder={labels.searchHint}
               autoFocus
-              onChange={(e) => applySearch(e.target.value)}
+              data-pos-search
+              onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
-                  tryScanAdd();
+                  tryExactAdd();
                 }
               }}
             />
