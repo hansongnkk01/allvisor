@@ -86,7 +86,7 @@ export default async function ClassesPage({ params }: { params: Promise<{ locale
             </div>
             <div className="field">
               <label>{t("teacher")}</label>
-              <input name="teacher_name" className="input" placeholder="Cikgu Aminah" />
+              <input name="teacher_name" className="input" defaultValue="-" />
             </div>
             <div className="field">
               <label>{t("weekday")}</label>
@@ -108,7 +108,7 @@ export default async function ClassesPage({ params }: { params: Promise<{ locale
             </div>
             <div className="field">
               <label>{t("room")}</label>
-              <input name="room" className="input" placeholder="Room A" />
+              <input name="room" className="input" defaultValue="-" />
             </div>
             <div className="field">
               <label>{t("fee")}</label>
