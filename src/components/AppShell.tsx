@@ -169,7 +169,7 @@ export function AppShell({
                     <div
                       aria-hidden
                       style={{
-                        marginTop: "0.85rem",
+                        marginTop: "2.75rem",
                         marginBottom: "0.35rem",
                         borderTop: "1px solid var(--line)",
                         paddingTop: "0.85rem",
