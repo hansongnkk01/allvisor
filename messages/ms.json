@@ -9,7 +9,12 @@
     "patients": "Pesakit",
     "appointments": "Temujanji",
     "pos": "POS / Jualan",
+    "receipts": "Resit lepas",
+    "cash": "Laci tunai",
     "inventory": "Inventori",
+    "categories": "Kategori",
+    "logistics": "Logistik",
+    "printers": "Pencetak",
     "invoices": "Invois",
     "accounting": "Perakaunan",
     "lhdn": "e-Invois LHDN",
@@ -588,6 +593,18 @@
     "save": "Simpan",
     "upgrade": "Naik taraf pelan",
     "upgradeInAdmin": "Naik taraf pelan hanya ada di Admin (dilindungi kata laluan)."
+  },
+  "RetailPages": {
+    "categoriesTitle": "Kategori produk",
+    "categoriesSubtitle": "Susun produk dan subkategori untuk POS.",
+    "receiptsTitle": "Resit lepas",
+    "receiptsSubtitle": "Cari, semak, cetak dan pulangkan jualan POS.",
+    "cashTitle": "Laci tunai",
+    "cashSubtitle": "Buka syif, rekod pergerakan tunai dan imbangi laci.",
+    "logisticsTitle": "Logistik",
+    "logisticsSubtitle": "Pembekal, penerimaan barang, pembetulan stok dan pindahan.",
+    "printersTitle": "Tetapan pencetak",
+    "printersSubtitle": "Reka resit dan pelekat produk untuk cetakan pelayar."
   },
   "Common": {
     "loading": "Memuatkan…",

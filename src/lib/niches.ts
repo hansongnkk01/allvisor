@@ -30,7 +30,12 @@ export const nicheNavKeys = {
     "dashboard",
     "customers",
     "pos",
+    "receipts",
+    "cash",
     "inventory",
+    "categories",
+    "logistics",
+    "printers",
     "invoices",
     "admin",
     "accounting",
@@ -40,4 +45,7 @@ export const nicheNavKeys = {
 
 export const ADMIN_ZONE_NAV_KEYS = new Set(["admin", "accounting", "lhdn"]);
 
-export type NavKey = (typeof nicheNavKeys)["clinic"][number] | "pos";
+export type NavKey =
+  | (typeof nicheNavKeys)["clinic"][number]
+  | (typeof nicheNavKeys)["retail"][number]
+  | "pos";

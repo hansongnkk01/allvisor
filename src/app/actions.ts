@@ -357,6 +357,7 @@ export async function getPatientTimelineAction(customerId: string) {
 export async function upsertProductAction(formData: FormData) {
   const { supabase, organization } = await requireMember();
   const id = String(formData.get("id") || "");
+  const soldBy = String(formData.get("sold_by") || "each");
   const payload = {
     organization_id: organization.id,
     name: String(formData.get("name") || "").trim(),
@@ -368,6 +369,13 @@ export async function upsertProductAction(formData: FormData) {
     quantity: Number(formData.get("quantity") || 0),
     low_stock_threshold: Number(formData.get("low_stock_threshold") || 5),
     is_active: true,
+    sold_by: ["each", "meter", "kg"].includes(soldBy) ? soldBy : "each",
+    available_to_sale:
+      organization.niche !== "retail" || formData.get("available_to_sale") === "on",
+    track_stock: organization.niche !== "retail" || formData.get("track_stock") === "on",
+    image_url: String(formData.get("image_url") || "").trim() || null,
+    price_on_sale: formData.get("price_on_sale") === "on",
+    category_id: String(formData.get("category_id") || "") || null,
   };
   if (!payload.name) return { error: "Name required" };
 
@@ -1405,7 +1413,7 @@ export async function posCheckoutAction(formData: FormData) {
       ? methodRaw
       : "cash";
 
-  type CartItem = { product_id: string; quantity: number };
+  type CartItem = { product_id: string; quantity: number; unit_price?: number };
   let items: CartItem[] = [];
   const cartJson = String(formData.get("cart_json") || "").trim();
   if (cartJson) {
@@ -1417,7 +1425,8 @@ export async function posCheckoutAction(formData: FormData) {
       items = parsed
         .map((row) => ({
           product_id: String(row.product_id || ""),
-          quantity: Math.max(0, Math.floor(Number(row.quantity) || 0)),
+          quantity: Math.max(0, Number(row.quantity) || 0),
+          unit_price: Number(row.unit_price),
         }))
         .filter((row) => row.product_id && row.quantity > 0);
     } catch {
@@ -1426,16 +1435,20 @@ export async function posCheckoutAction(formData: FormData) {
   } else {
     // Legacy single-product checkout
     const productId = String(formData.get("product_id") || "");
-    const quantity = Math.max(1, Math.floor(Number(formData.get("quantity") || 1)));
+    const quantity = Math.max(1, Number(formData.get("quantity") || 1));
     if (productId) items = [{ product_id: productId, quantity }];
   }
 
   if (!items.length) return { error: "Cart is empty" };
 
   // Merge duplicate product lines
-  const merged = new Map<string, number>();
+  const merged = new Map<string, { quantity: number; unit_price?: number }>();
   for (const row of items) {
-    merged.set(row.product_id, (merged.get(row.product_id) || 0) + row.quantity);
+    const previous = merged.get(row.product_id);
+    merged.set(row.product_id, {
+      quantity: (previous?.quantity || 0) + row.quantity,
+      unit_price: Number.isFinite(row.unit_price) ? row.unit_price : previous?.unit_price,
+    });
   }
 
   const productIds = [...merged.keys()];
@@ -1452,16 +1465,24 @@ export async function posCheckoutAction(formData: FormData) {
     lineTotal: number;
   }> = [];
 
-  for (const [pid, qty] of merged) {
+  for (const [pid, item] of merged) {
+    const qty = item.quantity;
     const product = productsById.get(pid);
     if (!product) return { error: `Product not found` };
-    if (Number(product.quantity) < qty) {
+    if (!product.is_active || product.available_to_sale === false) {
+      return { error: `${product.name} is not available for sale` };
+    }
+    if (product.track_stock !== false && Number(product.quantity) < qty) {
       return { error: `Insufficient stock for ${product.name}` };
     }
+    const unitPrice =
+      product.price_on_sale === true && Number.isFinite(item.unit_price) && Number(item.unit_price) >= 0
+        ? Number(item.unit_price)
+        : Number(product.unit_price);
     lines.push({
       product,
       quantity: qty,
-      lineTotal: qty * Number(product.unit_price),
+      lineTotal: qty * unitPrice,
     });
   }
 
@@ -1488,6 +1509,8 @@ export async function posCheckoutAction(formData: FormData) {
       tax_amount: 0,
       total: subtotal,
       amount_paid: subtotal,
+      created_by: profile.id,
+      created_by_name: profile.full_name || profile.email || "Staff",
     })
     .select("*")
     .single();
@@ -1501,7 +1524,7 @@ export async function posCheckoutAction(formData: FormData) {
       product_id: l.product.id,
       description: l.product.name,
       quantity: l.quantity,
-      unit_price: l.product.unit_price,
+      unit_price: l.quantity ? l.lineTotal / l.quantity : 0,
       line_total: l.lineTotal,
     }))
   );
@@ -1514,6 +1537,7 @@ export async function posCheckoutAction(formData: FormData) {
   });
 
   for (const l of lines) {
+    if (l.product.track_stock === false) continue;
     await supabase.from("stock_movements").insert({
       organization_id: organization.id,
       product_id: l.product.id,
@@ -1526,6 +1550,41 @@ export async function posCheckoutAction(formData: FormData) {
       .from("products")
       .update({ quantity: Number(l.product.quantity) - l.quantity })
       .eq("id", l.product.id);
+  }
+
+  if (paymentMethod === "cash") {
+    const { data: openSession } = await supabase
+      .from("cash_sessions")
+      .select("id")
+      .eq("organization_id", organization.id)
+      .eq("status", "open")
+      .order("opened_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (openSession) {
+      await supabase.from("cash_movements").insert({
+        organization_id: organization.id,
+        session_id: openSession.id,
+        type: "sale",
+        amount: subtotal,
+        note: `POS ${invoiceNumber}`,
+        created_by: profile.id,
+        created_by_name: profile.full_name || profile.email || "Staff",
+      });
+    }
+  }
+
+  const ticketId = String(formData.get("ticket_id") || "");
+  if (ticketId) {
+    await supabase
+      .from("pos_tickets")
+      .update({
+        status: "completed",
+        completed_invoice_id: invoice.id,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", ticketId)
+      .eq("organization_id", organization.id);
   }
 
   await supabase.from("ledger_entries").insert({

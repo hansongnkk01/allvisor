@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "@/i18n/navigation";
 import { posCheckoutAction } from "@/app/actions";
+import { savePosTicketAction, voidPosTicketAction } from "@/app/retail-actions";
 import {
   attachHidBarcodeListener,
   isEditableTarget,
@@ -16,6 +17,10 @@ export type PosProduct = {
   barcode: string | null;
   unit_price: number;
   quantity: number;
+  sold_by: "each" | "meter" | "kg";
+  track_stock: boolean;
+  price_on_sale: boolean;
+  category_id: string | null;
 };
 
 type CartLine = {
@@ -24,6 +29,14 @@ type CartLine = {
   unitPrice: number;
   stock: number;
   qty: number;
+};
+
+type HeldTicket = {
+  id: string;
+  ticket_number: string;
+  customer_id: string | null;
+  payment_method: string | null;
+  lines: Array<Omit<CartLine, "stock">>;
 };
 
 type Labels = {
@@ -62,11 +75,15 @@ export function PosWorkspace({
   products,
   frequentIds,
   customers,
+  categories,
+  initialTickets,
   labels,
 }: {
   products: PosProduct[];
   frequentIds: string[];
   customers: Array<{ id: string; name: string }>;
+  categories: Array<{ id: string; name: string }>;
+  initialTickets: HeldTicket[];
   labels: Labels;
 }) {
   const router = useRouter();
@@ -75,13 +92,19 @@ export function PosWorkspace({
   const addProductRef = useRef<(p: PosProduct, qty?: number) => void>(() => {});
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
+  const [categoryId, setCategoryId] = useState("");
+  const [tickets, setTickets] = useState(initialTickets);
+  const [activeTicketId, setActiveTicketId] = useState("");
+  const [lastInvoiceId, setLastInvoiceId] = useState("");
   const [customerId, setCustomerId] = useState("");
   const [method, setMethod] = useState("cash");
   const [error, setError] = useState<string | null>(null);
   const [okMsg, setOkMsg] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  productsRef.current = products;
+  useEffect(() => {
+    productsRef.current = products;
+  }, [products]);
 
   const byId = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
 
@@ -89,40 +112,51 @@ export function PosWorkspace({
     () =>
       frequentIds
         .map((id) => byId.get(id))
-        .filter((p): p is PosProduct => !!p && p.quantity > 0)
+        .filter((p): p is PosProduct => !!p && (!p.track_stock || p.quantity > 0))
         .slice(0, 12),
     [frequentIds, byId]
   );
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    if (!needle) return products.filter((p) => p.quantity > 0).slice(0, 40);
+    const inCategory = (p: PosProduct) => !categoryId || p.category_id === categoryId;
+    if (!needle) return products.filter((p) => inCategory(p) && (!p.track_stock || p.quantity > 0)).slice(0, 60);
     return products
       .filter((p) => {
         const hay = [p.name, p.sku, p.barcode]
           .filter(Boolean)
           .join(" ")
           .toLowerCase();
-        return hay.includes(needle);
+        return inCategory(p) && hay.includes(needle);
       })
-      .slice(0, 40);
-  }, [products, query]);
+      .slice(0, 60);
+  }, [products, query, categoryId]);
 
   const total = cart.reduce((s, l) => s + l.unitPrice * l.qty, 0);
 
   function addProduct(p: PosProduct, qty = 1) {
     setError(null);
     setOkMsg(null);
-    if (p.quantity <= 0) {
+    if (p.track_stock && p.quantity <= 0) {
       setError("Out of stock");
       return;
+    }
+    let salePrice = Number(p.unit_price);
+    if (p.price_on_sale) {
+      const entered = window.prompt(`Enter sale price for ${p.name}`, salePrice ? String(salePrice) : "");
+      if (entered === null) return;
+      salePrice = Number(entered);
+      if (!Number.isFinite(salePrice) || salePrice < 0) {
+        setError("Enter a valid sale price");
+        return;
+      }
     }
     setCart((prev) => {
       const existing = prev.find((l) => l.productId === p.id);
       if (existing) {
-        const nextQty = Math.min(p.quantity, existing.qty + qty);
+        const nextQty = p.track_stock ? Math.min(p.quantity, existing.qty + qty) : existing.qty + qty;
         return prev.map((l) =>
-          l.productId === p.id ? { ...l, qty: nextQty, stock: p.quantity } : l
+          l.productId === p.id ? { ...l, qty: nextQty, stock: p.quantity, unitPrice: salePrice } : l
         );
       }
       return [
@@ -130,21 +164,23 @@ export function PosWorkspace({
         {
           productId: p.id,
           name: p.name,
-          unitPrice: Number(p.unit_price),
-          stock: p.quantity,
-          qty: Math.min(qty, p.quantity),
+          unitPrice: salePrice,
+          stock: p.track_stock ? p.quantity : Number.MAX_SAFE_INTEGER,
+          qty: p.track_stock ? Math.min(qty, p.quantity) : qty,
         },
       ];
     });
   }
-  addProductRef.current = addProduct;
+  useEffect(() => {
+    addProductRef.current = addProduct;
+  });
 
   function setLineQty(productId: string, qty: number) {
     setCart((prev) =>
       prev
         .map((l) => {
           if (l.productId !== productId) return l;
-          const next = Math.max(0, Math.min(l.stock, Math.floor(qty) || 0));
+          const next = Math.max(0, Math.min(l.stock, Number(qty) || 0));
           return { ...l, qty: next };
         })
         .filter((l) => l.qty > 0)
@@ -175,11 +211,12 @@ export function PosWorkspace({
     fd.set(
       "cart_json",
       JSON.stringify(
-        cart.map((l) => ({ product_id: l.productId, quantity: l.qty }))
+        cart.map((l) => ({ product_id: l.productId, quantity: l.qty, unit_price: l.unitPrice }))
       )
     );
     if (customerId) fd.set("customer_id", customerId);
     fd.set("payment_method", method);
+    if (activeTicketId) fd.set("ticket_id", activeTicketId);
 
     startTransition(async () => {
       const res = await posCheckoutAction(fd);
@@ -190,9 +227,75 @@ export function PosWorkspace({
       setCart([]);
       setCustomerId("");
       setMethod("cash");
+      setActiveTicketId("");
+      setLastInvoiceId("invoiceId" in res && typeof res.invoiceId === "string" ? res.invoiceId : "");
+      setTickets((current) => current.filter((ticket) => ticket.id !== activeTicketId));
       setOkMsg(labels.success);
       router.refresh();
       searchRef.current?.focus();
+    });
+  }
+
+  function newTicket() {
+    setCart([]);
+    setCustomerId("");
+    setMethod("cash");
+    setActiveTicketId("");
+    setError(null);
+    setOkMsg(null);
+  }
+
+  function switchTicket(ticket: HeldTicket) {
+    setActiveTicketId(ticket.id);
+    setCustomerId(ticket.customer_id || "");
+    setMethod(ticket.payment_method || "cash");
+    setCart(ticket.lines.map((line) => ({
+      ...line,
+      stock: byId.get(line.productId)?.track_stock === false
+        ? Number.MAX_SAFE_INTEGER
+        : byId.get(line.productId)?.quantity || line.qty,
+    })));
+    setOkMsg(null);
+    setError(null);
+  }
+
+  function holdTicket() {
+    if (!cart.length) return setError(labels.emptyCart);
+    const fd = new FormData();
+    if (activeTicketId) fd.set("ticket_id", activeTicketId);
+    const existing = tickets.find((ticket) => ticket.id === activeTicketId);
+    if (existing) fd.set("ticket_number", existing.ticket_number);
+    if (customerId) fd.set("customer_id", customerId);
+    fd.set("payment_method", method);
+    fd.set("cart_json", JSON.stringify(cart.map((line) => ({
+      product_id: line.productId,
+      name: line.name,
+      unit_price: line.unitPrice,
+      quantity: line.qty,
+    }))));
+    startTransition(async () => {
+      const result = await savePosTicketAction(fd);
+      if (result && "error" in result && result.error) return setError(result.error);
+      if (result && "ticketId" in result && result.ticketId) {
+        const held: HeldTicket = {
+          id: result.ticketId,
+          ticket_number: result.ticketNumber || "Held",
+          customer_id: customerId || null,
+          payment_method: method,
+          lines: cart.map((line) => ({
+            productId: line.productId,
+            name: line.name,
+            unitPrice: line.unitPrice,
+            qty: line.qty,
+          })),
+        };
+        setTickets((current) => [
+          held,
+          ...current.filter((ticket) => ticket.id !== held.id),
+        ]);
+      }
+      router.refresh();
+      newTicket();
     });
   }
 
@@ -239,6 +342,21 @@ export function PosWorkspace({
   return (
     <div className="pos-grid">
       <div className="stack" style={{ gap: "0.85rem" }}>
+        <div className="surface" style={{ padding: ".8rem 1rem" }}>
+          <div className="row" style={{ flexWrap: "wrap" }}>
+            <button className="btn btn-primary" type="button" onClick={newTicket}>New ticket</button>
+            {tickets.map((ticket) => (
+              <button
+                key={ticket.id}
+                className={`btn ${activeTicketId === ticket.id ? "btn-primary" : "btn-soft"}`}
+                type="button"
+                onClick={() => switchTicket(ticket)}
+              >
+                {ticket.ticket_number} ({ticket.lines.length})
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="surface" style={{ padding: "1rem 1.15rem" }}>
           <div className="field" style={{ marginBottom: 0 }}>
             <label>{labels.search}</label>
@@ -259,6 +377,15 @@ export function PosWorkspace({
             />
           </div>
         </div>
+
+        {categories.length ? (
+          <div className="row" style={{ flexWrap: "wrap", gap: ".4rem" }}>
+            <button type="button" className={`btn ${!categoryId ? "btn-primary" : "btn-soft"}`} onClick={() => setCategoryId("")}>All</button>
+            {categories.map((category) => (
+              <button key={category.id} type="button" className={`btn ${categoryId === category.id ? "btn-primary" : "btn-soft"}`} onClick={() => setCategoryId(category.id)}>{category.name}</button>
+            ))}
+          </div>
+        ) : null}
 
         {frequent.length ? (
           <div className="surface" style={{ padding: "1rem 1.15rem" }}>
@@ -288,7 +415,7 @@ export function PosWorkspace({
                 >
                   <div style={{ fontWeight: 650, fontSize: "0.9rem" }}>{p.name}</div>
                   <div className="muted" style={{ fontSize: "0.78rem", marginTop: 2 }}>
-                    {formatCurrency(Number(p.unit_price))} · {labels.stock} {p.quantity}
+                    {p.price_on_sale ? "Price at sale" : formatCurrency(Number(p.unit_price))} · {p.track_stock ? `${labels.stock} ${p.quantity}` : "Stock not tracked"}
                   </div>
                 </button>
               ))}
@@ -316,14 +443,14 @@ export function PosWorkspace({
                         {[p.sku, p.barcode].filter(Boolean).join(" · ") || "—"}
                       </div>
                     </td>
-                    <td>{p.quantity}</td>
-                    <td>{formatCurrency(Number(p.unit_price))}</td>
+                    <td>{p.track_stock ? p.quantity : "∞"}</td>
+                    <td>{p.price_on_sale ? "At sale" : formatCurrency(Number(p.unit_price))}</td>
                     <td style={{ textAlign: "right" }}>
                       <button
                         type="button"
                         className="btn btn-soft"
                         style={{ padding: "0.35rem 0.7rem" }}
-                        disabled={p.quantity <= 0}
+                        disabled={p.track_stock && p.quantity <= 0}
                         onClick={() => addProduct(p, 1)}
                       >
                         {labels.add}
@@ -454,6 +581,46 @@ export function PosWorkspace({
         >
           {pending ? labels.checkingOut : labels.checkout}
         </button>
+        <button
+          type="button"
+          className="btn btn-soft"
+          style={{ width: "100%", marginTop: ".5rem" }}
+          disabled={pending || !cart.length}
+          onClick={holdTicket}
+        >
+          Hold ticket
+        </button>
+        {activeTicketId ? (
+          <button
+            type="button"
+            className="btn btn-ghost"
+            style={{ width: "100%", marginTop: ".5rem" }}
+            disabled={pending}
+            onClick={() => {
+              const fd = new FormData();
+              fd.set("ticket_id", activeTicketId);
+              startTransition(async () => {
+                const result = await voidPosTicketAction(fd);
+                if (result && "error" in result && result.error) return setError(result.error);
+                setTickets((current) => current.filter((ticket) => ticket.id !== activeTicketId));
+                newTicket();
+                router.refresh();
+              });
+            }}
+          >
+            Void held ticket
+          </button>
+        ) : null}
+        {lastInvoiceId ? (
+          <button
+            type="button"
+            className="btn btn-primary"
+            style={{ width: "100%", marginTop: ".5rem" }}
+            onClick={() => router.push(`/invoices?preview=${lastInvoiceId}`)}
+          >
+            Print receipt
+          </button>
+        ) : null}
       </div>
     </div>
   );

@@ -16,6 +16,11 @@ import {
   ShoppingCart,
   LogOut,
   Shield,
+  Receipt,
+  Wallet,
+  Tags,
+  Truck,
+  Printer,
 } from "lucide-react";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { ADMIN_ZONE_NAV_KEYS, nicheNavKeys } from "@/lib/niches";
@@ -39,6 +44,11 @@ const icons: Record<string, ReactNode> = {
   settings: <Settings size={18} />,
   admin: <Shield size={18} />,
   pos: <ShoppingCart size={18} />,
+  receipts: <Receipt size={18} />,
+  cash: <Wallet size={18} />,
+  categories: <Tags size={18} />,
+  logistics: <Truck size={18} />,
+  printers: <Printer size={18} />,
 };
 
 const hrefMap: Record<string, string> = {
@@ -53,6 +63,11 @@ const hrefMap: Record<string, string> = {
   settings: "/settings",
   admin: "/admin",
   pos: "/pos",
+  receipts: "/receipts",
+  cash: "/cash",
+  categories: "/categories",
+  logistics: "/logistics",
+  printers: "/printers",
 };
 
 function NavItem({

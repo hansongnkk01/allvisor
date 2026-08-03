@@ -9,7 +9,12 @@
     "patients": "Patients",
     "appointments": "Appointments",
     "pos": "POS / Sales",
+    "receipts": "Past receipts",
+    "cash": "Cash drawer",
     "inventory": "Inventory",
+    "categories": "Categories",
+    "logistics": "Logistics",
+    "printers": "Printers",
     "invoices": "Invoices",
     "accounting": "Accounting",
     "lhdn": "LHDN e-Invoice",
@@ -590,6 +595,18 @@
     "save": "Save",
     "upgrade": "Upgrade plan",
     "upgradeInAdmin": "Upgrade plan is only available in Admin (password protected)."
+  },
+  "RetailPages": {
+    "categoriesTitle": "Product categories",
+    "categoriesSubtitle": "Organize products and subcategories for POS.",
+    "receiptsTitle": "Past receipts",
+    "receiptsSubtitle": "Find, inspect, print and refund completed POS sales.",
+    "cashTitle": "Cash drawer",
+    "cashSubtitle": "Open a shift, record cash movements and reconcile the drawer.",
+    "logisticsTitle": "Logistics",
+    "logisticsSubtitle": "Suppliers, goods receipts, stock corrections and transfers.",
+    "printersTitle": "Printer settings",
+    "printersSubtitle": "Design browser-print receipts and product stickers."
   },
   "Common": {
     "loading": "Loading…",

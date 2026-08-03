@@ -24,12 +24,12 @@ export default async function InventoryPage({
   const since = new Date();
   since.setDate(since.getDate() - 90);
 
-  const [{ data: productsRaw, error: productsError }, { data: movements }, logs] =
+  const [{ data: productsRaw, error: productsError }, { data: movements }, { data: categories }, logs] =
     await Promise.all([
       supabase
         .from("products")
         .select(
-          "id, name, sku, barcode, unit_price, quantity, low_stock_threshold, created_at"
+          "id, name, sku, barcode, unit_price, quantity, low_stock_threshold, created_at, sold_by, available_to_sale, track_stock, image_url, price_on_sale, category_id"
         )
         .eq("organization_id", ctx.organization.id)
         .order("created_at", { ascending: false })
@@ -41,6 +41,11 @@ export default async function InventoryPage({
         .in("type", ["out", "sale"])
         .gte("created_at", since.toISOString())
         .limit(3000),
+      supabase
+        .from("product_categories")
+        .select("id, name, parent_id")
+        .eq("organization_id", ctx.organization.id)
+        .order("name"),
       fetchSectionLogs(ctx.organization.id, ["inventory"], 25),
     ]);
 
@@ -54,7 +59,16 @@ export default async function InventoryPage({
       .eq("organization_id", ctx.organization.id)
       .order("created_at", { ascending: false })
       .limit(500);
-    products = (fallback.data || []).map((p) => ({ ...p, barcode: null }));
+    products = (fallback.data || []).map((p) => ({
+      ...p,
+      barcode: null,
+      sold_by: "each",
+      available_to_sale: true,
+      track_stock: true,
+      image_url: null,
+      price_on_sale: false,
+      category_id: null,
+    }));
   }
 
   const usage = new Map<
@@ -146,6 +160,34 @@ export default async function InventoryPage({
                 <label>{t("lowStock")}</label>
                 <input name="low_stock_threshold" type="number" defaultValue={5} className="input" />
               </div>
+              {!isClinic ? (
+                <>
+                  <div className="field">
+                    <label>Sold by</label>
+                    <select name="sold_by" className="select" defaultValue="each">
+                      <option value="each">Each</option>
+                      <option value="meter">Meter</option>
+                      <option value="kg">Kilogram</option>
+                    </select>
+                  </div>
+                  <div className="field">
+                    <label>Category</label>
+                    <select name="category_id" className="select" defaultValue="">
+                      <option value="">Uncategorized</option>
+                      {(categories || []).map((category) => (
+                        <option key={category.id} value={category.id}>{category.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="field">
+                    <label>Image URL</label>
+                    <input name="image_url" type="url" className="input" placeholder="https://…" />
+                  </div>
+                  <label className="row"><input name="available_to_sale" type="checkbox" defaultChecked /> Available at POS</label>
+                  <label className="row"><input name="track_stock" type="checkbox" defaultChecked /> Track stock</label>
+                  <label className="row"><input name="price_on_sale" type="checkbox" /> Enter price when sold</label>
+                </>
+              ) : null}
             </div>
             <button type="submit" className="btn btn-primary">
               {t("save")}
@@ -163,6 +205,11 @@ export default async function InventoryPage({
               unit_price: Number(p.unit_price),
               quantity: p.quantity,
               low_stock_threshold: p.low_stock_threshold,
+              sold_by: (p as { sold_by?: string }).sold_by || "each",
+              available_to_sale: (p as { available_to_sale?: boolean }).available_to_sale !== false,
+              track_stock: (p as { track_stock?: boolean }).track_stock !== false,
+              price_on_sale: (p as { price_on_sale?: boolean }).price_on_sale === true,
+              category: categories?.find((category) => category.id === (p as { category_id?: string }).category_id)?.name || null,
               created_at: p.created_at,
             }))}
             labels={{

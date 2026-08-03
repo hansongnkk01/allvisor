@@ -17,6 +17,11 @@ type Product = {
   unit_price: number;
   quantity: number;
   low_stock_threshold: number;
+  sold_by: string;
+  available_to_sale: boolean;
+  track_stock: boolean;
+  price_on_sale: boolean;
+  category: string | null;
   created_at: string;
 };
 
@@ -167,6 +172,8 @@ export function InventoryStockTable({
               <th>{labels.barcode}</th>
               <th>{labels.price}</th>
               <th>{labels.qty}</th>
+              <th>Retail</th>
+              <th>Category</th>
               <th>{labels.addedAt}</th>
               <th>{labels.adjust}</th>
             </tr>
@@ -190,8 +197,13 @@ export function InventoryStockTable({
                 </td>
                 <td>{p.sku || "—"}</td>
                 <td>{p.barcode || "—"}</td>
-                <td>{formatCurrency(Number(p.unit_price))}</td>
-                <td>{p.quantity}</td>
+                <td>{p.price_on_sale ? "At sale" : formatCurrency(Number(p.unit_price))}</td>
+                <td>{p.track_stock ? p.quantity : "Not tracked"}</td>
+                <td>
+                  <span className="badge">{p.sold_by}</span>{" "}
+                  {!p.available_to_sale ? <span className="badge">POS off</span> : null}
+                </td>
+                <td>{p.category || "—"}</td>
                 <td>{formatDateTime(p.created_at)}</td>
                 <td>
                   <ActionForm action={adjustStockAction} className="row">
@@ -221,7 +233,7 @@ export function InventoryStockTable({
             ))}
             {!filtered.length ? (
               <tr>
-                <td colSpan={8} className="muted">
+                <td colSpan={10} className="muted">
                   {labels.empty}
                 </td>
               </tr>
