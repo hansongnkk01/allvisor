@@ -1,19 +1,15 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
-import { resolvePostLoginPathAction } from "@/app/tuition-actions";
 
 export default function LoginPage() {
   const t = useTranslations("Auth");
   const brand = useTranslations("Brand");
   const router = useRouter();
-  const params = useSearchParams();
-  const isStudentPortal = params.get("portal") === "student";
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -37,12 +33,7 @@ export default function LoginPage() {
           </Link>
           <LanguageSwitcher />
         </div>
-        <h1 style={{ marginTop: 0 }}>
-          {isStudentPortal ? t("studentLoginTitle") : t("loginTitle")}
-        </h1>
-        {isStudentPortal ? (
-          <p className="muted">{t("studentLoginHint")}</p>
-        ) : null}
+        <h1 style={{ marginTop: 0 }}>{t("loginTitle")}</h1>
         <form
           className="stack"
           onSubmit={(e) => {
@@ -60,8 +51,7 @@ export default function LoginPage() {
                   setError(authError.message);
                   return;
                 }
-                const path = await resolvePostLoginPathAction();
-                router.push(path);
+                router.push("/dashboard");
                 router.refresh();
               } catch {
                 setError(t("errorGeneric"));
@@ -89,34 +79,12 @@ export default function LoginPage() {
             {t("login")}
           </button>
         </form>
-        {isStudentPortal ? (
-          <p className="muted" style={{ marginTop: "1rem", lineHeight: 1.5 }}>
-            <strong>{t("forgotPassword")}</strong>
-            <br />
-            {t("studentForgotPasswordHint")}
-          </p>
-        ) : null}
-        {!isStudentPortal ? (
-          <p className="muted" style={{ marginTop: "1rem" }}>
-            {t("noAccount")}{" "}
-            <Link href="/register" style={{ color: "var(--accent-ink)", fontWeight: 600 }}>
-              {t("register")}
-            </Link>
-          </p>
-        ) : (
-          <p className="muted" style={{ marginTop: "1rem" }}>
-            <Link href="/login" style={{ color: "var(--accent-ink)", fontWeight: 600 }}>
-              {t("staffLoginLink")}
-            </Link>
-          </p>
-        )}
-        {!isStudentPortal ? (
-          <p className="muted" style={{ marginTop: "0.75rem" }}>
-            <Link href="/login?portal=student" style={{ color: "var(--accent-ink)", fontWeight: 600 }}>
-              {t("studentLoginLink")}
-            </Link>
-          </p>
-        ) : null}
+        <p className="muted" style={{ marginTop: "1rem" }}>
+          {t("noAccount")}{" "}
+          <Link href="/register" style={{ color: "var(--accent-ink)", fontWeight: 600 }}>
+            {t("register")}
+          </Link>
+        </p>
       </div>
     </div>
   );

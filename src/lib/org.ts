@@ -145,11 +145,6 @@ export async function requireOrg(locale: string): Promise<OrgContext> {
   await requireUser(locale);
   const ctx = await getOrgContext();
   if (!ctx) {
-    const { getStudentContext } = await import("@/lib/tuition-student");
-    const student = await getStudentContext();
-    if (student) {
-      redirect({ href: "/student", locale });
-    }
     redirect({ href: "/onboarding", locale });
   }
   return ctx!;

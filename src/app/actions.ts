@@ -235,7 +235,7 @@ export async function upsertCustomerAction(formData: FormData) {
 
   const customerId = data?.id || id;
 
-  // Tuition: enrol subjects + optional student portal account (from Students form)
+  // Tuition: enrol subjects / classes from Students form
   const { hasCapability } = await import("@/lib/niches");
   if (hasCapability(organization.niche, "class_schedule") && customerId) {
     const classIds = formData
@@ -267,40 +267,6 @@ export async function upsertCustomerAction(formData: FormData) {
         { onConflict: "subject_id,customer_id", ignoreDuplicates: true }
       );
     }
-
-    const createPortal = formData.get("create_portal") === "on";
-    if (createPortal && !id) {
-      const portalPassword = String(formData.get("portal_password") || "");
-      if (!portalPassword || portalPassword.length < 6) {
-        return { error: "Portal password required (min 6 characters)" };
-      }
-      const icDigits = icRaw.replace(/\D/g, "");
-      const phoneDigits = phoneRaw.replace(/\D/g, "");
-      const loginKey = icDigits || phoneDigits || customerId.replace(/-/g, "").slice(0, 12);
-      if (!loginKey) {
-        return { error: "IC or phone required to create student login" };
-      }
-      const orgShort = organization.id.replace(/-/g, "").slice(0, 8);
-      const portalEmail = `s${orgShort}.${loginKey}@student.allvisor.app`;
-
-      // Persist generated login email on customer record for reference
-      await supabase.from("customers").update({ email: portalEmail }).eq("id", customerId);
-
-      const { provisionStudentPortal } = await import("@/app/tuition-actions");
-      const portal = await provisionStudentPortal({
-        organizationId: organization.id,
-        customerId,
-        email: portalEmail,
-        password: portalPassword,
-        fullName: name,
-        byProfileId: profile.id,
-      });
-      if (portal.error) {
-        return {
-          error: `Student saved, but portal account failed: ${portal.error}`,
-        };
-      }
-    }
   }
 
   await logActivity({
@@ -320,8 +286,7 @@ export async function upsertCustomerAction(formData: FormData) {
     "/pos",
     "/staff",
     "/admin",
-    "/classes",
-    "/student"
+    "/classes"
   );
   return { success: true };
 }

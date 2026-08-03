@@ -45,7 +45,6 @@ import {
   Sprout,
   BookOpen,
   ClipboardCheck,
-  UserPlus,
   ScanBarcode,
 } from "lucide-react";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
@@ -86,7 +85,6 @@ const icons: Record<string, ReactNode> = {
   subjects: <BookOpen size={18} />,
   attendance: <ClipboardList size={18} />,
   assessments: <ClipboardCheck size={18} />,
-  studentAccounts: <UserPlus size={18} />,
   jobs: <Wrench size={18} />,
   vehicles: <Car size={18} />,
   memberships: <BadgeCheck size={18} />,

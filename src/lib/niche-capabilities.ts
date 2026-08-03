@@ -32,7 +32,6 @@ export type Capability =
   | "attendance"
   | "term_fees"
   | "assessments"
-  | "student_accounts"
   | "job_cards"
   | "vehicle_profile"
   | "memberships"
@@ -260,7 +259,6 @@ export const NICHE_DEFINITIONS: Record<Niche, NicheDefinition> = {
       "attendance",
       "term_fees",
       "assessments",
-      "student_accounts",
       "invoices",
       "admin",
       "accounting",
@@ -714,7 +712,6 @@ export const NAV_HREF: Record<string, string> = {
   subjects: "/subjects",
   attendance: "/attendance",
   assessments: "/assessments",
-  studentAccounts: "/student-accounts",
   jobs: "/jobs",
   vehicles: "/vehicles",
   memberships: "/memberships",

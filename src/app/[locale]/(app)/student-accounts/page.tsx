@@ -1,6 +1,6 @@
 import { redirect } from "@/i18n/navigation";
 
-/** Student accounts merged into Students (Customers) tab. */
+/** Student portal removed — old bookmarks go to Students. */
 export default async function StudentAccountsRedirect({
   params,
 }: {
