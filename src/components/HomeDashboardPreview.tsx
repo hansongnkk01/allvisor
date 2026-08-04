@@ -386,9 +386,10 @@ export function HomeDashboardPreview({
   const demoAppts = useMemo(() => demoAppointments(now), [now]);
   const frameRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
-  const [scale, setScale] = useState(1);
+  const [scale, setScale] = useState(DEMO_FIT);
   const [stageH, setStageH] = useState(900);
   const [asideH, setAsideH] = useState(720);
+  const [stageLeft, setStageLeft] = useState(0);
 
   useEffect(() => {
     setView("dashboard");
@@ -400,10 +401,12 @@ export function HomeDashboardPreview({
     if (!frame || !stage) return;
 
     const update = () => {
-      const next = Math.min(1, frame.clientWidth / STAGE_W);
-      setScale(next > 0 ? next : 1);
+      const fit = Math.min(1, frame.clientWidth / STAGE_W) * DEMO_FIT;
+      const next = fit > 0 ? fit : DEMO_FIT;
+      setScale(next);
       setStageH(stage.scrollHeight || 900);
       setAsideH(Math.max(640, frame.clientHeight / Math.max(next, 0.01) - 32));
+      setStageLeft(Math.max(0, (frame.clientWidth - STAGE_W * next) / 2));
     };
 
     update();
@@ -484,6 +487,7 @@ export function HomeDashboardPreview({
             className="home-demo__stage"
             style={{
               width: STAGE_W,
+              left: stageLeft,
               transform: `scale(${scale})`,
               transformOrigin: "top left",
             }}
