@@ -790,23 +790,24 @@ body {
     background-color 0.55s ease;
 }
 
-/* Landing: hover a niche → whole page adopts that niche theme */
+/* Landing: hover a niche → page chrome adopts that theme; niche cards stay themselves */
 html[data-landing="true"] {
   transition: color 0.45s ease;
 }
 
 .landing-shell {
   min-height: 100vh;
-  color: var(--ink);
-  transition:
-    color 0.45s ease,
-    font-family 0.35s ease;
 }
 
-.landing-shell .display,
-.landing-shell .page-title,
-.landing-shell .landing-brand,
-.landing-shell .landing-hero-title {
+.landing-chrome {
+  color: var(--ink);
+  transition: color 0.45s ease;
+}
+
+.landing-chrome .display,
+.landing-chrome .page-title,
+.landing-chrome .landing-brand,
+.landing-chrome .landing-hero-title {
   transition:
     color 0.4s ease,
     letter-spacing 0.4s ease,
@@ -816,11 +817,12 @@ html[data-landing="true"] {
     text-transform 0.35s ease;
 }
 
-.landing-shell .muted,
-.landing-shell .landing-fade,
-.landing-shell .badge,
-.landing-shell .btn,
-.landing-shell .page-title {
+.landing-chrome .muted,
+.landing-chrome .landing-fade,
+.landing-chrome .badge,
+.landing-chrome .btn,
+.landing-chrome .page-title,
+.landing-chrome .landing-group-label {
   transition:
     color 0.4s ease,
     background 0.45s ease,
@@ -829,21 +831,27 @@ html[data-landing="true"] {
     border-radius 0.4s ease,
     box-shadow 0.45s ease,
     letter-spacing 0.35s ease,
-    text-transform 0.35s ease,
-    opacity 0.35s ease,
-    transform 0.35s ease;
+    text-transform 0.35s ease;
 }
 
+.landing-chrome .badge {
+  border-radius: var(--radius-btn);
+}
+
+/* Each card locks to its own data-niche tokens — never follow page preview */
 .landing-niche-card {
   padding: 1.15rem;
   display: block;
-  transition:
-    transform 0.35s ease,
-    box-shadow 0.45s ease,
-    border-color 0.35s ease,
-    background 0.45s ease,
-    border-radius 0.4s ease,
-    opacity 0.35s ease;
+  color: var(--ink);
+  background: var(--bg-elevated);
+  border-color: var(--surface-border, var(--line));
+  /* only lift on hover — no color/theme transitions */
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.landing-niche-card .muted,
+.landing-niche-card .landing-niche-desc {
+  color: var(--muted);
 }
 
 .landing-niche-card[data-previewed="true"] {
@@ -852,18 +860,6 @@ html[data-landing="true"] {
   border-color: var(--accent);
   z-index: 2;
   position: relative;
-}
-
-html[data-landing-preview="true"] .landing-niche-card:not([data-previewed="true"]) {
-  opacity: 0.72;
-  filter: saturate(0.85);
-  transition:
-    opacity 0.4s ease,
-    filter 0.4s ease,
-    transform 0.35s ease,
-    box-shadow 0.45s ease,
-    border-color 0.35s ease,
-    background 0.45s ease;
 }
 
 .landing-niche-icon {
@@ -875,30 +871,22 @@ html[data-landing-preview="true"] .landing-niche-card:not([data-previewed="true"
   display: grid;
   place-items: center;
   margin-bottom: 0.85rem;
-  transition:
-    background 0.4s ease,
-    color 0.4s ease,
-    border-radius 0.4s ease;
 }
 
 .landing-niche-title {
   margin: 0 0 0.35rem;
   font-size: 1.1rem;
+  color: var(--ink);
   font-family: var(--font-display), system-ui, sans-serif;
   letter-spacing: var(--brand-tracking);
   text-transform: var(--brand-transform);
-  transition: color 0.4s ease, letter-spacing 0.35s ease, text-transform 0.35s ease;
+  font-weight: var(--brand-weight);
 }
 
 .landing-niche-desc {
   margin: 0;
   line-height: 1.45;
   font-size: 0.92rem;
-  transition: color 0.4s ease;
-}
-
-.landing-shell .badge {
-  border-radius: var(--radius-btn);
 }
 
 a {
