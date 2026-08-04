@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import {
   LayoutDashboard,
@@ -298,6 +298,8 @@ export function HomeDashboardPreview({
   const [centerIdx, setCenterIdx] = useState(() => Math.max(0, NICHES.indexOf(niche)));
   const [phase, setPhase] = useState<"idle" | "next" | "prev">("idle");
   const [hoverPaused, setHoverPaused] = useState(false);
+  const [slotW, setSlotW] = useState(0);
+  const tabsRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const phaseRef = useRef(phase);
   const centerIdxRef = useRef(centerIdx);
@@ -306,15 +308,15 @@ export function HomeDashboardPreview({
   centerIdxRef.current = centerIdx;
   onNicheChangeRef.current = onNicheChange;
 
-  const carouselItems = useMemo(() => {
-    if (phase === "next") {
-      return [centerIdx - 1, centerIdx, centerIdx + 1, centerIdx + 2].map((i) => NICHES[wrapNicheIndex(i)]);
-    }
-    if (phase === "prev") {
-      return [centerIdx - 2, centerIdx - 1, centerIdx, centerIdx + 1].map((i) => NICHES[wrapNicheIndex(i)]);
-    }
-    return [centerIdx - 1, centerIdx, centerIdx + 1].map((i) => NICHES[wrapNicheIndex(i)]);
-  }, [centerIdx, phase]);
+  /** Fixed 5-slot strip; viewport shows the middle 3. Idle offset = -1 slot. */
+  const carouselItems = useMemo(
+    () => [-2, -1, 0, 1, 2].map((o) => NICHES[wrapNicheIndex(centerIdx + o)]),
+    [centerIdx]
+  );
+
+  function idleOffset(px: number) {
+    return -px;
+  }
 
   useEffect(() => {
     setView("dashboard");
@@ -350,9 +352,44 @@ export function HomeDashboardPreview({
   }, [niche, view]);
 
   useEffect(() => {
+    const tabs = tabsRef.current;
+    const track = trackRef.current;
+    if (!tabs) return;
+
+    const measure = () => {
+      const next = tabs.clientWidth / 3;
+      setSlotW(next);
+      if (track && phaseRef.current === "idle") {
+        track.style.transition = "none";
+        track.style.transform = `translate3d(${idleOffset(next)}px,0,0)`;
+      }
+    };
+
+    measure();
+    const ro = new ResizeObserver(() => measure());
+    ro.observe(tabs);
+    return () => ro.disconnect();
+  }, []);
+
+  useLayoutEffect(() => {
+    const track = trackRef.current;
+    if (!track || !slotW) return;
+    if (phase !== "idle") return;
+    track.style.transition = "none";
+    track.style.transform = `translate3d(${idleOffset(slotW)}px,0,0)`;
+  }, [centerIdx, slotW, phase]);
+
+  useEffect(() => {
     if (phase === "idle") return;
     const track = trackRef.current;
-    if (!track) return;
+    if (!track || !slotW) {
+      const fromIdx = centerIdxRef.current;
+      const nextIdx = wrapNicheIndex(fromIdx + (phase === "next" ? 1 : -1));
+      setCenterIdx(nextIdx);
+      onNicheChangeRef.current(NICHES[nextIdx]);
+      setPhase("idle");
+      return;
+    }
 
     const fromIdx = centerIdxRef.current;
     const dir = phase;
@@ -360,16 +397,13 @@ export function HomeDashboardPreview({
       typeof window !== "undefined" &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    const slotPct = -100 / 4; // one slot relative to a 4-item track
-    const start = dir === "next" ? 0 : slotPct;
-    const end = dir === "next" ? slotPct : 0;
+    const start = idleOffset(slotW);
+    const end = dir === "next" ? -2 * slotW : 0;
 
     const finish = () => {
       const nextIdx = wrapNicheIndex(fromIdx + (dir === "next" ? 1 : -1));
       setCenterIdx(nextIdx);
       onNicheChangeRef.current(NICHES[nextIdx]);
-      track.style.transition = "none";
-      track.style.transform = "translateX(0)";
       setPhase("idle");
     };
 
@@ -379,15 +413,15 @@ export function HomeDashboardPreview({
     }
 
     track.style.transition = "none";
-    track.style.transform = `translateX(${start}%)`;
+    track.style.transform = `translate3d(${start}px,0,0)`;
 
     let cancelled = false;
     let timeoutId = 0;
     const raf1 = requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         if (cancelled) return;
-        track.style.transition = `transform ${CAROUSEL_TRANSITION_MS}ms cubic-bezier(0.33, 0, 0.2, 1)`;
-        track.style.transform = `translateX(${end}%)`;
+        track.style.transition = `transform ${CAROUSEL_TRANSITION_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`;
+        track.style.transform = `translate3d(${end}px,0,0)`;
       });
     });
 
@@ -409,7 +443,7 @@ export function HomeDashboardPreview({
       window.clearTimeout(timeoutId);
       track.removeEventListener("transitionend", onEnd);
     };
-  }, [phase]);
+  }, [phase, slotW]);
 
   useEffect(() => {
     if (hoverPaused || phase !== "idle") return;
@@ -466,34 +500,30 @@ export function HomeDashboardPreview({
         <button type="button" className="home-demo__arrow" aria-label={t("demoPrev")} onClick={() => shiftCarousel(-1)}>
           <ChevronLeft size={20} strokeWidth={2.75} />
         </button>
-        <div className="home-demo__tabs" role="tablist">
+        <div ref={tabsRef} className="home-demo__tabs" role="tablist">
           <div className="home-demo__center-pill" aria-hidden="true" />
-          <div
-            ref={trackRef}
-            className="home-demo__track"
-            style={{ width: `${(carouselItems.length / 3) * 100}%` }}
-          >
+          <div ref={trackRef} className="home-demo__track">
             {carouselItems.map((id, slot) => {
-              const isCenter =
-                (phase === "idle" && slot === 1) ||
-                (phase === "next" && slot === 1) ||
-                (phase === "prev" && slot === 2);
+              // Viewport shows slots 1–3; center of capsule is always slot 2.
+              const isCenter = slot === 2;
+              const isSideClick = slot === 1 || slot === 3;
               return (
                 <button
-                  key={`${id}-${slot}-${phase}`}
+                  key={`${id}-${slot}`}
                   type="button"
                   role="tab"
                   aria-selected={isCenter}
                   className="home-demo__tab"
                   data-slot={isCenter ? "center" : "side"}
-                  style={{ flex: `0 0 ${100 / carouselItems.length}%` }}
+                  style={slotW ? { flex: `0 0 ${slotW}px`, width: slotW } : undefined}
+                  tabIndex={isSideClick || isCenter ? 0 : -1}
                   onClick={() => {
                     if (phase !== "idle") return;
-                    if (slot === 0) shiftCarousel(-1);
-                    else if (slot === 2) shiftCarousel(1);
+                    if (slot === 1) shiftCarousel(-1);
+                    else if (slot === 3) shiftCarousel(1);
                   }}
                 >
-                  {nicheLabel(id)}
+                  <span className="home-demo__tab-label">{nicheLabel(id)}</span>
                 </button>
               );
             })}

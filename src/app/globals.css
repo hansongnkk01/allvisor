@@ -1087,10 +1087,16 @@ html[data-landing="true"] {
 }
 
 .home-demo__tabs {
+  --demo-carousel-w: 340px;
+  --demo-carousel-h: 34px;
   position: relative;
-  width: min(340px, calc(100% - 3rem));
-  flex: 0 0 auto;
-  padding: 0.18rem;
+  box-sizing: border-box;
+  width: var(--demo-carousel-w);
+  height: var(--demo-carousel-h);
+  min-width: var(--demo-carousel-w);
+  max-width: var(--demo-carousel-w);
+  flex: 0 0 var(--demo-carousel-w);
+  padding: 0;
   border-radius: 999px;
   background: color-mix(in srgb, var(--ink) 6%, var(--bg));
   border: 1px solid var(--line);
@@ -1100,10 +1106,10 @@ html[data-landing="true"] {
 .home-demo__center-pill {
   position: absolute;
   z-index: 0;
-  top: 0.18rem;
-  bottom: 0.18rem;
+  top: 3px;
+  bottom: 3px;
   left: 50%;
-  width: calc((100% - 0.36rem) / 3);
+  width: calc(var(--demo-carousel-w) / 3 - 4px);
   transform: translateX(-50%);
   border-radius: 999px;
   background: var(--bg-elevated);
@@ -1113,32 +1119,54 @@ html[data-landing="true"] {
 
 .home-demo__track {
   display: flex;
+  align-items: stretch;
   position: relative;
   z-index: 1;
+  height: 100%;
+  width: max-content;
   will-change: transform;
+  backface-visibility: hidden;
 }
 
 .home-demo__tab {
+  box-sizing: border-box;
+  flex: 0 0 calc(var(--demo-carousel-w) / 3);
+  width: calc(var(--demo-carousel-w) / 3);
+  max-width: calc(var(--demo-carousel-w) / 3);
+  height: 100%;
   border: 0;
   background: transparent;
   color: var(--muted);
   font: inherit;
   font-size: 0.72rem;
   font-weight: 600;
-  padding: 0.28rem 0.35rem;
-  border-radius: 999px;
+  padding: 0 0.4rem;
+  border-radius: 0;
   cursor: pointer;
-  white-space: nowrap;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  transition: color 0.2s ease;
+}
+
+.home-demo__tab-label {
+  display: block;
+  width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
-  text-align: center;
-  transition: color 0.2s ease, font-weight 0.2s ease;
+  white-space: nowrap;
 }
 
 .home-demo__tab[data-slot="center"] {
   color: var(--ink);
   font-weight: 700;
   cursor: default;
+}
+
+@media (max-width: 480px) {
+  .home-demo__tabs {
+    --demo-carousel-w: 280px;
+  }
 }
 
 .home-demo__viewport {
