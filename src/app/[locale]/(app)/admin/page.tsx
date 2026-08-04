@@ -1,7 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { redirect } from "@/i18n/navigation";
 import { requireOrg } from "@/lib/org";
-import { hasCapability, isTuitionNiche } from "@/lib/niches";
+import { hasCapability, getNicheVocab, vocabLabels } from "@/lib/niches";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { ActionForm } from "@/components/ActionForm";
@@ -236,7 +236,8 @@ export default async function AdminPage({
   const org = ctx.organization;
   const isClinic = hasCapability(org.niche, "appointments") || hasCapability(org.niche, "allergies");
   const isRetail = hasCapability(org.niche, "pos");
-  const isTuition = isTuitionNiche(org.niche);
+  const vocab = getNicheVocab(org.niche);
+  const V = vocabLabels(org.niche, locale);
 
   // Multi-branch scorecard (today + month-to-date)
   let scoreRows: BranchScoreRow[] = [];
@@ -437,9 +438,7 @@ export default async function AdminPage({
 
           <div className="surface" style={{ padding: "1.25rem" }}>
             <h3 style={{ marginTop: 0 }}>{t("businessSettings")}</h3>
-            <p className="muted">
-              {isTuition ? t("businessSettingsHintTuition") : t("businessSettingsHint")}
-            </p>
+            <p className="muted">{V.businessSettingsHint}</p>
             <ActionForm action={updateOrgSettingsAction} className="stack">
               <div
                 style={{
@@ -479,11 +478,7 @@ export default async function AdminPage({
             initialUrl={org.logo_url}
             initialShape={org.logo_shape === "square" ? "square" : "round"}
             labels={{
-              title: isTuition
-                ? t("logoTitleTuition")
-                : isRetail
-                  ? t("logoTitleRetail")
-                  : t("logoTitle"),
+              title: V.logoTitle,
               hint: t("logoHint"),
               choose: t("logoChoose"),
               zoom: t("logoZoom"),
@@ -522,22 +517,20 @@ export default async function AdminPage({
 
           <DataImportPanel
             allowedKinds={
-              isTuition
-                ? (["patients"] as const)
-                : isRetail
-                  ? hasCapability(org.niche, "logistics")
-                    ? ["patients", "product_categories", "products", "suppliers", "past_sales"]
-                    : ["patients", "product_categories", "products", "past_sales"]
-                  : undefined
+              isRetail
+                ? hasCapability(org.niche, "logistics")
+                  ? ["patients", "product_categories", "products", "suppliers", "past_sales"]
+                  : ["patients", "product_categories", "products", "past_sales"]
+                : vocab.niche === "tuition" || vocab.scorecard === "generic"
+                  ? (["patients"] as const)
+                  : isClinic
+                    ? undefined
+                    : (["patients"] as const)
             }
-            omitRisk={isTuition}
+            omitRisk={!vocab.showRisk}
             labels={{
               title: t("importTitle"),
-              hint: isTuition
-                ? t("importHintTuition")
-                : isRetail
-                  ? t("importHintRetail")
-                  : t("importHint"),
+              hint: V.importHint,
               steps: t("importSteps"),
               kind: t("importKind"),
               downloadTemplate: t("importDownloadTemplate"),
@@ -545,23 +538,15 @@ export default async function AdminPage({
               preview: t("importPreview"),
               importBtn: t("importBtn"),
               importing: t("importing"),
-              patients: isTuition
-                ? t("importStudents")
-                : isRetail
-                  ? t("importCustomers")
-                  : t("importPatients"),
+              patients: V.importPeople,
               products: t("importProducts"),
               productCategories: t("importProductCategories"),
               suppliers: t("importSuppliers"),
               pastSales: t("importPastSales"),
               serviceCategories: t("importServiceCategories"),
               serviceItems: t("importServiceItems"),
-              appointments: isTuition ? t("importAppointmentsTuition") : t("importAppointments"),
-              orderHint: isTuition
-                ? t("importOrderHintTuition")
-                : isRetail
-                  ? t("importOrderHintRetail")
-                  : t("importOrderHint"),
+              appointments: V.schedule,
+              orderHint: V.importOrder,
               noRows: t("importNoRows"),
               success: t("importSuccess"),
               partial: t("importPartial"),
@@ -570,21 +555,13 @@ export default async function AdminPage({
 
           <div className="surface" style={{ padding: "1.25rem" }}>
             <h3 style={{ marginTop: 0 }}>{t("addBranch")}</h3>
-            <p className="muted">
-              {isTuition
-                ? t("addBranchHintTuition")
-                : isRetail
-                  ? t("addBranchHintRetail")
-                  : t("addBranchHint")}
-            </p>
+            <p className="muted">{V.addBranchHint}</p>
             <ActionForm action={requestBranchLinkAction} className="row">
               <input
                 name="branch_name"
                 className="input"
                 required
-                placeholder={
-                  isTuition ? "Tuition Bestari KL" : isRetail ? "ProSupply JB" : "Superclinic KL"
-                }
+                placeholder={V.branchExample}
                 style={{ maxWidth: 320 }}
               />
               <button type="submit" className="btn btn-primary">
@@ -600,15 +577,9 @@ export default async function AdminPage({
 
       {isSuper ? (
         <BranchScorecard
-          variant={isRetail ? "retail" : "clinic"}
+          variant={vocab.scorecard === "pos" ? "retail" : "clinic"}
           title={t("scorecardTitle")}
-          subtitle={
-            isTuition
-              ? t("scorecardHintTuition")
-              : isRetail
-                ? t("scorecardHintRetail")
-                : t("scorecardHint")
-          }
+          subtitle={V.scorecardHint}
           rows={scoreRows}
           labels={{
             branch: t("scorecardBranch"),
@@ -617,11 +588,7 @@ export default async function AdminPage({
             unpaid: t("scorecardUnpaid"),
             appointmentsToday: t("scorecardApptsToday"),
             noShow: t("scorecardNoShow"),
-            thisClinic: isTuition
-              ? t("thisTuition")
-              : isRetail
-                ? t("thisShop")
-                : t("thisClinic"),
+            thisClinic: V.thisBranch,
             txnToday: t("scorecardTxnToday"),
             lowStock: t("scorecardLowStock"),
           }}
@@ -632,9 +599,7 @@ export default async function AdminPage({
         <BranchGroup
           key={branch.id}
           title={`${idx + 1}. ${branch.name}${
-            branch.id === orgId
-              ? ` (${isTuition ? t("thisTuition") : isRetail ? t("thisShop") : t("thisClinic")})`
-              : ""
+            branch.id === orgId ? ` (${V.thisBranch})` : ""
           }`}
           defaultOpen={idx === 0}
           toneIndex={idx}
@@ -642,7 +607,7 @@ export default async function AdminPage({
           <div className="stack" style={{ gap: "0.85rem" }}>
             <BranchClinicSettings
               branchId={branch.id}
-              showHours={isClinic || isTuition}
+              showHours={vocab.showHours}
               settings={{
                 serviceChargePercent: branch.service_charge_percent,
                 openHour: branch.clinic_open_hour,
@@ -650,16 +615,8 @@ export default async function AdminPage({
                 closedWeekdays: branch.closed_weekdays,
               }}
               labels={{
-                title: isTuition
-                  ? t("tuitionHoursTitle")
-                  : isRetail
-                    ? t("shopSettingsTitle")
-                    : t("clinicHoursTitle"),
-                hint: isTuition
-                  ? t("tuitionHoursHint")
-                  : isRetail
-                    ? t("shopSettingsHint")
-                    : t("clinicHoursHint"),
+                title: vocab.showHours ? V.hoursTitle : V.chargeTitle,
+                hint: vocab.showHours ? V.hoursHint : V.chargeHint,
                 serviceChargePercent: t("serviceChargePercent"),
                 serviceChargeHint: t("serviceChargeHint"),
                 saveServiceCharge: t("saveServiceCharge"),
@@ -673,8 +630,8 @@ export default async function AdminPage({
                 fri: t("fri"),
                 sat: t("sat"),
                 sun: t("sun"),
-                holidayNote: isTuition ? t("holidayNoteTuition") : t("holidayNote"),
-                saveHours: isTuition ? t("saveHoursTuition") : t("saveHours"),
+                holidayNote: V.holidayNote,
+                saveHours: V.saveHours,
               }}
             />
             <ExpandSection
@@ -847,14 +804,12 @@ export default async function AdminPage({
               })}
               labels={{
                 title: t("staffTitle"),
-                hint: isTuition ? t("addMemberHintTuition") : t("addMemberHint"),
+                hint: V.addMemberHint,
                 username: t("staffUsername"),
                 name: t("staffName"),
                 role: t("staffRole"),
                 jobTitle: t("jobTitle"),
-                jobTitlePlaceholder: isTuition
-                  ? t("jobTitlePlaceholderTuition")
-                  : t("jobTitlePlaceholder"),
+                jobTitlePlaceholder: V.staffHint,
                 add: t("addStaff"),
                 search: t("searchStaff"),
                 email: t("staffEmail"),

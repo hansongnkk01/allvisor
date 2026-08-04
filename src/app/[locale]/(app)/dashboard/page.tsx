@@ -9,7 +9,7 @@ import { DashboardAiPanel } from "@/components/DashboardAiPanel";
 import { DailyClosePanel } from "@/components/DailyClosePanel";
 import { DashboardRecentInvoices, DashboardUpcomingAppointments, DashboardTodaySales, DashboardTopSellers } from "@/components/DashboardLists";
 import { dayBoundsMY, formatDayKeyMY } from "@/lib/datetime-my";
-import { hasCapability, isTuitionNiche } from "@/lib/niches";
+import { hasCapability, vocabLabels } from "@/lib/niches";
 
 type ApptRow = {
   id: string;
@@ -70,9 +70,8 @@ export default async function DashboardPage({
   const niche = ctx.organization.niche;
   const canAppointments = hasCapability(niche, "appointments");
   const canPos = hasCapability(niche, "pos");
-  const patientStyle = hasCapability(niche, "allergies");
-  const isTuition = isTuitionNiche(niche);
-  const peopleLabel = isTuition ? t("students") : patientStyle ? t("patients") : t("customers");
+  const V = vocabLabels(niche, locale);
+  const peopleLabel = V.entityTitle;
   const now = new Date();
   const { start: todayStart, end: todayEnd } = dayBoundsMY(now);
   const monthStart = `${formatDayKeyMY(now).slice(0, 7)}-01`;
@@ -350,7 +349,7 @@ export default async function DashboardPage({
         </Link>
         {canAppointments ? (
           <Link href="/appointments" className="btn btn-soft">
-            Appointments
+            {V.schedule}
           </Link>
         ) : null}
         {canPos ? (

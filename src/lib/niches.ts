@@ -56,3 +56,6 @@ export {
   NICHE_DEFINITIONS,
   type Capability,
 };
+
+export { getNicheVocab, vocabLabels, accountingCategories } from "./niche-vocab";
+export type { NicheVocab, NicheVocabLabels, AccountingFlavor } from "./niche-vocab";

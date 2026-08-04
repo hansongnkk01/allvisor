@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useEffect, useTransition } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import {
   LayoutDashboard,
   Users,
@@ -52,6 +52,7 @@ import {
   ADMIN_ZONE_NAV_KEYS,
   getNavSectionsForNiche,
   hasCapability,
+  vocabLabels,
 } from "@/lib/niches";
 import { NAV_HREF } from "@/lib/niche-capabilities";
 import type { Niche } from "@/lib/types";
@@ -193,6 +194,7 @@ export function AppShell({
 }) {
   const t = useTranslations("Nav");
   const tBrand = useTranslations("Brand");
+  const locale = useLocale();
   const pathname = usePathname();
   const canSeeAdminZone =
     role === "owner" ||
@@ -201,29 +203,11 @@ export function AppShell({
     role === "manager";
 
   const sections = getNavSectionsForNiche(niche);
+  const V = vocabLabels(niche, locale);
 
   function labelFor(key: string) {
-    if (key === "customers" && hasCapability(niche, "allergies")) {
-      try {
-        return t("patients");
-      } catch {
-        /* fall through */
-      }
-    }
-    if (key === "customers" && niche === "tuition") {
-      try {
-        return t("students");
-      } catch {
-        /* fall through */
-      }
-    }
-    if (key === "appointments" && niche === "tuition") {
-      try {
-        return t("schedule");
-      } catch {
-        /* fall through */
-      }
-    }
+    if (key === "customers") return V.entityTitle;
+    if (key === "appointments") return V.schedule;
     try {
       return t(key as "dashboard");
     } catch {

@@ -1,6 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { requireOrg } from "@/lib/org";
-import { hasCapability, isTuitionNiche } from "@/lib/niches";
+import { hasCapability, isTuitionNiche, getNicheVocab, vocabLabels } from "@/lib/niches";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { SectionActivityLog } from "@/components/SectionActivityLog";
@@ -25,8 +25,10 @@ export default async function InvoicesPage({
   const td = await getTranslations("InvoiceDetail");
   const ctx = await requireOrg(locale);
   const supabase = await createClient();
-  const isClinic = hasCapability(ctx.organization.niche, "allergies");
-  const isTuition = isTuitionNiche(ctx.organization.niche);
+  const vocab = getNicheVocab(ctx.organization.niche);
+  const V = vocabLabels(ctx.organization.niche, locale);
+  const isClinic = vocab.showAllergies;
+  const isTuition = vocab.niche === "tuition";
 
   const [{ data: invoices }, logs] = await Promise.all([
     supabase
@@ -78,7 +80,7 @@ export default async function InvoicesPage({
         showAllergies={isClinic}
         labels={{
           number: t("number"),
-          customer: isTuition ? t("student") : t("customer"),
+          customer: V.entity.replace(/\b\w/g, (c) => c.toUpperCase()),
           status: t("status"),
           total: t("total"),
           paid: t("paid"),
@@ -138,7 +140,9 @@ export default async function InvoicesPage({
           exitReasonHint: t("exitReasonHint"),
           exitReasonPlaceholder: t("exitReasonPlaceholder"),
           exitConfirm: t("exitConfirm"),
-          searchPlaceholder: isTuition ? t("searchPlaceholderTuition") : t("searchPlaceholder"),
+          searchPlaceholder: locale.startsWith("ms")
+            ? `Cari ${V.entity}, no. invois, notes…`
+            : `Search ${V.entity}, invoice no., notes…`,
           needTin,
           planLocked,
         }}

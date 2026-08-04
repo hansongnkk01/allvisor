@@ -1,6 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { requireOrg } from "@/lib/org";
-import { hasCapability, isTuitionNiche } from "@/lib/niches";
+import { hasCapability, getNicheVocab, vocabLabels } from "@/lib/niches";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { ActionForm } from "@/components/ActionForm";
@@ -22,8 +22,10 @@ export default async function CustomersPage({
   const tc = await getTranslations("Common");
   const ctx = await requireOrg(locale);
   const supabase = await createClient();
-  const isTuition = isTuitionNiche(ctx.organization.niche);
-  const isClinic = hasCapability(ctx.organization.niche, "allergies");
+  const vocab = getNicheVocab(ctx.organization.niche);
+  const V = vocabLabels(ctx.organization.niche, locale);
+  const isTuition = vocab.niche === "tuition";
+  const isClinic = vocab.showAllergies;
 
   const [{ data: customers }, { data: deletions }, logs, subjectsRes, enrollRes] = await Promise.all([
     supabase
@@ -71,17 +73,9 @@ export default async function CustomersPage({
     subjectsByCustomer.set(e.customer_id, list);
   }
 
-  const title = isTuition ? t("titleTuition") : isClinic ? t("titleClinic") : t("title");
-  const deletedTitle = isTuition
-    ? t("deletedTitleTuition")
-    : isClinic
-      ? t("deletedTitleClinic")
-      : t("deletedTitle");
-  const deletedHint = isTuition
-    ? t("deletedHintTuition")
-    : isClinic
-      ? t("deletedHintClinic")
-      : t("deletedHint");
+  const title = V.entityTitle;
+  const deletedTitle = V.deletedTitle;
+  const deletedHint = V.deletedHint;
   const rowLabels = {
     name: t("name"),
     email: t("email"),
@@ -218,8 +212,8 @@ export default async function CustomersPage({
           labels={rowLabels}
           empty={isTuition ? t("emptyTuition") : t("empty")}
           searchPlaceholder={tc("search")}
-          showAllergies={isClinic}
-          showRisk={isClinic}
+          showAllergies={vocab.showAllergies}
+          showRisk={vocab.showRisk}
         />
       </div>
 
@@ -290,11 +284,7 @@ export default async function CustomersPage({
             </table>
           </div>
         </div>
-        <SectionActivityLog
-          title={isTuition ? t("activityTuition") : t("activity")}
-          logs={logs}
-          pageSize={5}
-        />
+        <SectionActivityLog title={V.activityTitle} logs={logs} pageSize={5} />
       </div>
     </div>
   );

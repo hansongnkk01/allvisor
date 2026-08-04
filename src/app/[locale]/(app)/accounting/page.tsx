@@ -1,7 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link, redirect } from "@/i18n/navigation";
 import { requireOrg } from "@/lib/org";
-import { hasCapability } from "@/lib/niches";
+import { getNicheVocab, vocabLabels, accountingCategories } from "@/lib/niches";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { ActionForm } from "@/components/ActionForm";
@@ -21,42 +21,6 @@ import {
   AccountingExpenseTable,
   AccountingLedgerTable,
 } from "@/components/AccountingPagedTables";
-
-const CLINIC_EXPENSE_CATS = [
-  "Rent",
-  "Utilities",
-  "Medicine / Supplies",
-  "Staff salary",
-  "Equipment",
-  "Lab / Outsource",
-  "Marketing",
-  "Other",
-];
-
-const CLINIC_INCOME_CATS = [
-  "Consultation",
-  "Procedure",
-  "Medicine sales",
-  "Other income",
-];
-
-const RETAIL_EXPENSE_CATS = [
-  "Rent",
-  "Utilities",
-  "Cost of goods (COGS)",
-  "Staff wages",
-  "Marketing",
-  "Logistics / Delivery",
-  "Equipment",
-  "Other",
-];
-
-const RETAIL_INCOME_CATS = [
-  "Product sales",
-  "POS sales",
-  "Wholesale",
-  "Other income",
-];
 
 const PERIODS: AccountingPeriod[] = [
   "today",
@@ -83,18 +47,10 @@ export default async function AccountingPage({
   setRequestLocale(locale);
   const t = await getTranslations("Accounting");
   const ctx = await requireOrg(locale);
-  const isClinic = !hasCapability(ctx.organization.niche, "pos");
-  const isTuition = ctx.organization.niche === "tuition";
-  const accountingTitle = isTuition
-    ? t("titleTuition")
-    : isClinic
-      ? t("title")
-      : t("titleRetail");
-  const accountingSubtitle = isTuition
-    ? t("subtitleTuition")
-    : isClinic
-      ? t("subtitle")
-      : t("subtitleRetail");
+  const vocab = getNicheVocab(ctx.organization.niche);
+  const V = vocabLabels(ctx.organization.niche, locale);
+  const accountingTitle = V.accountingTitle;
+  const accountingSubtitle = V.accountingSubtitle;
 
   if (!canAccessSensitive(ctx.membership.role)) {
     redirect({ href: "/dashboard", locale });
@@ -115,8 +71,9 @@ export default async function AccountingPage({
   const { startDay, endDay } = accountingPeriodRange(period);
 
   const supabase = await createClient();
-  const incomeCats = isClinic ? CLINIC_INCOME_CATS : RETAIL_INCOME_CATS;
-  const expenseCats = isClinic ? CLINIC_EXPENSE_CATS : RETAIL_EXPENSE_CATS;
+  const cats = accountingCategories(vocab.accountingFlavor);
+  const incomeCats = cats.income;
+  const expenseCats = cats.expense;
 
   const [{ data: expenses }, { data: ledger }, logs] = await Promise.all([
     supabase

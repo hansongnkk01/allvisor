@@ -1,7 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { redirect, Link } from "@/i18n/navigation";
 import { requireOrg } from "@/lib/org";
-import { hasCapability } from "@/lib/niches";
+import { hasCapability, vocabLabels } from "@/lib/niches";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { ActionForm } from "@/components/ActionForm";
@@ -21,6 +21,7 @@ export default async function ReceiptsPage({
   setRequestLocale(locale);
   const t = await getTranslations("RetailPages");
   const ctx = await requireOrg(locale);
+  const V = vocabLabels(ctx.organization.niche, locale);
   if (!hasCapability(ctx.organization.niche, "receipts")) redirect({ href: "/dashboard", locale });
   const supabase = await createClient();
   let query = supabase
@@ -89,7 +90,7 @@ export default async function ReceiptsPage({
                     <strong>{receipt.invoice_number}</strong><strong>{formatCurrency(Number(receipt.total))}</strong>
                   </div>
                   <div className="muted" style={{ fontSize: ".8rem", marginTop: 4 }}>
-                    {customer?.name || "Walk-in"} · {receipt.created_by_name || "Staff"} · {formatDateTime(receipt.created_at)}
+                    {customer?.name || V.entity.replace(/\b\w/g, (c) => c.toUpperCase())} · {receipt.created_by_name || "Staff"} · {formatDateTime(receipt.created_at)}
                   </div>
                 </Link>
               );

@@ -18,10 +18,13 @@ export default async function AppointmentsPage({
   const t = await getTranslations("Appointments");
   const ctx = await requireOrg(locale);
 
-  const { hasCapability } = await import("@/lib/niches");
+  const { hasCapability, getNicheVocab, vocabLabels } = await import("@/lib/niches");
   if (!hasCapability(ctx.organization.niche, "appointments")) {
     redirect({ href: "/dashboard", locale });
   }
+  const vocab = getNicheVocab(ctx.organization.niche);
+  const V = vocabLabels(ctx.organization.niche, locale);
+  const entityCap = V.entity.replace(/\b\w/g, (c) => c.toUpperCase());
 
   const supabase = await createClient();
   // Calendar window: ~45 days back + ~90 days ahead (keeps payload small)
@@ -59,7 +62,7 @@ export default async function AppointmentsPage({
 
   return (
     <div className="stack" style={{ gap: "1.25rem" }}>
-      <PageHeader title={t("title")} />
+      <PageHeader title={V.schedule} />
 
       <div className="surface" style={{ padding: "1.25rem" }}>
         <AppointmentBoardLazy
@@ -78,8 +81,8 @@ export default async function AppointmentsPage({
           patients={(customers || []).map((c) => ({
             id: c.id,
             name: c.name,
-            risk_level: c.risk_level,
-            allergies: c.allergies,
+            risk_level: vocab.showRisk ? c.risk_level : null,
+            allergies: vocab.showAllergies ? c.allergies : null,
           }))}
           categories={(categories || []).map((c) => ({
             id: c.id,
@@ -95,7 +98,7 @@ export default async function AppointmentsPage({
             calendar: t("calendar"),
             list: t("list"),
             today: t("today"),
-            patient: t("patient"),
+            patient: entityCap,
             status: t("status"),
             notes: t("notes"),
             reminder: t("reminder"),
@@ -106,22 +109,22 @@ export default async function AppointmentsPage({
             timetable: t("timetable"),
             occupied: t("occupied"),
             free: t("free"),
-            closed: t("clinicClosed"),
+            closed: `${V.businessTitle} closed`,
             publicHoliday: t("publicHoliday"),
             edit: t("edit"),
             save: t("save"),
             cancel: t("cancel"),
             startsAt: t("startsAt"),
             endsAt: t("endsAt"),
-            bookHint: t("bookHint"),
+            bookHint: t("bookHint").replace(/patient/gi, V.entity),
             pickStart: t("pickStart"),
             pickEnd: t("pickEnd"),
-            pickPatient: t("pickPatient"),
+            pickPatient: `Choose ${V.entity} & category, then book`,
             bookNow: t("bookNow"),
             category: t("category"),
             needCategory: t("needCategory"),
             resetBooking: t("resetBooking"),
-            searchPatient: t("searchPatient"),
+            searchPatient: `Type to search ${V.entity}…`,
             searchCategory: t("searchCategory"),
             completeConfirm1: t("completeConfirm1"),
             completeConfirm2: t("completeConfirm2"),

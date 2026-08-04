@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getNicheVocab } from "@/lib/niche-vocab";
+import { hasCapability } from "@/lib/niches";
 
 type InsightInput = {
   niche: string;
@@ -30,38 +32,37 @@ const TONE_STYLE: Record<TipTone, { bg: string; border: string }> = {
 function buildInsights(data: InsightInput): Tip[] {
   const tips: Tip[] = [];
   const profit = data.income - data.expense;
-  const isRetail = data.niche === "retail" || data.niche === "pharmacy" || data.niche === "fashion" || data.niche === "electronics" || data.niche === "wholesale" || data.niche === "laundry" || data.niche === "fnb";
-  const isTuition = data.niche === "tuition";
-  const people = isTuition ? "students" : isRetail ? "customers" : "patients";
+  const vocab = getNicheVocab(data.niche);
+  const V = vocab.labels.en;
+  const people = V.entityPlural;
+  const hasPos = hasCapability(data.niche, "pos");
+  const hasAppts = hasCapability(data.niche, "appointments");
+  const hasInventory = hasCapability(data.niche, "inventory");
 
-  if (data.lowStock > 0) {
+  if (hasInventory && data.lowStock > 0) {
     const names = (data.lowStockNames || []).filter(Boolean);
     const shown = names.slice(0, 4);
     const extra = names.length > shown.length ? ` (+${names.length - shown.length} more)` : "";
     const namePart = shown.length
       ? `Low stock: ${shown.join(", ")}${extra}.`
-      : isRetail
-        ? `${data.lowStock} product(s) are low.`
-        : `${data.lowStock} medicine/supply item(s) are low.`;
+      : `${data.lowStock} item(s) are low in ${V.business} inventory.`;
     tips.push({
       tone: "alert",
-      text: `${namePart} Restock before weekend demand spikes.`,
+      text: `${namePart} Restock before demand spikes.`,
     });
   }
 
   if (data.unpaidInvoices > 0) {
     tips.push({
       tone: "alert",
-      text: `${data.unpaidInvoices} unpaid invoice(s). Call or WhatsApp ${people} today to improve cash collection.`,
+      text: `${data.unpaidInvoices} unpaid invoice(s). Follow up with ${people} today to improve cash collection.`,
     });
   }
 
   if (profit < 0) {
     tips.push({
       tone: "alert",
-      text: isRetail
-        ? "Cash flow is negative this period. Review expenses (rent, COGS) and push high-margin products."
-        : "Cash flow is negative this period. Review expenses (rent, supplies) and raise high-demand service prices carefully.",
+      text: `Cash flow is negative this period for your ${V.business}. Review expenses and collections.`,
     });
   }
 
@@ -73,7 +74,7 @@ function buildInsights(data: InsightInput): Tip[] {
   } else if (data.lhdnPending > 0) {
     tips.push({
       tone: "alert",
-      text: `${data.lhdnPending} paid invoice(s) are not confirmed on MyInvois yet. Auto-submit may have failed — check TIN / intermediary link on the LHDN page.`,
+      text: `${data.lhdnPending} paid invoice(s) are not confirmed on MyInvois yet. Check TIN / intermediary link on the LHDN page.`,
     });
   }
 
@@ -87,50 +88,38 @@ function buildInsights(data: InsightInput): Tip[] {
   if (data.patients < 5) {
     tips.push({
       tone: "info",
-      text: isTuition
-        ? "Student base is still small. Enrol more students into subjects and follow up on fees."
-        : isRetail
-          ? "Customer base is still small. Run a simple promo and capture every purchase into CRM."
-          : "Patient base is still small. Push WhatsApp reminders and follow-ups after each visit to grow repeat patients.",
+      text: `${V.entityTitle} base is still small. Grow your ${V.business} CRM and follow up regularly.`,
     });
   }
 
-  if (isRetail && data.income === 0) {
+  if (hasPos && data.income === 0) {
     tips.push({
       tone: "info",
-      text: "No sales recorded today yet. Open POS and log purchases so daily close stays accurate.",
+      text: `No sales recorded today yet. Open POS and log purchases so daily close stays accurate.`,
     });
   }
 
-  if (isTuition && data.income === 0) {
+  if (hasAppts && data.appointmentsToday === 0) {
     tips.push({
       tone: "info",
-      text: "No fee collections recorded today yet. Record invoices for enrolled students to keep cash flow clear.",
+      text: `No ${V.schedule.toLowerCase()} today. Fill empty slots on the ${V.schedule.toLowerCase()} board.`,
     });
   }
 
-  if (!isRetail && !isTuition && data.appointmentsToday === 0) {
+  if (vocab.niche === "tuition") {
     tips.push({
       tone: "info",
-      text: "No appointments today. Fill empty slots with short-notice openings.",
-    });
-  }
-
-  if (isTuition) {
-    tips.push({
-      tone: "info",
-      text: "Check attendance and update student marks under Assessments so parents can be updated quickly.",
+      text: "Check attendance and update student marks under Assessments.",
     });
   }
 
   if (!tips.length) {
     tips.push({
       tone: "good",
-      text: "Operations look stable. Keep logging every payment and stock movement for cleaner monthly reports.",
+      text: `${V.businessTitle} operations look stable. Keep logging every payment for cleaner monthly reports.`,
     });
   }
 
-  // Prefer alerts first, then good, then info — max 4
   const order: TipTone[] = ["alert", "good", "info"];
   tips.sort((a, b) => order.indexOf(a.tone) - order.indexOf(b.tone));
   return tips.slice(0, 4);

@@ -3,7 +3,7 @@
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { getOrgContext } from "@/lib/org";
-import { isNiche, hasCapability } from "@/lib/niches";
+import { isNiche, hasCapability, vocabLabels } from "@/lib/niches";
 import { getLhdnProvider } from "@/lib/lhdn";
 import { canUseLhdn } from "@/lib/subscription";
 import { revalidateApp, revalidateAppLayout } from "@/lib/revalidate";
@@ -215,12 +215,10 @@ export async function upsertCustomerAction(formData: FormData) {
   }
 
   if (conflicts.length) {
-    const { hasCapability } = await import("@/lib/niches");
-    const isTuition = hasCapability(organization.niche, "class_schedule");
+    const { vocabLabels } = await import("@/lib/niches");
+    const entity = vocabLabels(organization.niche, "en").entity;
     return {
-      error: isTuition
-        ? "A student with the same name, IC, or phone already exists."
-        : "A patient with the same name, IC, email, or phone already exists.",
+      error: `A ${entity} with the same name, IC, email, or phone already exists.`,
       conflicts,
     };
   }
@@ -240,7 +238,8 @@ export async function upsertCustomerAction(formData: FormData) {
 
   // Tuition: enrol subjects / classes from Students form
   const { hasCapability } = await import("@/lib/niches");
-  if (hasCapability(organization.niche, "class_schedule") && customerId) {
+  // Tuition only: enrol subjects / classes (gym also has class_schedule — skip)
+  if (organization.niche === "tuition" && customerId) {
     const classIds = formData
       .getAll("class_ids")
       .map((v) => String(v))
@@ -272,15 +271,13 @@ export async function upsertCustomerAction(formData: FormData) {
     }
   }
 
+  const { vocabLabels } = await import("@/lib/niches");
+  const entity = vocabLabels(organization.niche, "en").entity;
   await logActivity({
     action: id ? "customer.update" : "customer.create",
     summary: id
-      ? hasCapability(organization.niche, "assessments") || organization.niche === "tuition"
-        ? `Updated student: ${payload.name}`
-        : `Updated patient/customer: ${payload.name}`
-      : hasCapability(organization.niche, "assessments") || organization.niche === "tuition"
-        ? `Registered student: ${payload.name}`
-        : `Registered patient/customer: ${payload.name}`,
+      ? `Updated ${entity}: ${payload.name}`
+      : `Registered ${entity}: ${payload.name}`,
     entityType: "customer",
     entityId: customerId || null,
   });
@@ -319,12 +316,11 @@ export async function deleteCustomerAction(id: string) {
   const { error } = await supabase.from("customers").delete().eq("id", id);
   if (error) return { error: error.message };
 
+  const { vocabLabels } = await import("@/lib/niches");
+  const entity = vocabLabels(organization.niche, "en").entity;
   await logActivity({
     action: "customer.delete",
-    summary:
-      organization.niche === "tuition"
-        ? `Deleted student: ${customer?.name || id}`
-        : `Deleted patient/customer: ${customer?.name || id}`,
+    summary: `Deleted ${entity}: ${customer?.name || id}`,
     entityType: "customer",
     entityId: id,
   });
@@ -1930,7 +1926,7 @@ export async function saveOrgLogoAction(formData: FormData) {
   await logActivity({
     action: "org.logo",
     summary: wroteImage
-      ? `Updated clinic logo (${finalShape})`
+      ? `Updated ${vocabLabels(organization.niche, "en").business} logo (${finalShape})`
       : `Updated logo shape (${finalShape})`,
     entityType: "organization",
     entityId: organization.id,
@@ -1966,7 +1962,7 @@ export async function removeOrgLogoAction() {
 
   await logActivity({
     action: "org.logo_remove",
-    summary: "Removed clinic logo",
+    summary: "Removed logo",
     entityType: "organization",
     entityId: organization.id,
   });
@@ -2091,18 +2087,21 @@ export async function addStaffAction(formData: FormData) {
     .maybeSingle();
 
   if (existingMembership) {
-    return { error: "This user is already a member of this clinic" };
+    const { vocabLabels } = await import("@/lib/niches");
+    const b = vocabLabels(organization.niche, "en").business;
+    return { error: `This user is already a member of this ${b}` };
   }
 
-  // One Allvisor account → one shop dashboard only
+  // One Allvisor account → one business dashboard only
   const { count: shopCount } = await admin
     .from("memberships")
     .select("*", { count: "exact", head: true })
     .eq("user_id", userId);
   if ((shopCount || 0) > 0) {
+    const { vocabLabels } = await import("@/lib/niches");
+    const b = vocabLabels(organization.niche, "en").business;
     return {
-      error:
-        "This account is already linked to another shop dashboard. One account can only join one shop.",
+      error: `This account is already linked to another ${b} dashboard. One account can only join one ${b}.`,
     };
   }
 
@@ -2189,11 +2188,14 @@ export async function requestBranchLinkAction(formData: FormData) {
   const branchName = String(formData.get("branch_name") || "").trim();
   if (!branchName) return { error: "Branch name required" };
   if (branchName.toLowerCase() === organization.name.toLowerCase()) {
-    return { error: "Cannot link to the same clinic" };
+    const b = vocabLabels(organization.niche, "en").business;
+    return { error: `Cannot link to the same ${b}` };
   }
 
   const admin = await getServiceAdmin();
-  if (!admin) return { error: "Service role required to find other clinics" };
+  if (!admin) {
+    return { error: `Service role required to find other ${vocabLabels(organization.niche, "en").business}s` };
+  }
 
   const { data: target } = await admin
     .from("organizations")
@@ -2202,7 +2204,8 @@ export async function requestBranchLinkAction(formData: FormData) {
     .maybeSingle();
 
   if (!target) {
-    return { error: `No Allvisor clinic found with name "${branchName}"` };
+    const b = vocabLabels(organization.niche, "en").business;
+    return { error: `No Allvisor ${b} found with name "${branchName}"` };
   }
 
   const { data: already } = await supabase
@@ -2468,16 +2471,19 @@ export async function addBranchStaffAction(formData: FormData) {
     .eq("organization_id", targetOrgId)
     .eq("user_id", userId)
     .maybeSingle();
-  if (alreadyHere) return { error: "This user is already a member of this clinic" };
+  if (alreadyHere) {
+    const b = vocabLabels(ctx.organization.niche, "en").business;
+    return { error: `This user is already a member of this ${b}` };
+  }
 
   const { count: shopCount } = await admin
     .from("memberships")
     .select("*", { count: "exact", head: true })
     .eq("user_id", userId);
   if ((shopCount || 0) > 0) {
+    const b = vocabLabels(ctx.organization.niche, "en").business;
     return {
-      error:
-        "This account is already linked to another shop dashboard. One account can only join one shop.",
+      error: `This account is already linked to another ${b} dashboard. One account can only join one ${b}.`,
     };
   }
 
@@ -3424,7 +3430,7 @@ export async function updateClinicHoursAction(formData: FormData) {
 
   await logActivity({
     action: "admin.clinic_hours",
-    summary: `Updated clinic hours ${String(openHour).padStart(2, "0")}:00–${String(closeHour).padStart(2, "0")}:00`,
+    summary: `Updated hours ${String(openHour).padStart(2, "0")}:00–${String(closeHour).padStart(2, "0")}:00`,
     entityType: "organization",
     entityId: targetOrgId,
   });
@@ -3989,7 +3995,7 @@ export async function importMigrationDataAction(
         skipped++;
         errors.push({
           row: i + 2,
-          message: `Patient not found (${patientName || patientIc || patientPhone || "—"})`,
+          message: `${vocabLabels(organization.niche, "en").entity.replace(/\b\w/g, (c) => c.toUpperCase())} not found (${patientName || patientIc || patientPhone || "—"})`,
         });
         continue;
       }
@@ -4039,10 +4045,10 @@ export async function importMigrationDataAction(
   }
 
   const kindLabel =
-    kind === "patients" && organization.niche === "tuition"
-      ? "students"
-      : kind === "appointments" && organization.niche === "tuition"
-        ? "schedule"
+    kind === "patients"
+      ? vocabLabels(organization.niche, "en").entityPlural
+      : kind === "appointments"
+        ? vocabLabels(organization.niche, "en").schedule.toLowerCase()
         : kind;
   await logActivity({
     action: "admin.data_import",

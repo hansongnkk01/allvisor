@@ -1,7 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { redirect } from "@/i18n/navigation";
 import { requireOrg } from "@/lib/org";
-import { hasCapability } from "@/lib/niches";
+import { hasCapability, vocabLabels } from "@/lib/niches";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { ActionForm } from "@/components/ActionForm";
@@ -106,13 +106,14 @@ export default async function InventoryPage({
     .sort((a, b) => b.usedQty - a.usedQty)
     .slice(0, 12);
 
-  const isClinic = !hasCapability(ctx.organization.niche, "pos");
+  const V = vocabLabels(ctx.organization.niche, locale);
+  const isCommerce = hasCapability(ctx.organization.niche, "pos");
 
   return (
     <div className="stack" style={{ gap: "1.25rem" }}>
       <PageHeader
         title={t("title")}
-        subtitle={isClinic ? t("clinicSubtitle") : t("retailSubtitle")}
+        subtitle={V.inventorySubtitle}
       />
 
       <FrequentlyUsedStock
@@ -141,7 +142,7 @@ export default async function InventoryPage({
                   name="name"
                   required
                   className="input"
-                  placeholder={isClinic ? "Paracetamol 500mg" : undefined}
+                  placeholder={V.inventoryPlaceholder}
                 />
               </div>
               <div className="field">
@@ -165,7 +166,7 @@ export default async function InventoryPage({
                 <label>{t("lowStock")}</label>
                 <input name="low_stock_threshold" type="number" defaultValue={5} className="input" />
               </div>
-              {!isClinic ? (
+              {isCommerce ? (
                 <>
                   <div className="field">
                     <label>Sold by</label>
