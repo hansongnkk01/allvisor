@@ -48,10 +48,26 @@
   --accent-soft: rgba(15, 118, 110, 0.12);
   --accent-ink: #0b4f4a;
   --accent-hover: #0b5f58;
+  --accent-fg: #ffffff;
   --danger: #b42318;
   --success: #027a48;
   --shadow: 0 20px 50px rgba(28, 27, 25, 0.08);
   --radius: 18px;
+  --radius-btn: 999px;
+  --radius-control: 12px;
+  --radius-nav: 12px;
+  --surface-blur: 14px;
+  --surface-border: var(--line);
+  --btn-tracking: 0;
+  --btn-transform: none;
+  --brand-tracking: -0.03em;
+  --brand-transform: none;
+  --brand-size: 1.15rem;
+  --brand-weight: 600;
+  --nav-active-border: transparent;
+  --nav-active-border-width: 0;
+  --density: 1;
+  --table-density: 0.85rem;
   --loading-overlay: rgba(246, 244, 241, 0.55);
   --skeleton-a: rgba(28, 27, 25, 0.06);
   --skeleton-b: rgba(28, 27, 25, 0.12);
@@ -61,36 +77,25 @@
   --font-display: var(--font-dm-sans);
 }
 
-/* —— Per-niche visual themes —— */
-[data-niche="clinic"],
-[data-niche="physio"],
-[data-niche="lab"] {
+/* —— Unique theme packs (color + design tokens) —— */
+
+/* Clinic — calm clinical (baseline soft) */
+[data-niche="clinic"] {
   --accent: #0f766e;
   --accent-soft: rgba(15, 118, 110, 0.14);
   --accent-ink: #0b4f4a;
   --accent-hover: #0b5f58;
+  --bg: #f4f7f6;
+  --bg-top: #f7faf9;
+  --bg-bottom: #e8efed;
+  --bg-glow: rgba(15, 118, 110, 0.1);
+  --radius: 18px;
+  --radius-btn: 999px;
+  --radius-control: 12px;
+  --surface-blur: 16px;
 }
 
-[data-niche="retail"],
-[data-niche="fashion"],
-[data-niche="electronics"],
-[data-niche="wholesale"] {
-  --accent: #b45309;
-  --accent-soft: rgba(180, 83, 9, 0.14);
-  --accent-ink: #7c2d12;
-  --accent-hover: #92400e;
-}
-
-[data-niche="tuition"] {
-  --accent: #1d4ed8;
-  --accent-soft: rgba(29, 78, 216, 0.12);
-  --accent-ink: #1e3a8a;
-  --accent-hover: #1e40af;
-  --bg-top: #f5f7fb;
-  --bg-bottom: #e8eef8;
-  --bg-glow: rgba(29, 78, 216, 0.08);
-}
-
+/* Gym — energetic dark / fiery */
 [data-niche="gym"] {
   color-scheme: dark;
   --bg: #0c0c0c;
@@ -106,143 +111,554 @@
   --accent-soft: rgba(225, 29, 72, 0.22);
   --accent-ink: #fecdd3;
   --accent-hover: #be123c;
+  --accent-fg: #ffffff;
   --danger: #fb7185;
   --success: #4ade80;
   --shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
-  --radius: 12px;
+  --radius: 10px;
+  --radius-btn: 8px;
+  --radius-control: 8px;
+  --radius-nav: 8px;
+  --surface-blur: 8px;
+  --surface-border: rgba(225, 29, 72, 0.22);
+  --btn-tracking: 0.04em;
+  --btn-transform: uppercase;
+  --brand-tracking: 0.08em;
+  --brand-transform: uppercase;
+  --brand-size: 0.95rem;
+  --font-display: var(--font-space-grotesk), var(--font-dm-sans);
   --loading-overlay: rgba(0, 0, 0, 0.6);
   --skeleton-a: rgba(255, 255, 255, 0.06);
   --skeleton-b: rgba(255, 255, 255, 0.12);
   --scrollbar: rgba(255, 255, 255, 0.28);
   --scrollbar-hover: rgba(255, 255, 255, 0.42);
+  --nav-active-border: var(--accent);
+  --nav-active-border-width: 3px;
 }
 
+/* Physio — soft recovery / spa-clinic */
+[data-niche="physio"] {
+  --accent: #5b8a72;
+  --accent-soft: rgba(91, 138, 114, 0.16);
+  --accent-ink: #2f4f40;
+  --accent-hover: #4a735e;
+  --bg: #f5f7f4;
+  --bg-top: #f8faf6;
+  --bg-bottom: #e8efe6;
+  --bg-glow: rgba(91, 138, 114, 0.12);
+  --radius: 22px;
+  --radius-btn: 999px;
+  --radius-control: 16px;
+  --radius-nav: 16px;
+  --surface-blur: 20px;
+  --shadow: 0 24px 48px rgba(47, 79, 64, 0.08);
+  --font-display: var(--font-fraunces), var(--font-dm-sans);
+  --brand-tracking: -0.02em;
+}
+
+/* Lab — sterile precision */
+[data-niche="lab"] {
+  --accent: #4338ca;
+  --accent-soft: rgba(67, 56, 202, 0.1);
+  --accent-ink: #312e81;
+  --accent-hover: #3730a3;
+  --bg: #f8f9fb;
+  --bg-top: #ffffff;
+  --bg-bottom: #eef1f6;
+  --bg-glow: rgba(67, 56, 202, 0.06);
+  --bg-elevated: rgba(255, 255, 255, 0.92);
+  --line: rgba(15, 23, 42, 0.12);
+  --radius: 8px;
+  --radius-btn: 6px;
+  --radius-control: 6px;
+  --radius-nav: 6px;
+  --surface-blur: 0px;
+  --shadow: 0 1px 0 rgba(15, 23, 42, 0.06), 0 8px 24px rgba(15, 23, 42, 0.05);
+  --table-density: 0.7rem;
+  --font-display: var(--font-space-grotesk), var(--font-dm-sans);
+  --brand-tracking: 0.02em;
+  --nav-active-border: var(--accent);
+  --nav-active-border-width: 2px;
+}
+
+/* Vet — friendly warm care */
+[data-niche="vet"] {
+  --accent: #65a30d;
+  --accent-soft: rgba(101, 163, 13, 0.16);
+  --accent-ink: #3f6212;
+  --accent-hover: #4d7c0f;
+  --bg: #f7f8f2;
+  --bg-top: #fbfcf6;
+  --bg-bottom: #eef2e0;
+  --bg-glow: rgba(101, 163, 13, 0.12);
+  --radius: 20px;
+  --radius-btn: 999px;
+  --radius-control: 14px;
+  --radius-nav: 14px;
+  --surface-blur: 18px;
+  --font-display: var(--font-fraunces), var(--font-dm-sans);
+}
+
+/* Optical — glass clarity */
+[data-niche="optical"] {
+  --accent: #0284c7;
+  --accent-soft: rgba(2, 132, 199, 0.12);
+  --accent-ink: #0c4a6e;
+  --accent-hover: #0369a1;
+  --bg: #f5f9fc;
+  --bg-top: #fbfdff;
+  --bg-bottom: #e8f1f7;
+  --bg-glow: rgba(2, 132, 199, 0.1);
+  --bg-elevated: rgba(255, 255, 255, 0.55);
+  --radius: 16px;
+  --radius-btn: 999px;
+  --radius-control: 12px;
+  --surface-blur: 22px;
+  --shadow: 0 16px 40px rgba(12, 74, 110, 0.07);
+  --line: rgba(12, 74, 110, 0.1);
+}
+
+/* Tuition — academic notebook */
+[data-niche="tuition"] {
+  --accent: #1d4ed8;
+  --accent-soft: rgba(29, 78, 216, 0.12);
+  --accent-ink: #1e3a8a;
+  --accent-hover: #1e40af;
+  --bg: #f4f6fb;
+  --bg-top: #f8f9fc;
+  --bg-bottom: #e4eaf5;
+  --bg-glow: rgba(29, 78, 216, 0.08);
+  --radius: 12px;
+  --radius-btn: 10px;
+  --radius-control: 10px;
+  --radius-nav: 8px;
+  --surface-blur: 6px;
+  --shadow: 0 10px 28px rgba(30, 58, 138, 0.08);
+  --font-display: var(--font-source-serif), var(--font-dm-sans);
+  --brand-tracking: -0.01em;
+  --table-density: 0.75rem;
+}
+
+/* Salon — soft glam */
 [data-niche="salon"] {
-  --accent: #be185d;
-  --accent-soft: rgba(190, 24, 93, 0.12);
-  --accent-ink: #831843;
-  --accent-hover: #9d174d;
-  --bg-top: #fdf7fa;
-  --bg-bottom: #f5e8ef;
-  --bg-glow: rgba(190, 24, 93, 0.08);
+  --accent: #db2777;
+  --accent-soft: rgba(219, 39, 119, 0.12);
+  --accent-ink: #9d174d;
+  --accent-hover: #be185d;
+  --bg: #fdf7fa;
+  --bg-top: #fffafc;
+  --bg-bottom: #f6e4ed;
+  --bg-glow: rgba(219, 39, 119, 0.1);
+  --radius: 24px;
+  --radius-btn: 999px;
+  --radius-control: 18px;
+  --radius-nav: 18px;
+  --surface-blur: 22px;
+  --shadow: 0 28px 56px rgba(157, 23, 77, 0.1);
+  --font-display: var(--font-fraunces), var(--font-dm-sans);
+  --brand-tracking: -0.02em;
+  --brand-weight: 500;
 }
 
+/* Fashion — boutique editorial */
+[data-niche="fashion"] {
+  --accent: #171717;
+  --accent-soft: rgba(23, 23, 23, 0.08);
+  --accent-ink: #0a0a0a;
+  --accent-hover: #404040;
+  --bg: #faf9f7;
+  --bg-top: #ffffff;
+  --bg-bottom: #f0ebe3;
+  --bg-glow: rgba(23, 23, 23, 0.04);
+  --bg-elevated: rgba(255, 255, 255, 0.88);
+  --line: rgba(23, 23, 23, 0.12);
+  --radius: 4px;
+  --radius-btn: 2px;
+  --radius-control: 2px;
+  --radius-nav: 2px;
+  --surface-blur: 0px;
+  --shadow: 0 1px 0 rgba(23, 23, 23, 0.06);
+  --font-display: var(--font-source-serif), var(--font-dm-sans);
+  --brand-tracking: 0.12em;
+  --brand-transform: uppercase;
+  --brand-size: 0.92rem;
+  --brand-weight: 500;
+  --btn-tracking: 0.08em;
+  --btn-transform: uppercase;
+  --nav-active-border: var(--accent);
+  --nav-active-border-width: 1px;
+}
+
+/* Retail / ProSupply — practical shop floor */
+[data-niche="retail"] {
+  --accent: #c2410c;
+  --accent-soft: rgba(194, 65, 12, 0.14);
+  --accent-ink: #7c2d12;
+  --accent-hover: #9a3412;
+  --bg: #f6f4f0;
+  --bg-top: #faf8f4;
+  --bg-bottom: #ebe6dc;
+  --bg-glow: rgba(194, 65, 12, 0.08);
+  --radius: 12px;
+  --radius-btn: 10px;
+  --radius-control: 10px;
+  --radius-nav: 10px;
+  --surface-blur: 8px;
+  --table-density: 0.72rem;
+  --shadow: 0 12px 32px rgba(124, 45, 18, 0.08);
+}
+
+/* Electronics — tech gadget */
+[data-niche="electronics"] {
+  color-scheme: dark;
+  --bg: #0f172a;
+  --bg-top: #1e293b;
+  --bg-bottom: #020617;
+  --bg-glow: rgba(34, 211, 238, 0.18);
+  --bg-elevated: rgba(30, 41, 59, 0.92);
+  --input-bg: rgba(15, 23, 42, 0.75);
+  --ink: #f1f5f9;
+  --muted: #94a3b8;
+  --line: rgba(148, 163, 184, 0.22);
+  --accent: #22d3ee;
+  --accent-soft: rgba(34, 211, 238, 0.16);
+  --accent-ink: #a5f3fc;
+  --accent-hover: #06b6d4;
+  --accent-fg: #0f172a;
+  --danger: #fb7185;
+  --success: #4ade80;
+  --shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+  --radius: 10px;
+  --radius-btn: 8px;
+  --radius-control: 8px;
+  --radius-nav: 8px;
+  --surface-blur: 12px;
+  --surface-border: rgba(34, 211, 238, 0.2);
+  --font-display: var(--font-space-grotesk), var(--font-dm-sans);
+  --brand-tracking: 0.04em;
+  --loading-overlay: rgba(2, 6, 23, 0.65);
+  --skeleton-a: rgba(255, 255, 255, 0.05);
+  --skeleton-b: rgba(255, 255, 255, 0.1);
+  --scrollbar: rgba(148, 163, 184, 0.35);
+  --scrollbar-hover: rgba(148, 163, 184, 0.5);
+  --nav-active-border: var(--accent);
+  --nav-active-border-width: 2px;
+}
+
+/* Wholesale — B2B industrial */
+[data-niche="wholesale"] {
+  --accent: #334155;
+  --accent-soft: rgba(51, 65, 85, 0.12);
+  --accent-ink: #0f172a;
+  --accent-hover: #1e293b;
+  --bg: #f1f5f9;
+  --bg-top: #f8fafc;
+  --bg-bottom: #e2e8f0;
+  --bg-glow: rgba(202, 138, 4, 0.1);
+  --line: rgba(15, 23, 42, 0.14);
+  --radius: 6px;
+  --radius-btn: 4px;
+  --radius-control: 4px;
+  --radius-nav: 4px;
+  --surface-blur: 0px;
+  --shadow: 0 2px 0 rgba(15, 23, 42, 0.06), 0 10px 24px rgba(15, 23, 42, 0.06);
+  --table-density: 0.68rem;
+  --btn-tracking: 0.02em;
+  --font-display: var(--font-space-grotesk), var(--font-dm-sans);
+  --brand-tracking: 0.06em;
+  --brand-transform: uppercase;
+  --brand-size: 0.95rem;
+}
+
+/* Pharmacy — trusted medicine */
 [data-niche="pharmacy"] {
   --accent: #047857;
   --accent-soft: rgba(4, 120, 87, 0.12);
   --accent-ink: #064e3b;
   --accent-hover: #065f46;
+  --bg: #f4f8f6;
+  --bg-top: #f8fbf9;
+  --bg-bottom: #e5efe9;
+  --bg-glow: rgba(4, 120, 87, 0.1);
+  --radius: 14px;
+  --radius-btn: 999px;
+  --radius-control: 10px;
+  --surface-blur: 10px;
+  --shadow: 0 14px 36px rgba(6, 78, 59, 0.08);
 }
 
-[data-niche="optical"] {
-  --accent: #0369a1;
-  --accent-soft: rgba(3, 105, 161, 0.12);
-  --accent-ink: #0c4a6e;
-  --accent-hover: #075985;
-}
-
-[data-niche="vet"] {
-  --accent: #65a30d;
-  --accent-soft: rgba(101, 163, 13, 0.14);
-  --accent-ink: #3f6212;
-  --accent-hover: #4d7c0f;
-}
-
+/* Workshop — garage / tools */
 [data-niche="workshop"] {
   --accent: #ea580c;
-  --accent-soft: rgba(234, 88, 12, 0.14);
+  --accent-soft: rgba(234, 88, 12, 0.16);
   --accent-ink: #9a3412;
   --accent-hover: #c2410c;
+  --bg: #f3f2f0;
+  --bg-top: #f7f6f4;
+  --bg-bottom: #e4e1dc;
+  --bg-glow: rgba(234, 88, 12, 0.12);
+  --ink: #1c1917;
+  --line: rgba(28, 25, 23, 0.14);
+  --radius: 8px;
+  --radius-btn: 6px;
+  --radius-control: 6px;
+  --radius-nav: 6px;
+  --surface-blur: 0px;
+  --shadow: 0 8px 20px rgba(28, 25, 23, 0.1);
+  --btn-tracking: 0.03em;
+  --btn-transform: uppercase;
+  --font-display: var(--font-space-grotesk), var(--font-dm-sans);
+  --brand-tracking: 0.05em;
+  --brand-transform: uppercase;
+  --brand-size: 0.98rem;
+  --nav-active-border: var(--accent);
+  --nav-active-border-width: 3px;
 }
 
+/* Laundry — fresh / clean */
+[data-niche="laundry"] {
+  --accent: #0ea5e9;
+  --accent-soft: rgba(14, 165, 233, 0.14);
+  --accent-ink: #0369a1;
+  --accent-hover: #0284c7;
+  --bg: #f4fafd;
+  --bg-top: #f8fcff;
+  --bg-bottom: #e4f2fa;
+  --bg-glow: rgba(14, 165, 233, 0.12);
+  --radius: 20px;
+  --radius-btn: 999px;
+  --radius-control: 14px;
+  --radius-nav: 14px;
+  --surface-blur: 18px;
+  --shadow: 0 20px 44px rgba(3, 105, 161, 0.08);
+}
+
+/* F&B — warm kitchen / cafe */
 [data-niche="fnb"] {
-  --accent: #c2410c;
-  --accent-soft: rgba(194, 65, 12, 0.14);
-  --accent-ink: #7c2d12;
-  --accent-hover: #9a3412;
-  --bg-top: #faf6f1;
-  --bg-bottom: #f0e6d8;
+  --accent: #b45309;
+  --accent-soft: rgba(180, 83, 9, 0.16);
+  --accent-ink: #78350f;
+  --accent-hover: #92400e;
+  --bg: #f7f1e8;
+  --bg-top: #fbf6ee;
+  --bg-bottom: #ebe0d0;
+  --bg-glow: rgba(180, 83, 9, 0.12);
+  --bg-elevated: rgba(255, 250, 243, 0.88);
+  --radius: 16px;
+  --radius-btn: 12px;
+  --radius-control: 12px;
+  --surface-blur: 10px;
+  --shadow: 0 18px 40px rgba(120, 53, 15, 0.1);
+  --font-display: var(--font-fraunces), var(--font-dm-sans);
+  --brand-weight: 500;
 }
 
+/* Hotel — quiet luxury */
 [data-niche="hotel"] {
   --accent: #a16207;
-  --accent-soft: rgba(161, 98, 7, 0.14);
+  --accent-soft: rgba(161, 98, 7, 0.12);
   --accent-ink: #713f12;
   --accent-hover: #854d0e;
-  --bg: #f4f1ea;
-  --bg-top: #f7f4ed;
-  --bg-bottom: #ebe4d6;
+  --bg: #f3efe6;
+  --bg-top: #f8f5ed;
+  --bg-bottom: #e8e0d0;
+  --bg-glow: rgba(161, 98, 7, 0.1);
+  --line: rgba(113, 63, 18, 0.12);
+  --radius: 10px;
+  --radius-btn: 2px;
+  --radius-control: 6px;
+  --radius-nav: 4px;
+  --surface-blur: 4px;
+  --shadow: 0 16px 40px rgba(113, 63, 18, 0.08);
+  --font-display: var(--font-source-serif), var(--font-dm-sans);
+  --brand-tracking: 0.14em;
+  --brand-transform: uppercase;
+  --brand-size: 0.9rem;
+  --brand-weight: 500;
+  --btn-tracking: 0.1em;
+  --btn-transform: uppercase;
 }
 
-[data-niche="laundry"] {
-  --accent: #0284c7;
-  --accent-soft: rgba(2, 132, 199, 0.12);
-  --accent-ink: #075985;
-  --accent-hover: #0369a1;
-}
-
+/* Property — estate / trust */
 [data-niche="property"] {
-  --accent: #4338ca;
-  --accent-soft: rgba(67, 56, 202, 0.12);
+  --accent: #3730a3;
+  --accent-soft: rgba(55, 48, 163, 0.12);
   --accent-ink: #312e81;
-  --accent-hover: #3730a3;
+  --accent-hover: #4338ca;
+  --bg: #f5f5f8;
+  --bg-top: #fafafc;
+  --bg-bottom: #e8e8f0;
+  --bg-glow: rgba(55, 48, 163, 0.08);
+  --radius: 12px;
+  --radius-btn: 8px;
+  --radius-control: 8px;
+  --surface-blur: 8px;
+  --font-display: var(--font-source-serif), var(--font-dm-sans);
+  --brand-tracking: 0.02em;
+  --shadow: 0 14px 36px rgba(49, 46, 129, 0.08);
 }
 
+/* Courier — high-visibility logistics */
 [data-niche="courier"] {
-  --accent: #ca8a04;
-  --accent-soft: rgba(202, 138, 4, 0.14);
-  --accent-ink: #854d0e;
-  --accent-hover: #a16207;
+  --accent: #eab308;
+  --accent-soft: rgba(234, 179, 8, 0.2);
+  --accent-ink: #1c1917;
+  --accent-hover: #ca8a04;
+  --accent-fg: #1c1917;
+  --bg: #f7f7f5;
+  --bg-top: #fafaf8;
+  --bg-bottom: #ebeae6;
+  --bg-glow: rgba(234, 179, 8, 0.16);
+  --ink: #1c1917;
+  --radius: 10px;
+  --radius-btn: 8px;
+  --radius-control: 8px;
+  --radius-nav: 8px;
+  --surface-blur: 4px;
+  --btn-tracking: 0.04em;
+  --btn-transform: uppercase;
+  --font-display: var(--font-space-grotesk), var(--font-dm-sans);
+  --brand-tracking: 0.06em;
+  --brand-transform: uppercase;
+  --nav-active-border: #1c1917;
+  --nav-active-border-width: 3px;
 }
 
+/* Contractor — site / build */
 [data-niche="contractor"] {
-  --accent: #57534e;
-  --accent-soft: rgba(87, 83, 78, 0.14);
-  --accent-ink: #292524;
-  --accent-hover: #44403c;
+  --accent: #b45309;
+  --accent-soft: rgba(180, 83, 9, 0.14);
+  --accent-ink: #44403c;
+  --accent-hover: #92400e;
+  --bg: #f0efec;
+  --bg-top: #f5f4f1;
+  --bg-bottom: #e3e0da;
+  --bg-glow: rgba(180, 83, 9, 0.1);
+  --line: rgba(68, 64, 60, 0.16);
+  --radius: 4px;
+  --radius-btn: 2px;
+  --radius-control: 2px;
+  --radius-nav: 2px;
+  --surface-blur: 0px;
+  --shadow: 0 0 0 1px rgba(68, 64, 60, 0.06), 0 10px 24px rgba(28, 25, 23, 0.08);
+  --btn-tracking: 0.03em;
+  --btn-transform: uppercase;
+  --font-display: var(--font-space-grotesk), var(--font-dm-sans);
+  --brand-transform: uppercase;
+  --brand-tracking: 0.05em;
 }
 
+/* Manufacturing — control room */
 [data-niche="manufacturing"] {
-  --accent: #0e7490;
-  --accent-soft: rgba(14, 116, 144, 0.14);
-  --accent-ink: #155e75;
-  --accent-hover: #0e7490;
+  color-scheme: dark;
+  --bg: #111827;
+  --bg-top: #1f2937;
+  --bg-bottom: #030712;
+  --bg-glow: rgba(6, 182, 212, 0.16);
+  --bg-elevated: rgba(31, 41, 55, 0.94);
+  --input-bg: rgba(17, 24, 39, 0.8);
+  --ink: #f9fafb;
+  --muted: #9ca3af;
+  --line: rgba(156, 163, 175, 0.2);
+  --accent: #06b6d4;
+  --accent-soft: rgba(6, 182, 212, 0.16);
+  --accent-ink: #a5f3fc;
+  --accent-hover: #0891b2;
+  --accent-fg: #0f172a;
+  --danger: #f87171;
+  --success: #34d399;
+  --shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+  --radius: 8px;
+  --radius-btn: 6px;
+  --radius-control: 6px;
+  --radius-nav: 6px;
+  --surface-blur: 8px;
+  --table-density: 0.65rem;
+  --font-display: var(--font-space-grotesk), var(--font-dm-sans);
+  --brand-tracking: 0.05em;
+  --loading-overlay: rgba(3, 7, 18, 0.65);
+  --skeleton-a: rgba(255, 255, 255, 0.05);
+  --skeleton-b: rgba(255, 255, 255, 0.1);
+  --scrollbar: rgba(156, 163, 175, 0.35);
+  --scrollbar-hover: rgba(156, 163, 175, 0.5);
 }
 
+/* Legal — formal authority */
 [data-niche="legal"] {
   --accent: #1e3a5f;
-  --accent-soft: rgba(30, 58, 95, 0.12);
+  --accent-soft: rgba(30, 58, 95, 0.1);
   --accent-ink: #0f172a;
   --accent-hover: #172554;
+  --bg: #f6f4ef;
+  --bg-top: #faf8f3;
+  --bg-bottom: #ebe6db;
+  --bg-glow: rgba(30, 58, 95, 0.06);
+  --line: rgba(15, 23, 42, 0.14);
+  --radius: 2px;
+  --radius-btn: 2px;
+  --radius-control: 2px;
+  --radius-nav: 2px;
+  --surface-blur: 0px;
+  --shadow: none;
+  --surface-border: rgba(15, 23, 42, 0.18);
+  --font-display: var(--font-source-serif), var(--font-dm-sans);
+  --brand-tracking: 0.08em;
+  --brand-transform: uppercase;
+  --brand-size: 0.9rem;
+  --btn-tracking: 0.06em;
+  --btn-transform: uppercase;
+  --nav-active-border: var(--accent);
+  --nav-active-border-width: 2px;
 }
 
+/* Events — stage / celebration */
 [data-niche="events"] {
   --accent: #7c3aed;
-  --accent-soft: rgba(124, 58, 237, 0.12);
+  --accent-soft: rgba(124, 58, 237, 0.14);
   --accent-ink: #5b21b6;
   --accent-hover: #6d28d9;
+  --bg: #0f0a1a;
+  --bg-top: #1a102b;
+  --bg-bottom: #07040f;
+  --bg-glow: rgba(124, 58, 237, 0.28);
+  --bg-elevated: rgba(30, 20, 48, 0.92);
+  --input-bg: rgba(15, 10, 26, 0.75);
+  --ink: #f5f3ff;
+  --muted: #c4b5fd;
+  --line: rgba(196, 181, 253, 0.18);
+  color-scheme: dark;
+  --radius: 16px;
+  --radius-btn: 999px;
+  --radius-control: 12px;
+  --surface-blur: 18px;
+  --shadow: 0 24px 50px rgba(0, 0, 0, 0.45);
+  --font-display: var(--font-fraunces), var(--font-dm-sans);
+  --brand-weight: 500;
+  --loading-overlay: rgba(7, 4, 15, 0.65);
+  --skeleton-a: rgba(255, 255, 255, 0.06);
+  --skeleton-b: rgba(255, 255, 255, 0.12);
+  --scrollbar: rgba(196, 181, 253, 0.3);
+  --scrollbar-hover: rgba(196, 181, 253, 0.45);
+  --surface-border: rgba(167, 139, 250, 0.25);
 }
 
+/* Farm — earth / harvest */
 [data-niche="farm"] {
   --accent: #15803d;
   --accent-soft: rgba(21, 128, 61, 0.14);
   --accent-ink: #14532d;
   --accent-hover: #166534;
-}
-
-[data-niche="gym"] .btn {
-  border-radius: 8px;
-  letter-spacing: 0.03em;
-}
-
-[data-niche="gym"] .brand-lockup__product {
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  font-size: 0.95rem;
-}
-
-[data-niche="gym"] .surface {
-  border-color: rgba(225, 29, 72, 0.18);
+  --bg: #f4f1e8;
+  --bg-top: #f8f5eb;
+  --bg-bottom: #e6dfcf;
+  --bg-glow: rgba(180, 83, 9, 0.1);
+  --radius: 18px;
+  --radius-btn: 999px;
+  --radius-control: 14px;
+  --surface-blur: 12px;
+  --shadow: 0 18px 40px rgba(20, 83, 45, 0.09);
+  --font-display: var(--font-fraunces), var(--font-dm-sans);
+  --brand-weight: 500;
 }
 
 @theme inline {
@@ -335,9 +751,30 @@ a {
 
 .display {
   font-family: var(--font-display), system-ui, sans-serif;
-  font-weight: 600;
-  letter-spacing: -0.035em;
+  font-weight: var(--brand-weight);
+  letter-spacing: var(--brand-tracking);
+  text-transform: var(--brand-transform);
   line-height: 1.15;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: var(--radius-nav);
+  border-left: var(--nav-active-border-width) solid transparent;
+  background: transparent;
+  color: var(--ink);
+  font-weight: 500;
+  transition: background 120ms ease, opacity 120ms ease, border-color 120ms ease;
+}
+
+.nav-item[data-active="true"] {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-weight: 600;
+  border-left-color: var(--nav-active-border);
 }
 
 /* Sidebar + invoice: one tight brand unit (logo + text) */
@@ -361,10 +798,11 @@ a {
 
 .brand-lockup__product {
   font-family: var(--font-display), system-ui, sans-serif;
-  font-size: 1.15rem;
-  font-weight: 600;
+  font-size: var(--brand-size);
+  font-weight: var(--brand-weight);
   line-height: 1.1;
-  letter-spacing: -0.03em;
+  letter-spacing: var(--brand-tracking);
+  text-transform: var(--brand-transform);
   color: var(--ink);
 }
 
@@ -409,9 +847,9 @@ a {
 
 .surface {
   background: var(--bg-elevated);
-  border: 1px solid var(--line);
+  border: 1px solid var(--surface-border, var(--line));
   border-radius: var(--radius);
-  backdrop-filter: blur(14px);
+  backdrop-filter: blur(var(--surface-blur));
   box-shadow: var(--shadow);
 }
 
@@ -420,10 +858,12 @@ a {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  border-radius: 999px;
+  border-radius: var(--radius-btn);
   padding: 0.75rem 1.25rem;
   font-weight: 600;
   font-size: 0.95rem;
+  letter-spacing: var(--btn-tracking);
+  text-transform: var(--btn-transform);
   border: 1px solid transparent;
   cursor: pointer;
   transition: transform 0.15s ease, background 0.15s ease, opacity 0.15s ease;
@@ -435,7 +875,7 @@ a {
 
 .btn-primary {
   background: var(--accent);
-  color: white;
+  color: var(--accent-fg, #ffffff);
 }
 
 .btn-primary:hover {
@@ -471,7 +911,7 @@ a {
   width: 100%;
   border: 1px solid var(--line);
   background: var(--input-bg);
-  border-radius: 12px;
+  border-radius: var(--radius-control);
   padding: 0.7rem 0.9rem;
   font: inherit;
   color: var(--ink);
@@ -509,7 +949,7 @@ table.data {
 table.data th,
 table.data td {
   text-align: left;
-  padding: 0.85rem 0.75rem;
+  padding: var(--table-density) 0.75rem;
   border-bottom: 1px solid var(--line);
 }
 

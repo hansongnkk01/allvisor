@@ -133,15 +133,8 @@ function NavItem({
           router.push(href);
         });
       }}
-      className={cn("row", pending && "nav-link-pending")}
-      style={{
-        padding: "0.7rem 0.85rem",
-        borderRadius: 12,
-        background: active ? "var(--accent-soft)" : "transparent",
-        color: active ? "var(--accent-ink)" : "var(--ink)",
-        fontWeight: active ? 600 : 500,
-        transition: "background 120ms ease, opacity 120ms ease",
-      }}
+      className={cn("row nav-item", pending && "nav-link-pending")}
+      data-active={active ? "true" : "false"}
     >
       {icon || <ScanBarcode size={18} />}
       <span>{label}</span>
