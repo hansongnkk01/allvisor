@@ -20,6 +20,8 @@ export default function RegisterClient() {
     const n = params.get("niche");
     return isNiche(n) ? n : "clinic";
   }, [params]);
+  const initialEmail = params.get("email") || "";
+  const initialName = params.get("name") || "";
 
   const [niche, setNiche] = useState(initialNiche);
   const [error, setError] = useState<string | null>(null);
@@ -103,11 +105,24 @@ export default function RegisterClient() {
           </div>
           <div className="field">
             <label htmlFor="full_name">{t("fullName")}</label>
-            <input id="full_name" name="full_name" required className="input" />
+            <input
+              id="full_name"
+              name="full_name"
+              required
+              className="input"
+              defaultValue={initialName}
+            />
           </div>
           <div className="field">
             <label htmlFor="email">{t("email")}</label>
-            <input id="email" name="email" type="email" required className="input" />
+            <input
+              id="email"
+              name="email"
+              type="email"
+              required
+              className="input"
+              defaultValue={initialEmail}
+            />
           </div>
           <div className="field">
             <label htmlFor="password">{t("password")}</label>

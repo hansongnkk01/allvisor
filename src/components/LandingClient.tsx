@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import {
   Stethoscope,
@@ -137,6 +137,7 @@ function readCookieNiche(): string | undefined {
 export function LandingClient() {
   const t = useTranslations("Landing");
   const brand = useTranslations("Brand");
+  const router = useRouter();
   const [preview, setPreview] = useState<Niche | null>(null);
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const themeAttr = preview ? nicheThemeAttr(preview) : undefined;
@@ -180,79 +181,197 @@ export function LandingClient() {
     leaveTimer.current = setTimeout(() => setPreview(null), 80);
   }
 
+  function onHvcoSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    const email = String(fd.get("email") || "").trim();
+    const name = String(fd.get("full_name") || "").trim();
+    const q = new URLSearchParams();
+    if (email) q.set("email", email);
+    if (name) q.set("name", name);
+    q.set("source", "hvco");
+    router.push(`/register?${q.toString()}`);
+  }
+
   return (
     <div className="landing-shell">
-      {/* Page chrome only — follows hovered niche theme */}
       <div className="landing-chrome" data-niche={themeAttr}>
         <header
           className="row landing-header"
           style={{
             justifyContent: "space-between",
             padding: "1.25rem clamp(1rem, 4vw, 3rem)",
+            position: "sticky",
+            top: 0,
+            zIndex: 40,
+            backdropFilter: "blur(12px)",
+            background: "color-mix(in srgb, var(--bg-elevated) 88%, transparent)",
+            borderBottom: "1px solid var(--line)",
           }}
         >
-          <div className="display landing-brand" style={{ fontSize: "1.8rem" }}>
+          <div className="display landing-brand" style={{ fontSize: "1.55rem" }}>
             {brand("name")}
           </div>
-          <div className="row">
+          <div className="row" style={{ gap: "0.5rem", flexWrap: "wrap" }}>
             <LanguageSwitcher />
-            <Link href="/login" className="btn btn-ghost">
+            <a href="#hvco" className="btn btn-soft" style={{ padding: "0.55rem 0.9rem" }}>
+              {t("ctaHvco")}
+            </a>
+            <Link href="/login" className="btn btn-ghost" style={{ padding: "0.55rem 0.9rem" }}>
               {t("ctaLogin")}
             </Link>
           </div>
         </header>
 
-        <section
-          style={{
-            padding: "3rem clamp(1rem, 4vw, 3rem) 0",
-            maxWidth: 1100,
-            margin: "0 auto",
-          }}
-        >
-          <p className="muted landing-fade" style={{ marginBottom: "0.75rem" }}>
-            {brand("tagline")}
-          </p>
-          <h1
-            className="display landing-hero-title"
-            style={{
-              fontSize: "clamp(2.2rem, 5.5vw, 3.8rem)",
-              lineHeight: 1.05,
-              margin: "0 0 1rem",
-              maxWidth: 900,
-            }}
-          >
-            {t("heroTitle")}
-          </h1>
-          <p
-            className="muted landing-fade"
-            style={{
-              fontSize: "1.1rem",
-              maxWidth: 680,
-              lineHeight: 1.6,
-              marginBottom: "1.75rem",
-            }}
-          >
-            {t("heroSubtitle")}
-          </p>
-
-          <div className="row landing-fade" style={{ marginBottom: "2.5rem", flexWrap: "wrap" }}>
-            <span className="badge">{t("featureCrm")}</span>
-            <span className="badge">{t("featureBilling")}</span>
-            <span className="badge">{t("featureLhdn")}</span>
-            <span className="badge">{t("featureBilingual")}</span>
+        {/* HVCO headline hero — Sell Like Crazy Phase 2 */}
+        <section className="landing-section landing-hero">
+          <p className="landing-eyebrow">{t("eyebrow")}</p>
+          <h1 className="display landing-hero-title">{t("heroTitle")}</h1>
+          <p className="muted landing-lead">{t("heroSubtitle")}</p>
+          <div className="row landing-fade" style={{ flexWrap: "wrap", gap: "0.65rem", marginBottom: "1.25rem" }}>
+            <a href="#hvco" className="btn btn-primary">
+              {t("ctaHvco")}
+            </a>
+            <a href="#godfather" className="btn btn-ghost">
+              {t("ctaSecondary")}
+            </a>
+            <Link href="/register" className="btn btn-soft">
+              {t("ctaStart")}
+            </Link>
           </div>
-
-          <h2 className="page-title landing-fade" style={{ marginBottom: "0.5rem" }}>
-            {t("chooseBusiness")}
-          </h2>
-          <p className="muted landing-fade" style={{ marginTop: 0, marginBottom: "1.75rem", maxWidth: 640 }}>
-            {t("chooseBusinessHint")}
+          <p className="muted" style={{ fontSize: "0.9rem", margin: 0 }}>
+            {t("proofLine")}
           </p>
+
+          <aside className="landing-why">
+            <h2 className="landing-why__title">{t("whyBoxTitle")}</h2>
+            <p className="muted" style={{ margin: 0, lineHeight: 1.55 }}>
+              {t("whyBoxBody")}
+            </p>
+          </aside>
+        </section>
+
+        {/* Dream buyer pain — Phase 1 Halo / hair-on-fire */}
+        <section className="landing-section">
+          <h2 className="page-title">{t("painTitle")}</h2>
+          <ul className="landing-pain-list">
+            <li>{t("pain1")}</li>
+            <li>{t("pain2")}</li>
+            <li>{t("pain3")}</li>
+            <li>{t("pain4")}</li>
+          </ul>
+        </section>
+
+        {/* Perfect bait / HVCO capture — Phase 2 + 3 */}
+        <section id="hvco" className="landing-section landing-hvco">
+          <p className="landing-eyebrow">{t("hvcoTitle")}</p>
+          <h2 className="page-title" style={{ maxWidth: 720 }}>
+            {t("hvcoName")}
+          </h2>
+          <p className="display" style={{ fontSize: "1.35rem", marginTop: 0 }}>
+            {t("hvcoHook")}
+          </p>
+          <p className="muted" style={{ fontWeight: 600 }}>
+            {t("hvcoBulletsTitle")}
+          </p>
+          <ul className="landing-pain-list">
+            <li>{t("hvcoB1")}</li>
+            <li>{t("hvcoB2")}</li>
+            <li>{t("hvcoB3")}</li>
+            <li>{t("hvcoB4")}</li>
+          </ul>
+
+          <form className="landing-lead-form surface" onSubmit={onHvcoSubmit}>
+            <h3 style={{ marginTop: 0 }}>{t("hvcoFormTitle")}</h3>
+            <div className="field">
+              <label htmlFor="hvco-name">{t("hvcoNameLabel")}</label>
+              <input id="hvco-name" name="full_name" className="input" required autoComplete="name" />
+            </div>
+            <div className="field">
+              <label htmlFor="hvco-email">{t("hvcoEmailLabel")}</label>
+              <input id="hvco-email" name="email" type="email" className="input" required autoComplete="email" />
+            </div>
+            <button type="submit" className="btn btn-primary" style={{ width: "100%" }}>
+              {t("hvcoSubmit")}
+            </button>
+            <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
+              {t("hvcoMicro")}
+            </p>
+          </form>
+        </section>
+
+        {/* Larger Market Formula — educate 97% */}
+        <section className="landing-section">
+          <h2 className="page-title">{t("educateTitle")}</h2>
+          <p className="muted landing-lead">{t("educateBody")}</p>
+        </section>
+
+        {/* Godfather Offer — Phase 4 (7 parts) */}
+        <section id="godfather" className="landing-section">
+          <h2 className="page-title">{t("godfatherTitle")}</h2>
+          <div className="landing-offer-stack">
+            <article>
+              <h3>{t("godfatherRationaleTitle")}</h3>
+              <p className="muted">{t("godfatherRationale")}</p>
+            </article>
+            <article>
+              <h3>{t("godfatherValueTitle")}</h3>
+              <ul className="landing-pain-list">
+                <li>{t("godfatherV1")}</li>
+                <li>{t("godfatherV2")}</li>
+                <li>{t("godfatherV3")}</li>
+                <li>{t("godfatherV4")}</li>
+                <li>{t("godfatherV5")}</li>
+              </ul>
+            </article>
+            <article>
+              <h3>{t("godfatherPriceTitle")}</h3>
+              <p className="muted">{t("godfatherPrice")}</p>
+            </article>
+            <article>
+              <h3>{t("godfatherPayTitle")}</h3>
+              <p className="muted">{t("godfatherPay")}</p>
+            </article>
+            <article>
+              <h3>{t("godfatherPremiumTitle")}</h3>
+              <ul className="landing-pain-list">
+                <li>{t("godfatherP1")}</li>
+                <li>{t("godfatherP2")}</li>
+                <li>{t("godfatherP3")}</li>
+              </ul>
+            </article>
+            <article className="landing-guarantee">
+              <h3>{t("godfatherGuaranteeTitle")}</h3>
+              <p style={{ marginBottom: 0, lineHeight: 1.55 }}>{t("godfatherGuarantee")}</p>
+            </article>
+            <article>
+              <h3>{t("godfatherScarcityTitle")}</h3>
+              <p className="muted">{t("godfatherScarcity")}</p>
+            </article>
+          </div>
+          <Link href="/register" className="btn btn-primary" style={{ marginTop: "0.5rem" }}>
+            {t("godfatherCta")}
+          </Link>
+        </section>
+
+        <section className="landing-section">
+          <h2 className="page-title">{t("socialTitle")}</h2>
+          <div className="landing-quotes">
+            <blockquote>{t("social1")}</blockquote>
+            <blockquote>{t("social2")}</blockquote>
+            <blockquote>{t("social3")}</blockquote>
+          </div>
+        </section>
+
+        <section className="landing-section" style={{ paddingBottom: "0.5rem" }}>
+          <h2 className="page-title">{t("chooseBusiness")}</h2>
+          <p className="muted landing-lead">{t("chooseBusinessHint")}</p>
         </section>
       </div>
 
-      {/* Niche cards keep their own theme — never inherit hover preview */}
+      {/* Niche grid — own themes */}
       <section
+        id="niches"
         className="landing-niche-grid"
         style={{
           padding: "0 clamp(1rem, 4vw, 3rem) 2rem",
@@ -320,18 +439,32 @@ export function LandingClient() {
         </div>
       </section>
 
-      <div
-        className="landing-chrome"
-        data-niche={themeAttr}
-        style={{
-          padding: "0 clamp(1rem, 4vw, 3rem) 4rem",
-          maxWidth: 1100,
-          margin: "0 auto",
-        }}
-      >
-        <Link href="/register" className="btn btn-primary landing-fade">
-          {t("ctaStart")}
-        </Link>
+      <div className="landing-chrome" data-niche={themeAttr}>
+        {/* Magic Lantern — objections */}
+        <section className="landing-section">
+          <h2 className="page-title">{t("faqTitle")}</h2>
+          <div className="landing-faq">
+            {[1, 2, 3, 4, 5].map((n) => (
+              <details key={n} className="landing-faq__item">
+                <summary>{t(`faq${n}q` as "faq1q")}</summary>
+                <p className="muted">{t(`faq${n}a` as "faq1a")}</p>
+              </details>
+            ))}
+          </div>
+        </section>
+
+        <section className="landing-section landing-final">
+          <h2 className="page-title">{t("finalTitle")}</h2>
+          <p className="muted landing-lead">{t("finalBody")}</p>
+          <div className="row" style={{ flexWrap: "wrap", gap: "0.65rem" }}>
+            <Link href="/register" className="btn btn-primary">
+              {t("finalCta")}
+            </Link>
+            <a href="#hvco" className="btn btn-ghost">
+              {t("ctaHvco")}
+            </a>
+          </div>
+        </section>
       </div>
     </div>
   );
