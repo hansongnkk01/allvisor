@@ -18,6 +18,18 @@
   initial-value: #efeae4;
 }
 
+@property --bg-glow {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #1c1b190d;
+}
+
+@property --accent-soft {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #0f766e1f;
+}
+
 @property --ink {
   syntax: "<color>";
   inherits: true;
@@ -779,20 +791,30 @@ body {
   margin: 0;
   color: var(--ink);
   font-family: var(--font-sans), system-ui, sans-serif;
-  background:
+  background-color: var(--bg);
+  background-image:
     radial-gradient(1200px 600px at 10% -10%, var(--accent-soft), transparent 55%),
     radial-gradient(900px 500px at 100% 0%, var(--bg-glow), transparent 50%),
     linear-gradient(180deg, var(--bg-top) 0%, var(--bg) 40%, var(--bg-bottom) 100%);
   background-attachment: fixed;
-  transition:
-    color 1.1s ease-in-out,
-    background 1.25s ease-in-out,
-    background-color 1.25s ease-in-out;
+  transition: color 1.6s cubic-bezier(0.33, 0, 0.2, 1);
 }
 
-/* Landing: hover a niche → page chrome adopts that theme; niche cards stay themselves */
+/*
+ * Animate theme COLOR TOKENS (not the background shorthand).
+ * Gradients then re-paint from interpolated vars → smooth fade.
+ */
 html[data-landing="true"] {
-  transition: color 1.1s ease-in-out;
+  transition:
+    --bg 2.6s cubic-bezier(0.33, 0, 0.2, 1),
+    --bg-top 2.6s cubic-bezier(0.33, 0, 0.2, 1),
+    --bg-bottom 2.6s cubic-bezier(0.33, 0, 0.2, 1),
+    --bg-glow 2.6s cubic-bezier(0.33, 0, 0.2, 1),
+    --accent-soft 2.6s cubic-bezier(0.33, 0, 0.2, 1),
+    --accent 2.2s cubic-bezier(0.33, 0, 0.2, 1),
+    --accent-ink 2.2s cubic-bezier(0.33, 0, 0.2, 1),
+    --ink 2.2s cubic-bezier(0.33, 0, 0.2, 1),
+    --muted 2.2s cubic-bezier(0.33, 0, 0.2, 1);
 }
 
 .landing-shell {
@@ -801,7 +823,17 @@ html[data-landing="true"] {
 
 .landing-chrome {
   color: var(--ink);
-  transition: color 1.1s ease-in-out;
+  transition:
+    color 2.2s cubic-bezier(0.33, 0, 0.2, 1),
+    --bg 2.6s cubic-bezier(0.33, 0, 0.2, 1),
+    --bg-top 2.6s cubic-bezier(0.33, 0, 0.2, 1),
+    --bg-bottom 2.6s cubic-bezier(0.33, 0, 0.2, 1),
+    --bg-glow 2.6s cubic-bezier(0.33, 0, 0.2, 1),
+    --accent-soft 2.6s cubic-bezier(0.33, 0, 0.2, 1),
+    --accent 2.2s cubic-bezier(0.33, 0, 0.2, 1),
+    --accent-ink 2.2s cubic-bezier(0.33, 0, 0.2, 1),
+    --ink 2.2s cubic-bezier(0.33, 0, 0.2, 1),
+    --muted 2.2s cubic-bezier(0.33, 0, 0.2, 1);
 }
 
 .landing-chrome .display,
@@ -809,12 +841,12 @@ html[data-landing="true"] {
 .landing-chrome .landing-brand,
 .landing-chrome .landing-hero-title {
   transition:
-    color 1.1s ease-in-out,
-    letter-spacing 1s ease-in-out,
-    font-family 0.9s ease-in-out,
-    font-size 0.9s ease-in-out,
-    font-weight 0.9s ease-in-out,
-    text-transform 0.9s ease-in-out;
+    color 2.2s cubic-bezier(0.33, 0, 0.2, 1),
+    letter-spacing 1.8s cubic-bezier(0.33, 0, 0.2, 1),
+    font-family 1.6s cubic-bezier(0.33, 0, 0.2, 1),
+    font-size 1.6s cubic-bezier(0.33, 0, 0.2, 1),
+    font-weight 1.6s cubic-bezier(0.33, 0, 0.2, 1),
+    text-transform 1.6s cubic-bezier(0.33, 0, 0.2, 1);
 }
 
 .landing-chrome .muted,
@@ -824,14 +856,14 @@ html[data-landing="true"] {
 .landing-chrome .page-title,
 .landing-chrome .landing-group-label {
   transition:
-    color 1.1s ease-in-out,
-    background 1.15s ease-in-out,
-    background-color 1.15s ease-in-out,
-    border-color 1.1s ease-in-out,
-    border-radius 1s ease-in-out,
-    box-shadow 1.15s ease-in-out,
-    letter-spacing 1s ease-in-out,
-    text-transform 0.9s ease-in-out;
+    color 2.2s cubic-bezier(0.33, 0, 0.2, 1),
+    background 2.2s cubic-bezier(0.33, 0, 0.2, 1),
+    background-color 2.2s cubic-bezier(0.33, 0, 0.2, 1),
+    border-color 2s cubic-bezier(0.33, 0, 0.2, 1),
+    border-radius 1.8s cubic-bezier(0.33, 0, 0.2, 1),
+    box-shadow 2.2s cubic-bezier(0.33, 0, 0.2, 1),
+    letter-spacing 1.8s cubic-bezier(0.33, 0, 0.2, 1),
+    text-transform 1.6s cubic-bezier(0.33, 0, 0.2, 1);
 }
 
 .landing-chrome .badge {
