@@ -1,5 +1,47 @@
 @import "tailwindcss";
 
+@property --bg {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #f6f4f1;
+}
+
+@property --bg-top {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #f8f6f3;
+}
+
+@property --bg-bottom {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #efeae4;
+}
+
+@property --ink {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #1c1b19;
+}
+
+@property --muted {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #6b6560;
+}
+
+@property --accent {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #0f766e;
+}
+
+@property --accent-ink {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #0b4f4a;
+}
+
 @keyframes allvisor-progress {
   0% {
     background-position: 100% 0;
@@ -742,6 +784,121 @@ body {
     radial-gradient(900px 500px at 100% 0%, var(--bg-glow), transparent 50%),
     linear-gradient(180deg, var(--bg-top) 0%, var(--bg) 40%, var(--bg-bottom) 100%);
   background-attachment: fixed;
+  transition:
+    color 0.45s ease,
+    background 0.55s ease,
+    background-color 0.55s ease;
+}
+
+/* Landing: hover a niche → whole page adopts that niche theme */
+html[data-landing="true"] {
+  transition: color 0.45s ease;
+}
+
+.landing-shell {
+  min-height: 100vh;
+  color: var(--ink);
+  transition:
+    color 0.45s ease,
+    font-family 0.35s ease;
+}
+
+.landing-shell .display,
+.landing-shell .page-title,
+.landing-shell .landing-brand,
+.landing-shell .landing-hero-title {
+  transition:
+    color 0.4s ease,
+    letter-spacing 0.4s ease,
+    font-family 0.35s ease,
+    font-size 0.35s ease,
+    font-weight 0.35s ease,
+    text-transform 0.35s ease;
+}
+
+.landing-shell .muted,
+.landing-shell .landing-fade,
+.landing-shell .badge,
+.landing-shell .btn,
+.landing-shell .page-title {
+  transition:
+    color 0.4s ease,
+    background 0.45s ease,
+    background-color 0.45s ease,
+    border-color 0.4s ease,
+    border-radius 0.4s ease,
+    box-shadow 0.45s ease,
+    letter-spacing 0.35s ease,
+    text-transform 0.35s ease,
+    opacity 0.35s ease,
+    transform 0.35s ease;
+}
+
+.landing-niche-card {
+  padding: 1.15rem;
+  display: block;
+  transition:
+    transform 0.35s ease,
+    box-shadow 0.45s ease,
+    border-color 0.35s ease,
+    background 0.45s ease,
+    border-radius 0.4s ease,
+    opacity 0.35s ease;
+}
+
+.landing-niche-card[data-previewed="true"] {
+  transform: translateY(-5px) scale(1.02);
+  box-shadow: var(--shadow);
+  border-color: var(--accent);
+  z-index: 2;
+  position: relative;
+}
+
+html[data-landing-preview="true"] .landing-niche-card:not([data-previewed="true"]) {
+  opacity: 0.72;
+  filter: saturate(0.85);
+  transition:
+    opacity 0.4s ease,
+    filter 0.4s ease,
+    transform 0.35s ease,
+    box-shadow 0.45s ease,
+    border-color 0.35s ease,
+    background 0.45s ease;
+}
+
+.landing-niche-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-control);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  display: grid;
+  place-items: center;
+  margin-bottom: 0.85rem;
+  transition:
+    background 0.4s ease,
+    color 0.4s ease,
+    border-radius 0.4s ease;
+}
+
+.landing-niche-title {
+  margin: 0 0 0.35rem;
+  font-size: 1.1rem;
+  font-family: var(--font-display), system-ui, sans-serif;
+  letter-spacing: var(--brand-tracking);
+  text-transform: var(--brand-transform);
+  transition: color 0.4s ease, letter-spacing 0.35s ease, text-transform 0.35s ease;
+}
+
+.landing-niche-desc {
+  margin: 0;
+  line-height: 1.45;
+  font-size: 0.92rem;
+  transition: color 0.4s ease;
+}
+
+.landing-shell .badge {
+  border-radius: var(--radius-btn);
 }
 
 a {
