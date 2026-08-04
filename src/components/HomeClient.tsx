@@ -194,7 +194,7 @@ export function HomeClient() {
           </nav>
         </header>
 
-        <section className="home-hero home-hero--solo">
+        <section className="home-hero">
           <div className="home-hero__copy">
             <p className="home-hero__brand display">{brand("name")}</p>
             <h1 className="home-hero__title">{t("heroTitle")}</h1>
@@ -215,10 +215,7 @@ export function HomeClient() {
               {t("ctaStartTrial")}
             </Link>
           </div>
-        </section>
-
-        <section className="home-demo-band">
-          <div className="home-demo-band__inner">
+          <div className="home-hero__feature">
             <HomeDashboardPreview niche={demoNiche} onNicheChange={setDemoNiche} />
           </div>
         </section>

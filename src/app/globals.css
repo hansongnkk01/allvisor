@@ -1015,17 +1015,18 @@ html[data-landing="true"] {
 }
 
 .home-hero {
-  max-width: var(--home-max);
+  max-width: 1240px;
   margin: 0 auto;
-  padding: clamp(2.5rem, 6vw, 4rem) var(--home-pad) clamp(1.5rem, 4vw, 2.25rem);
+  padding: clamp(2.5rem, 6vw, 4rem) var(--home-pad) clamp(2.5rem, 6vw, 3.75rem);
+  display: grid;
+  grid-template-columns: minmax(280px, 0.82fr) minmax(0, 1.18fr);
+  gap: clamp(1.5rem, 3.5vw, 2.75rem);
+  align-items: start;
 }
 
-.home-hero--solo {
-  display: block;
-}
-
-.home-hero--solo .home-hero__copy {
-  max-width: 42rem;
+.home-hero__copy {
+  max-width: 34rem;
+  padding-top: 0.35rem;
 }
 
 .home-hero__brand {
@@ -1073,28 +1074,26 @@ html[data-landing="true"] {
   color: var(--ink);
 }
 
-.home-demo-band {
+.home-hero__feature {
+  min-width: 0;
   width: 100%;
-  padding: 0 var(--home-pad) clamp(2.5rem, 6vw, 3.5rem);
 }
 
-.home-demo-band__inner {
-  max-width: min(1240px, 100%);
-  margin: 0 auto;
-}
-
-/* Full-size dashboard replica (real app-grid ratios — not a mini mock) */
+/* Mini-site dashboard frame beside hero copy */
 .home-demo {
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
+  align-items: stretch;
+  gap: 0.75rem;
+  width: 100%;
 }
 
 .home-demo__carousel {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.55rem;
+  justify-content: flex-start;
+  gap: 0.45rem;
+  align-self: flex-start;
 }
 
 .home-demo__arrow {
@@ -1145,17 +1144,23 @@ html[data-landing="true"] {
 
 .home-demo__viewport {
   position: relative;
-  border-radius: 18px;
-  border: 1px solid var(--line);
+  width: 100%;
+  height: min(720px, 78vh);
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--ink) 18%, var(--line));
   background: var(--bg);
-  box-shadow: 0 18px 50px rgba(28, 27, 25, 0.08);
-  overflow: hidden;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.65) inset,
+    0 18px 50px rgba(28, 27, 25, 0.1);
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .home-demo__badge {
   position: absolute;
-  top: 0.85rem;
-  right: 1rem;
+  top: 0.75rem;
+  right: 0.85rem;
   z-index: 5;
   font-size: 0.68rem;
   font-weight: 650;
@@ -1166,18 +1171,23 @@ html[data-landing="true"] {
   padding: 0.28rem 0.55rem;
   border-radius: 999px;
   pointer-events: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
 .home-demo__grid {
-  min-height: 860px;
+  min-height: 960px;
 }
 
-.home-demo__grid > aside.surface {
-  align-self: stretch;
+.home-demo__viewport .home-demo__grid > aside.surface {
+  position: sticky !important;
+  top: 1rem !important;
+  height: calc(min(720px, 78vh) - 2rem) !important;
+  min-height: 0 !important;
+  align-self: start;
 }
 
 .home-demo__grid .app-main {
-  padding-top: 1.5rem;
+  padding-top: 1.75rem;
 }
 
 .home-band {
@@ -1370,23 +1380,28 @@ html[data-landing="true"] {
 
 @media (max-width: 900px) {
   .home-hero {
+    grid-template-columns: 1fr;
     padding-top: 2.5rem;
+  }
+
+  .home-demo__viewport {
+    height: min(640px, 70vh);
   }
 
   .home-demo__grid {
     grid-template-columns: 1fr;
     min-height: 0;
+    margin-top: 0;
   }
 
-  .home-demo__grid > aside.surface {
+  .home-demo__viewport .home-demo__grid > aside.surface {
     position: relative !important;
     top: auto !important;
     height: auto !important;
-    min-height: 0 !important;
     margin: 0.75rem;
   }
 
-  .home-demo__grid > aside.surface .stack {
+  .home-demo__viewport .home-demo__grid > aside.surface .stack {
     overflow: visible !important;
   }
 
