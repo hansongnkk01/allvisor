@@ -34,7 +34,67 @@
     "chooseBusinessHint": "Menu dan perkataan ikut niche anda. Satu organisasi = satu niche supaya dashboard kekal bersih.",
     "unsureBanner": "Tak sure niche mana? Baca tawaran penuh + playbook percuma dulu →",
     "footerOffer": "Lihat tawaran penuh",
-    "footerTrial": "Atau mula percuma sekarang"
+    "footerTrial": "Atau mula percuma sekarang",
+    "demoTabsLabel": "Pratonton dashboard niche",
+    "demoWelcome": "Selamat kembali",
+    "demoLive": "Pratonton langsung",
+    "demoTab": {
+      "clinic": "Klinik",
+      "retail": "Runcit",
+      "gym": "Gim"
+    },
+    "demoOrg": {
+      "clinic": "Klinik Harmoni",
+      "retail": "ProSupply Mart",
+      "gym": "Palio Fitness"
+    },
+    "demoSubtitle": {
+      "clinic": "Temujanji hari ini & invois belum bayar",
+      "retail": "Jualan hari ini, stok & laci tunai",
+      "gym": "Ahli, kelas & check-in"
+    },
+    "demoNav": {
+      "clinic": {
+        "nav1": "Dashboard",
+        "nav2": "Pesakit",
+        "nav3": "Temujanji",
+        "nav4": "Invois"
+      },
+      "retail": {
+        "nav1": "Dashboard",
+        "nav2": "POS / Jualan",
+        "nav3": "Inventori",
+        "nav4": "Invois"
+      },
+      "gym": {
+        "nav1": "Dashboard",
+        "nav2": "Ahli",
+        "nav3": "Kelas",
+        "nav4": "Invois"
+      }
+    },
+    "demoKpi": {
+      "clinic": {
+        "kpi1": "Temujanji hari ini",
+        "kpi2": "Kutipan",
+        "kpi3": "Belum bayar"
+      },
+      "retail": {
+        "kpi1": "Jualan hari ini",
+        "kpi2": "Transaksi",
+        "kpi3": "Stok rendah"
+      },
+      "gym": {
+        "kpi1": "Ahli aktif",
+        "kpi2": "Kelas hari ini",
+        "kpi3": "Yuran tertunggak"
+      }
+    },
+    "demoTable": {
+      "clinic": "Invois terkini",
+      "retail": "Jualan hari ini",
+      "gym": "Keahlian & kelas"
+    }
   },
   "Nav": {
     "dashboard": "Dashboard",

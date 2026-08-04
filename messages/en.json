@@ -34,7 +34,67 @@
     "chooseBusinessHint": "Menus and words follow your niche. One organisation = one niche, so dashboards stay clean.",
     "unsureBanner": "Unsure which niche fits? Read the full offer and free playbook first →",
     "footerOffer": "See the full Sell-ready offer",
-    "footerTrial": "Or start free now"
+    "footerTrial": "Or start free now",
+    "demoTabsLabel": "Preview niche dashboards",
+    "demoWelcome": "Welcome back",
+    "demoLive": "Live preview",
+    "demoTab": {
+      "clinic": "Clinic",
+      "retail": "Retail",
+      "gym": "Gym"
+    },
+    "demoOrg": {
+      "clinic": "Klinik Harmoni",
+      "retail": "ProSupply Mart",
+      "gym": "Palio Fitness"
+    },
+    "demoSubtitle": {
+      "clinic": "Today’s appointments & unpaid invoices",
+      "retail": "Sales today, stock & cash drawer",
+      "gym": "Members, classes & check-ins"
+    },
+    "demoNav": {
+      "clinic": {
+        "nav1": "Dashboard",
+        "nav2": "Patients",
+        "nav3": "Appointments",
+        "nav4": "Invoices"
+      },
+      "retail": {
+        "nav1": "Dashboard",
+        "nav2": "POS / Sales",
+        "nav3": "Inventory",
+        "nav4": "Invoices"
+      },
+      "gym": {
+        "nav1": "Dashboard",
+        "nav2": "Members",
+        "nav3": "Classes",
+        "nav4": "Invoices"
+      }
+    },
+    "demoKpi": {
+      "clinic": {
+        "kpi1": "Appointments today",
+        "kpi2": "Collected",
+        "kpi3": "Unpaid"
+      },
+      "retail": {
+        "kpi1": "Sales today",
+        "kpi2": "Transactions",
+        "kpi3": "Low stock"
+      },
+      "gym": {
+        "kpi1": "Active members",
+        "kpi2": "Classes today",
+        "kpi3": "Fees due"
+      }
+    },
+    "demoTable": {
+      "clinic": "Recent invoices",
+      "retail": "Today’s sales",
+      "gym": "Membership & classes"
+    }
   },
   "Nav": {
     "dashboard": "Dashboard",

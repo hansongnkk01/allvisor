@@ -31,6 +31,7 @@ import {
   Sprout,
   type LucideIcon,
 } from "lucide-react";
+import { HomeDashboardPreview } from "@/components/HomeDashboardPreview";
 import type { Niche } from "@/lib/types";
 import { nichesInGroup } from "@/lib/niche-capabilities";
 import { isNiche } from "@/lib/niches";
@@ -202,24 +203,29 @@ export function HomeClient() {
         </header>
 
         <section className="home-hero">
-          <p className="home-hero__brand display">{brand("name")}</p>
-          <h1 className="home-hero__title">{t("heroTitle")}</h1>
-          <p className="home-hero__lead">{t("heroSubtitle")}</p>
-          <div className="home-hero__cta">
-            <Link href="/start" className="btn btn-primary">
-              {t("ctaPlaybook")}
+          <div className="home-hero__copy">
+            <p className="home-hero__brand display">{brand("name")}</p>
+            <h1 className="home-hero__title">{t("heroTitle")}</h1>
+            <p className="home-hero__lead">{t("heroSubtitle")}</p>
+            <div className="home-hero__cta">
+              <Link href="/start" className="btn btn-primary">
+                {t("ctaPlaybook")}
+              </Link>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() => nicheGridRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              >
+                {t("ctaSeeNiches")}
+              </button>
+            </div>
+            <Link href="/register" className="home-hero__trial">
+              {t("ctaStartTrial")}
             </Link>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => nicheGridRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-            >
-              {t("ctaSeeNiches")}
-            </button>
           </div>
-          <Link href="/register" className="home-hero__trial">
-            {t("ctaStartTrial")}
-          </Link>
+          <div className="home-hero__feature">
+            <HomeDashboardPreview />
+          </div>
         </section>
       </div>
 
