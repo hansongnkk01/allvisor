@@ -177,7 +177,7 @@ export function LandingClient() {
 
   function leaveNiche() {
     if (leaveTimer.current) clearTimeout(leaveTimer.current);
-    leaveTimer.current = setTimeout(() => setPreview(null), 160);
+    leaveTimer.current = setTimeout(() => setPreview(null), 80);
   }
 
   return (
