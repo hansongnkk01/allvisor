@@ -1,0 +1,21 @@
+name,ic_number,phone,email,address,notes,risk_level
+Ahmad bin Ali,900101145678,0123456789,ahmad@email.com,"12 Jalan Melati, Kajang",Walk-in regular,low
+Siti Aminah,880202085432,0198765432,,"45 Taman Sri Putra, Puchong",Prefers evening,medium
+Lim Wei Jie,950315145678,01122334455,weijie@email.com,"88 SS15, Subang Jaya",Member,low
+Nurul Huda,920808145321,0139988776,,"3 Kampung Baru, KL",,low
+Raj Kumar,870101145999,0176655443,raj@email.com,"21 Jalan Ampang, KL",Corporate account,low
+Tan Mei Ling,930505145111,0161122334,mei@email.com,"9 Bandar Utama, PJ",VIP,low
+Mohd Faiz,910912145222,0193344556,,"77 Seksyen 7, Shah Alam",Cash only,medium
+Chong Kah Wai,960201145333,0127788990,chong@email.com,"15 Setapak, KL",,low
+Aisyah Rahman,940707145444,0115566778,aisyah@email.com,2 Putrajaya,Online orders,low
+Gurpreet Singh,890303145555,0142233445,,"66 Brickfields, KL",Wholesale buyer,low
+Farah Zainal,970818145666,0136677889,farah@email.com,40 Cyberjaya,,low
+Lee Jun Hao,980101145777,0178899001,junhao@email.com,18 Cheras,Student discount,low
+Priya Devi,920414145888,0164455667,,5 Seremban,,low
+Hafiz Abdullah,850909145999,0123344556,hafiz@email.com,"100 Ipoh Road, KL",Monthly account,medium
+Wong Siew Lan,880612145000,0195566778,,33 Melaka Raya,,low
+Azman Ismail,910223145101,0117788990,azman@email.com,8 Klang,,low
+Jessica Ng,950430145202,0168899001,jessica@email.com,27 Bangsar,Gift buyer,low
+Kumar a/l Rajan,860715145303,0149900112,,55 Johor Bahru,,low
+Sofea Izzati,990120145404,0131011223,sofea@email.com,14 Kota Kinabalu,,low
+Daniel Teo,940825145505,0172122334,daniel@email.com,61 Penang Road,Staff friend,low

@@ -1,0 +1,8 @@
+job_title,plate,kind,description,amount
+Service 10k,WXY1234,parts,Engine Oil 4L,120
+Service 10k,WXY1234,parts,Oil Filter,25
+Service 10k,WXY1234,labour,Oil change labour,40
+Brake job,BKK9988,parts,Brake Pad Set,180
+Brake job,BKK9988,labour,Brake replace,80
+Spark plugs,V1234,parts,Spark Plug x4,72
+Spark plugs,V1234,labour,Replace plugs,50

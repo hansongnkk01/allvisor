@@ -31,7 +31,8 @@ function buildInsights(data: InsightInput): Tip[] {
   const tips: Tip[] = [];
   const profit = data.income - data.expense;
   const isRetail = data.niche === "retail" || data.niche === "pharmacy" || data.niche === "fashion" || data.niche === "electronics" || data.niche === "wholesale" || data.niche === "laundry" || data.niche === "fnb";
-  const people = isRetail ? "customers" : "patients";
+  const isTuition = data.niche === "tuition";
+  const people = isTuition ? "students" : isRetail ? "customers" : "patients";
 
   if (data.lowStock > 0) {
     const names = (data.lowStockNames || []).filter(Boolean);
@@ -86,23 +87,39 @@ function buildInsights(data: InsightInput): Tip[] {
   if (data.patients < 5) {
     tips.push({
       tone: "info",
-      text: isRetail
-        ? "Customer base is still small. Run a simple promo and capture every walk-in into CRM."
-        : "Patient base is still small. Push WhatsApp reminders and follow-ups after each visit to grow repeat patients.",
+      text: isTuition
+        ? "Student base is still small. Enrol more students into subjects and follow up on fees."
+        : isRetail
+          ? "Customer base is still small. Run a simple promo and capture every purchase into CRM."
+          : "Patient base is still small. Push WhatsApp reminders and follow-ups after each visit to grow repeat patients.",
     });
   }
 
   if (isRetail && data.income === 0) {
     tips.push({
       tone: "info",
-      text: "No sales recorded today yet. Open POS and log walk-in purchases so daily close stays accurate.",
+      text: "No sales recorded today yet. Open POS and log purchases so daily close stays accurate.",
     });
   }
 
-  if (!isRetail && data.appointmentsToday === 0) {
+  if (isTuition && data.income === 0) {
     tips.push({
       tone: "info",
-      text: "No appointments today. Fill empty slots with short-notice openings for walk-ins.",
+      text: "No fee collections recorded today yet. Record invoices for enrolled students to keep cash flow clear.",
+    });
+  }
+
+  if (!isRetail && !isTuition && data.appointmentsToday === 0) {
+    tips.push({
+      tone: "info",
+      text: "No appointments today. Fill empty slots with short-notice openings.",
+    });
+  }
+
+  if (isTuition) {
+    tips.push({
+      tone: "info",
+      text: "Check attendance and update student marks under Assessments so parents can be updated quickly.",
     });
   }
 

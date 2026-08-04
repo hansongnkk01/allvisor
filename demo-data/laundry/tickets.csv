@@ -1,0 +1,7 @@
+ticket_number,customer_name,customer_ic,customer_phone,status,item_count,notes
+T-1001,Siti Aminah,880202085432,0198765432,received,8,Express
+T-1002,Aisyah Rahman,940707145444,0115566778,washing,12,
+T-1003,Wong Siew Lan,880612145000,0195566778,ready,5,No softener
+T-1004,Jessica Ng,950430145202,0168899001,delivered,3,
+T-1005,Farah Zainal,970818145666,0136677889,received,10,Hotel linens
+T-1006,Priya Devi,920414145888,0164455667,washing,6,

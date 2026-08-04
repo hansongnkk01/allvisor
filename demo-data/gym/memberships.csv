@@ -1,0 +1,7 @@
+customer_name,customer_ic,customer_phone,plan_name,starts_on,ends_on,status
+Lim Wei Jie,950315145678,01122334455,Monthly,2026-07-01,2026-07-31,active
+Tan Mei Ling,930505145111,0161122334,Quarterly,2026-06-01,2026-08-31,active
+Chong Kah Wai,960201145333,0127788990,Annual,2026-01-01,2026-12-31,active
+Jessica Ng,950430145202,0168899001,Monthly,2026-07-15,2026-08-14,active
+Daniel Teo,940825145505,0172122334,PT Pack 10,2026-07-01,2026-09-30,active
+Farah Zainal,970818145666,0136677889,Monthly,2026-05-01,2026-05-31,expired

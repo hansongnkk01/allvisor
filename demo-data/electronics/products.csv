@@ -1,0 +1,6 @@
+name,sku,barcode,category,sold_by,unit_price,cost_price,quantity,low_stock_threshold,available_to_sale,track_stock,price_on_sale,description
+Phone X128,EL-PH1,9564000000001,Phones,each,1299,950,8,10,yes,yes,no,
+Phone Y64,EL-PH2,9564000000002,Phones,each,899,650,10,10,yes,yes,no,
+Earbuds Pro,EL-EB,9564000000003,Audio,each,199,90,25,10,yes,yes,no,
+USB-C Hub,EL-HUB,9564000000004,Accessories,each,89,40,30,10,yes,yes,no,
+Power Bank 20k,EL-PB,9564000000005,Accessories,each,129,60,20,10,yes,yes,no,

@@ -24,6 +24,7 @@ export default async function LhdnPage({
   setRequestLocale(locale);
   const t = await getTranslations("Lhdn");
   const ctx = await requireOrg(locale);
+  const isTuition = ctx.organization.niche === "tuition";
 
   if (!canAccessSensitive(ctx.membership.role)) {
     redirect({ href: "/dashboard", locale });
@@ -57,14 +58,19 @@ export default async function LhdnPage({
 
   return (
     <div className="stack" style={{ gap: "1.25rem" }}>
-      <PageHeader title={t("title")} subtitle={t("subtitle")} />
+      <PageHeader
+        title={t("title")}
+        subtitle={isTuition ? t("subtitleTuition") : t("subtitle")}
+      />
 
       <div className="surface" style={{ padding: "1rem 1.25rem" }}>
         <p style={{ margin: 0 }}>
           {mode === "demo"
             ? t("demoMode")
             : mode === "intermediary"
-              ? t("intermediaryConnected", { name: platformName })
+              ? t(isTuition ? "intermediaryConnectedTuition" : "intermediaryConnected", {
+                  name: platformName,
+                })
               : t("liveConnected")}
         </p>
       </div>
@@ -79,7 +85,7 @@ export default async function LhdnPage({
       ) : (
         <>
           <div className="surface" style={{ padding: "1.25rem" }}>
-            <h3 style={{ marginTop: 0 }}>{t("howTitle")}</h3>
+            <h3 style={{ marginTop: 0 }}>{isTuition ? t("howTitleTuition") : t("howTitle")}</h3>
             <ol style={{ margin: "0.5rem 0 0", paddingLeft: "1.25rem", lineHeight: 1.55 }}>
               <li>{t("howStep1")}</li>
               <li>{t("howStep2", { name: platformName })}</li>

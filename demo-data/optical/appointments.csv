@@ -1,0 +1,4 @@
+patient_name,patient_ic,patient_phone,category,starts_at,ends_at,status,notes
+Lim Wei Jie,950315145678,01122334455,Eye exam,2026-08-04 10:00,2026-08-04 10:30,scheduled,
+Tan Mei Ling,930505145111,0161122334,Fitting,2026-08-05 11:00,2026-08-05 11:30,scheduled,
+Lee Jun Hao,980101145777,0178899001,Contact fit,2026-08-06 15:00,2026-08-06 15:45,scheduled,

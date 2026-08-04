@@ -9,7 +9,7 @@ import { DashboardAiPanel } from "@/components/DashboardAiPanel";
 import { DailyClosePanel } from "@/components/DailyClosePanel";
 import { DashboardRecentInvoices, DashboardUpcomingAppointments, DashboardTodaySales, DashboardTopSellers } from "@/components/DashboardLists";
 import { dayBoundsMY, formatDayKeyMY } from "@/lib/datetime-my";
-import { hasCapability } from "@/lib/niches";
+import { hasCapability, isTuitionNiche } from "@/lib/niches";
 
 type ApptRow = {
   id: string;
@@ -71,6 +71,8 @@ export default async function DashboardPage({
   const canAppointments = hasCapability(niche, "appointments");
   const canPos = hasCapability(niche, "pos");
   const patientStyle = hasCapability(niche, "allergies");
+  const isTuition = isTuitionNiche(niche);
+  const peopleLabel = isTuition ? t("students") : patientStyle ? t("patients") : t("customers");
   const now = new Date();
   const { start: todayStart, end: todayEnd } = dayBoundsMY(now);
   const monthStart = `${formatDayKeyMY(now).slice(0, 7)}-01`;
@@ -268,7 +270,7 @@ export default async function DashboardPage({
         <div className="kpi-value">{unpaidCount}</div>
       </div>
       <div className="surface kpi" style={{ margin: 0 }}>
-        <div className="kpi-label">{patientStyle ? t("patients") : t("customers")}</div>
+        <div className="kpi-label">{peopleLabel}</div>
         <div className="kpi-value">{customerCount || 0}</div>
       </div>
       <div className="surface kpi" style={{ margin: 0 }}>
@@ -341,7 +343,7 @@ export default async function DashboardPage({
       <div className="row">
         <span className="muted">{t("quickActions")}:</span>
         <Link href="/customers" className="btn btn-soft">
-          {patientStyle ? t("patients") : t("customers")}
+          {peopleLabel}
         </Link>
         <Link href="/invoices" className="btn btn-soft">
           Invoices

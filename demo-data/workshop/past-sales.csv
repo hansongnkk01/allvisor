@@ -1,0 +1,4 @@
+invoice_number,issue_date,customer_name,customer_ic,customer_phone,product_name,sku,barcode,quantity,unit_price,payment_method,notes
+WS-001,2026-05-05,Ahmad bin Ali,900101145678,0123456789,Engine Oil 4L,WS-OIL,9561000000001,1,120,cash,
+WS-001,2026-05-05,Ahmad bin Ali,900101145678,0123456789,Oil Filter,WS-OF,9561000000002,1,25,cash,
+WS-002,2026-06-18,Mohd Faiz,910912145222,0193344556,Brake Pad Set,WS-BP,9561000000003,1,180,card,

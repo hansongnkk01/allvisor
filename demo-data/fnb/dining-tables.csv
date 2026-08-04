@@ -1,0 +1,11 @@
+name,seats,status
+T1,2,free
+T2,2,occupied
+T3,4,free
+T4,4,occupied
+T5,4,free
+T6,6,free
+T7,6,reserved
+T8,8,free
+Bar1,1,free
+Bar2,1,free

@@ -1,0 +1,4 @@
+name,sku,barcode,category,sold_by,unit_price,cost_price,quantity,low_stock_threshold,available_to_sale,track_stock,price_on_sale,description
+Knee Support,PHY-KNEE,9567000000001,Supports,each,45,20,25,10,yes,yes,no,
+Resistance Band,PHY-BAND,9567000000002,Therapy aids,each,25,10,40,10,yes,yes,no,
+Hot Pack,PHY-HOT,9567000000003,Therapy aids,each,18,7,30,10,yes,yes,no,

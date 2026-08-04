@@ -1,0 +1,3 @@
+invoice_number,issue_date,customer_name,customer_ic,customer_phone,product_name,sku,barcode,quantity,unit_price,payment_method,notes
+FAS-001,2026-06-20,Kumar a/l Rajan,860715145303,0149900112,Cap Logo,FAS-CAP,9563000000003,1,39,cash,
+FAS-002,2026-07-05,Tan Mei Ling,930505145111,0161122334,Tee Basic,FAS-TEE,9563000000001,1,49,card,

@@ -1,0 +1,21 @@
+name,category,unit_price,description
+Consultation fee,General consultation,50,Standard consult
+Follow-up fee,Follow-up,30,
+Vaccine admin fee,Vaccination,25,Excludes vaccine cost
+Wound dressing,Wound care,35,
+Basic screening package,Health screening,120,
+Antenatal review,Antenatal,60,
+Paediatric consult,Paediatric,55,
+Dental check fee,Dental exam,40,
+Physio 30 min,Physio session,80,
+Blood test panel,Lab blood test,90,
+ECG recording,ECG,45,
+Ultrasound abdomen,Ultrasound,150,
+Nebulizer session,Nebulizer,25,
+IM injection fee,Injection,15,
+MC issuance,Medical certificate,10,
+Travel consult,Travel vaccine,70,
+Chronic care review,Chronic care,65,
+Skin consult fee,Dermatology,80,
+ENT consult fee,ENT consult,75,
+Walk-in urgent fee,Emergency walk-in,90,

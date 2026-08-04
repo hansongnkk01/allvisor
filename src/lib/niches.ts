@@ -22,6 +22,11 @@ export function isRetailNiche(niche: Niche | string | null | undefined): boolean
   return niche === "retail";
 }
 
+/** Tuition centre only — do not use class_schedule (gym shares it). */
+export function isTuitionNiche(niche: Niche | string | null | undefined): boolean {
+  return niche === "tuition";
+}
+
 /** @deprecated Prefer hasCapability — kept for gradual migration */
 export function isCareLikeNiche(niche: Niche | string | null | undefined): boolean {
   return hasCapability(niche, "appointments") || hasCapability(niche, "allergies");

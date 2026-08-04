@@ -1,0 +1,4 @@
+patient_name,patient_ic,patient_phone,category,starts_at,ends_at,status,notes
+Ahmad bin Ali,900101145678,0123456789,Consult,2026-08-04 10:00,2026-08-04 10:30,scheduled,Buddy checkup
+Tan Mei Ling,930505145111,0161122334,Vaccination,2026-08-05 11:00,2026-08-05 11:20,scheduled,
+Aisyah Rahman,940707145444,0115566778,Grooming,2026-08-06 14:00,2026-08-06 15:00,scheduled,

@@ -1,0 +1,5 @@
+patient_name,patient_ic,patient_phone,category,starts_at,ends_at,status,notes
+Tan Mei Ling,930505145111,0161122334,Haircut,2026-08-04 10:00,2026-08-04 10:45,scheduled,
+Kumar a/l Rajan,860715145303,0149900112,Colour,2026-08-04 11:00,2026-08-04 13:00,scheduled,
+Siti Aminah,880202085432,0198765432,Manicure,2026-08-05 14:00,2026-08-05 14:45,scheduled,
+Aisyah Rahman,940707145444,0115566778,Makeup,2026-08-06 09:00,2026-08-06 11:00,confirmed,Wedding trial

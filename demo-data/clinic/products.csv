@@ -1,0 +1,6 @@
+name,sku,barcode,category,sold_by,unit_price,cost_price,quantity,low_stock_threshold,available_to_sale,track_stock,price_on_sale,description
+Paracetamol 500mg 10s,MED-PARA,9557000000001,OTC,each,3.5,1.2,200,10,yes,yes,no,
+ORS Sachet,MED-ORS,9557000000002,OTC,each,1.5,0.5,150,10,yes,yes,no,
+Gauze Pack,MED-GAUZE,9557000000003,Dressings,each,8,3,80,10,yes,yes,no,
+Alcohol Swab 100s,MED-SWAB,9557000000004,Consumables,each,12,5,60,10,yes,yes,no,
+Face Mask 50s,MED-MASK,9557000000005,Consumables,each,15,7,100,10,yes,yes,no,

@@ -1,0 +1,8 @@
+product_name,sku,serial_number,status
+Phone X128,EL-PH1,SN-X128-0001,in_stock
+Phone X128,EL-PH1,SN-X128-0002,in_stock
+Phone X128,EL-PH1,SN-X128-0003,sold
+Phone Y64,EL-PH2,SN-Y64-0001,in_stock
+Phone Y64,EL-PH2,SN-Y64-0002,in_stock
+Earbuds Pro,EL-EB,SN-EB-1001,in_stock
+Earbuds Pro,EL-EB,SN-EB-1002,sold

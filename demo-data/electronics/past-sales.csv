@@ -1,0 +1,4 @@
+invoice_number,issue_date,customer_name,customer_ic,customer_phone,product_name,sku,barcode,quantity,unit_price,payment_method,notes
+EL-001,2026-05-22,Lim Wei Jie,950315145678,01122334455,Earbuds Pro,EL-EB,9564000000003,1,199,card,
+EL-002,2026-06-30,Daniel Teo,940825145505,0172122334,USB-C Hub,EL-HUB,9564000000004,1,89,cash,
+EL-003,2026-07-18,Chong Kah Wai,960201145333,0127788990,Power Bank 20k,EL-PB,9564000000005,1,129,ewallet,

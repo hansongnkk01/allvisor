@@ -1,0 +1,6 @@
+name,sku,barcode,category,sold_by,unit_price,cost_price,quantity,low_stock_threshold,available_to_sale,track_stock,price_on_sale,description
+Rice 10kg,WH-RICE,9565000000001,Dry goods,each,42,28,200,10,yes,yes,no,
+Cooking Oil 5L,WH-OIL,9565000000002,Dry goods,each,38,25,150,10,yes,yes,no,
+Mineral Water Carton,WH-WAT,9565000000003,Beverages,each,18,12,300,10,yes,yes,no,
+Carton Box M,WH-BOX,9565000000004,Packaging,each,2.5,1,500,10,yes,yes,no,
+Sugar 1kg x20,WH-SUG,9565000000005,Dry goods,each,55,38,80,10,yes,yes,no,

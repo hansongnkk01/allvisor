@@ -1,0 +1,6 @@
+name,sku,barcode,category,sold_by,unit_price,cost_price,quantity,low_stock_threshold,available_to_sale,track_stock,price_on_sale,description
+Shampoo 500ml,SAL-SHAM,9558000000001,Hair care,each,45,22,40,10,yes,yes,no,
+Hair Wax,SAL-WAX,9558000000002,Styling,each,35,15,30,10,yes,yes,no,
+Colour Tube,SAL-COL,9558000000003,Colour,each,55,28,25,10,yes,yes,no,
+Hair Serum,SAL-SER,9558000000004,Hair care,each,68,32,20,10,yes,yes,no,
+Clipper Blade Oil,SAL-OIL,9558000000005,Styling,each,12,5,50,10,yes,yes,no,

@@ -1,0 +1,4 @@
+invoice_number,issue_date,customer_name,customer_ic,customer_phone,product_name,sku,barcode,quantity,unit_price,payment_method,notes
+OPT-001,2026-04-20,Lim Wei Jie,950315145678,01122334455,Frame Classic Black,OPT-FR1,9560000000001,1,180,card,
+OPT-001,2026-04-20,Lim Wei Jie,950315145678,01122334455,Single Vision Lens,OPT-LN1,9560000000003,1,120,card,
+OPT-002,2026-06-08,Tan Mei Ling,930505145111,0161122334,Lens Cleaner,OPT-CLN,9560000000005,2,15,cash,

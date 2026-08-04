@@ -1,6 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { requireOrg } from "@/lib/org";
-import { hasCapability } from "@/lib/niches";
+import { hasCapability, isTuitionNiche } from "@/lib/niches";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { ActionForm } from "@/components/ActionForm";
@@ -22,7 +22,7 @@ export default async function CustomersPage({
   const tc = await getTranslations("Common");
   const ctx = await requireOrg(locale);
   const supabase = await createClient();
-  const isTuition = hasCapability(ctx.organization.niche, "class_schedule");
+  const isTuition = isTuitionNiche(ctx.organization.niche);
   const isClinic = hasCapability(ctx.organization.niche, "allergies");
 
   const [{ data: customers }, { data: deletions }, logs, subjectsRes, enrollRes] = await Promise.all([
@@ -72,8 +72,16 @@ export default async function CustomersPage({
   }
 
   const title = isTuition ? t("titleTuition") : isClinic ? t("titleClinic") : t("title");
-  const deletedTitle = isClinic || isTuition ? t("deletedTitleClinic") : t("deletedTitle");
-  const deletedHint = isClinic || isTuition ? t("deletedHintClinic") : t("deletedHint");
+  const deletedTitle = isTuition
+    ? t("deletedTitleTuition")
+    : isClinic
+      ? t("deletedTitleClinic")
+      : t("deletedTitle");
+  const deletedHint = isTuition
+    ? t("deletedHintTuition")
+    : isClinic
+      ? t("deletedHintClinic")
+      : t("deletedHint");
   const rowLabels = {
     name: t("name"),
     email: t("email"),
@@ -282,7 +290,11 @@ export default async function CustomersPage({
             </table>
           </div>
         </div>
-        <SectionActivityLog title={t("activity")} logs={logs} pageSize={5} />
+        <SectionActivityLog
+          title={isTuition ? t("activityTuition") : t("activity")}
+          logs={logs}
+          pageSize={5}
+        />
       </div>
     </div>
   );

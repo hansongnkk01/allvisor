@@ -1,0 +1,7 @@
+name,sku,barcode,category,sold_by,unit_price,cost_price,quantity,low_stock_threshold,available_to_sale,track_stock,price_on_sale,description
+Frame Classic Black,OPT-FR1,9560000000001,Frames,each,180,80,25,10,yes,yes,no,
+Frame Titanium,OPT-FR2,9560000000002,Frames,each,320,150,15,10,yes,yes,no,
+Single Vision Lens,OPT-LN1,9560000000003,Lenses,each,120,50,40,10,yes,yes,no,
+Progressive Lens,OPT-LN2,9560000000004,Lenses,each,450,200,20,10,yes,yes,no,
+Lens Cleaner,OPT-CLN,9560000000005,Accessories,each,15,5,80,10,yes,yes,no,
+Daily Contact 30s,OPT-CL,9560000000006,Contact lens,each,85,40,30,10,yes,yes,no,

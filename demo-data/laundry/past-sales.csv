@@ -1,0 +1,3 @@
+invoice_number,issue_date,customer_name,customer_ic,customer_phone,product_name,sku,barcode,quantity,unit_price,payment_method,notes
+LAU-001,2026-06-12,Siti Aminah,880202085432,0198765432,Detergent Refill,LAU-DET,9566000000001,1,12,cash,
+LAU-002,2026-07-03,Aisyah Rahman,940707145444,0115566778,Laundry Bag,LAU-BAG,9566000000002,2,8,ewallet,

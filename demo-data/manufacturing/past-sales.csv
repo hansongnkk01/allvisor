@@ -1,0 +1,3 @@
+invoice_number,issue_date,customer_name,customer_ic,customer_phone,product_name,sku,barcode,quantity,unit_price,payment_method,notes
+MFG-001,2026-06-01,Raj Kumar,870101145999,0176655443,Widget Pro,MFG-WP,9569000000003,20,85,transfer,
+MFG-002,2026-07-10,Gurpreet Singh,890303145555,0142233445,Widget Lite,MFG-WL,9569000000004,50,55,transfer,

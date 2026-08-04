@@ -1,0 +1,7 @@
+name,sku,barcode,category,sold_by,unit_price,cost_price,quantity,low_stock_threshold,available_to_sale,track_stock,price_on_sale,description
+Nasi Lemak,FNB-NL,9568000000001,Mains,each,8.5,3,999,10,yes,yes,no,Kitchen item
+Chicken Chop,FNB-CC,9568000000002,Mains,each,16,7,999,10,yes,yes,no,
+Teh Tarik,FNB-TT,9568000000003,Drinks,each,3,0.8,999,10,yes,yes,no,
+Iced Lemon Tea,FNB-ILT,9568000000004,Drinks,each,4.5,1.2,999,10,yes,yes,no,
+French Fries,FNB-FF,9568000000005,Sides,each,6,2,999,10,yes,yes,no,
+Roti Canai,FNB-RC,9568000000006,Mains,each,2.5,0.8,999,10,yes,yes,no,

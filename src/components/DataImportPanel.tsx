@@ -50,6 +50,7 @@ async function parseFile(file: File): Promise<ImportRow[]> {
 export function DataImportPanel({
   labels,
   allowedKinds,
+  omitRisk = false,
 }: {
   labels: {
     title: string;
@@ -76,6 +77,8 @@ export function DataImportPanel({
   };
   /** When set, only these import kinds are offered (e.g. retail omits appointments). */
   allowedKinds?: ImportKind[];
+  /** Tuition: hide risk_level from patients template / preview guidance. */
+  omitRisk?: boolean;
 }) {
   const kinds = allowedKinds?.length
     ? IMPORT_KIND_ORDER.filter((k) => allowedKinds.includes(k))
@@ -111,7 +114,13 @@ export function DataImportPanel({
 
   const mapped = useMemo(() => rows.map((r) => mapRow(kind, r)), [rows, kind]);
   const preview = mapped.slice(0, 5);
-  const headers = IMPORT_TEMPLATES[kind].headers;
+  const headers = useMemo(() => {
+    const all = IMPORT_TEMPLATES[kind].headers;
+    if (omitRisk && kind === "patients") {
+      return all.filter((h) => h !== "risk_level");
+    }
+    return all;
+  }, [kind, omitRisk]);
 
   return (
     <div className="surface" style={{ padding: "1.25rem" }}>
@@ -148,7 +157,7 @@ export function DataImportPanel({
           <button
             type="button"
             className="btn btn-soft"
-            onClick={() => downloadTemplate(kind)}
+            onClick={() => downloadTemplate(kind, { omitRisk: omitRisk && kind === "patients" })}
           >
             {labels.downloadTemplate}
           </button>

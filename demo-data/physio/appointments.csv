@@ -1,0 +1,5 @@
+patient_name,patient_ic,patient_phone,category,starts_at,ends_at,status,notes
+Ahmad bin Ali,900101145678,0123456789,Assessment,2026-08-04 09:00,2026-08-04 09:45,scheduled,
+Siti Aminah,880202085432,0198765432,Therapy,2026-08-04 10:00,2026-08-04 10:30,scheduled,
+Gurpreet Singh,890303145555,0142233445,Therapy,2026-08-05 11:00,2026-08-05 12:00,scheduled,
+Wong Siew Lan,880612145000,0195566778,Rehab,2026-08-06 15:00,2026-08-06 15:45,scheduled,

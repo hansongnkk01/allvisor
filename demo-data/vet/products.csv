@@ -1,0 +1,5 @@
+name,sku,barcode,category,sold_by,unit_price,cost_price,quantity,low_stock_threshold,available_to_sale,track_stock,price_on_sale,description
+Dog Food 3kg,VET-DF,9562000000001,Pet food,each,65,35,40,10,yes,yes,no,
+Cat Food 1.5kg,VET-CF,9562000000002,Pet food,each,42,22,35,10,yes,yes,no,
+Flea Drop,VET-FL,9562000000003,Medicine,each,55,25,30,10,yes,yes,no,
+Pet Shampoo,VET-SH,9562000000004,Accessories,each,28,12,25,10,yes,yes,no,

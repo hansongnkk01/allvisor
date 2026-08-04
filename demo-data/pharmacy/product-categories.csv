@@ -1,0 +1,7 @@
+name,parent
+Medicines,
+Analgesics,Medicines
+Antibiotics,Medicines
+OTC,
+Vitamins,OTC
+First aid,

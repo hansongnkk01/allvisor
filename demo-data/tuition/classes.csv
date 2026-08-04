@@ -1,0 +1,9 @@
+name,subject,teacher_name,weekday,start_time,end_time,room,fee
+Math F4 Mon,Mathematics Form 4,Cikgu Amir,1,16:00,18:00,R1,180
+Science F4 Tue,Science Form 4,Cikgu Siti,2,16:00,18:00,R2,170
+English F5 Wed,English Form 5,Miss Tan,3,17:00,19:00,R1,160
+BM F5 Thu,Bahasa Melayu Form 5,Cikgu Aida,4,16:00,18:00,R3,150
+Add Math Sat,Additional Maths,Cikgu Raj,6,09:00,11:00,R1,200
+Chem F5 Sat,Chemistry Form 5,Dr Lim,6,11:30,13:30,Lab,190
+Physics Sun,Physics Form 5,Encik Faiz,0,10:00,12:00,Lab,190
+Primary Math Sat,Primary Maths,Teacher Mei,6,14:00,15:30,R2,120

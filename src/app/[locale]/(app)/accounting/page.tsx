@@ -84,6 +84,17 @@ export default async function AccountingPage({
   const t = await getTranslations("Accounting");
   const ctx = await requireOrg(locale);
   const isClinic = !hasCapability(ctx.organization.niche, "pos");
+  const isTuition = ctx.organization.niche === "tuition";
+  const accountingTitle = isTuition
+    ? t("titleTuition")
+    : isClinic
+      ? t("title")
+      : t("titleRetail");
+  const accountingSubtitle = isTuition
+    ? t("subtitleTuition")
+    : isClinic
+      ? t("subtitle")
+      : t("subtitleRetail");
 
   if (!canAccessSensitive(ctx.membership.role)) {
     redirect({ href: "/dashboard", locale });
@@ -94,7 +105,7 @@ export default async function AccountingPage({
     return (
       <SectionLockGate
         section="accounting"
-        title={isClinic ? t("title") : t("titleRetail")}
+        title={accountingTitle}
         subtitle={t("lockSubtitle")}
       />
     );
@@ -146,8 +157,8 @@ export default async function AccountingPage({
   return (
     <div className="stack" style={{ gap: "1.25rem" }}>
       <PageHeader
-        title={isClinic ? t("title") : t("titleRetail")}
-        subtitle={isClinic ? t("subtitle") : t("subtitleRetail")}
+        title={accountingTitle}
+        subtitle={accountingSubtitle}
       />
 
       <div className="surface" style={{ padding: "0.9rem 1.1rem" }}>

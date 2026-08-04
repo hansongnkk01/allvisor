@@ -1,0 +1,4 @@
+patient_name,patient_ic,patient_phone,category,starts_at,ends_at,status,notes
+Ahmad bin Ali,900101145678,0123456789,Blood,2026-08-04 08:00,2026-08-04 08:20,scheduled,Fasting
+Gurpreet Singh,890303145555,0142233445,Blood,2026-08-04 08:30,2026-08-04 08:50,scheduled,Fasting
+Siti Aminah,880202085432,0198765432,Urine,2026-08-05 09:00,2026-08-05 09:15,scheduled,

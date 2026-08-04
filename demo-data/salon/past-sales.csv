@@ -1,0 +1,4 @@
+invoice_number,issue_date,customer_name,customer_ic,customer_phone,product_name,sku,barcode,quantity,unit_price,payment_method,notes
+SAL-001,2026-06-01,Tan Mei Ling,930505145111,0161122334,Shampoo 500ml,SAL-SHAM,9558000000001,1,45,cash,
+SAL-002,2026-06-15,Kumar a/l Rajan,860715145303,0149900112,Hair Wax,SAL-WAX,9558000000002,1,35,card,
+SAL-003,2026-07-01,Lim Wei Jie,950315145678,01122334455,Hair Serum,SAL-SER,9558000000004,1,68,ewallet,

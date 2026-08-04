@@ -1,0 +1,3 @@
+invoice_number,issue_date,customer_name,customer_ic,customer_phone,product_name,sku,barcode,quantity,unit_price,payment_method,notes
+FRM-001,2026-07-05,Ahmad bin Ali,900101145678,0123456789,Fresh Eggs Tray,FRM-EGG,9570000000003,3,14,cash,
+FRM-002,2026-07-18,Farah Zainal,970818145666,0136677889,Leafy Greens Bundle,FRM-GRN,9570000000004,5,5,ewallet,

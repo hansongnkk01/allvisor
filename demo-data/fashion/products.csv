@@ -1,0 +1,5 @@
+name,sku,barcode,category,sold_by,unit_price,cost_price,quantity,low_stock_threshold,available_to_sale,track_stock,price_on_sale,description
+Tee Basic,FAS-TEE,9563000000001,Tops,each,49,20,0,10,yes,yes,no,Variants by size/color
+Jeans Slim,FAS-JNS,9563000000002,Bottoms,each,129,55,0,10,yes,yes,no,
+Cap Logo,FAS-CAP,9563000000003,Accessories,each,39,15,40,10,yes,yes,no,
+Hoodie Zip,FAS-HD,9563000000004,Tops,each,159,70,0,10,yes,yes,no,

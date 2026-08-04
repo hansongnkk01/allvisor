@@ -1,0 +1,11 @@
+room_number,room_type,status,rate
+101,standard,vacant,150
+102,standard,occupied,150
+103,standard,vacant,150
+201,deluxe,vacant,220
+202,deluxe,occupied,220
+203,deluxe,cleaning,220
+301,suite,vacant,380
+302,suite,reserved,380
+401,family,vacant,280
+402,family,occupied,280

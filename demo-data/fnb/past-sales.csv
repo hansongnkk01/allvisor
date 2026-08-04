@@ -1,0 +1,5 @@
+invoice_number,issue_date,customer_name,customer_ic,customer_phone,product_name,sku,barcode,quantity,unit_price,payment_method,notes
+FNB-001,2026-07-20,Ahmad bin Ali,900101145678,0123456789,Nasi Lemak,FNB-NL,9568000000001,2,8.5,cash,
+FNB-001,2026-07-20,Ahmad bin Ali,900101145678,0123456789,Teh Tarik,FNB-TT,9568000000003,2,3,cash,
+FNB-002,2026-07-21,Daniel Teo,940825145505,0172122334,Chicken Chop,FNB-CC,9568000000002,1,16,card,
+FNB-002,2026-07-21,Daniel Teo,940825145505,0172122334,Iced Lemon Tea,FNB-ILT,9568000000004,1,4.5,card,

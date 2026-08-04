@@ -1,0 +1,5 @@
+name,teacher_name,weekday,start_time,end_time,room,fee
+HIIT,Coach Amir,1,07:00,07:45,Studio A,0
+Yoga,Coach Mei,2,18:00,19:00,Studio B,0
+Spin,Coach Raj,3,19:00,19:45,Bike Room,0
+PT Bootcamp,Coach Faiz,6,09:00,10:00,Outdoor,30

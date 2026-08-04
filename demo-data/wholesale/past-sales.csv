@@ -1,0 +1,4 @@
+invoice_number,issue_date,customer_name,customer_ic,customer_phone,product_name,sku,barcode,quantity,unit_price,payment_method,notes
+WH-001,2026-04-01,Gurpreet Singh,890303145555,0142233445,Rice 10kg,WH-RICE,9565000000001,10,42,transfer,Wholesale
+WH-002,2026-05-15,Raj Kumar,870101145999,0176655443,Mineral Water Carton,WH-WAT,9565000000003,20,18,transfer,
+WH-003,2026-07-01,Hafiz Abdullah,850909145999,0123344556,Cooking Oil 5L,WH-OIL,9565000000002,8,38,transfer,

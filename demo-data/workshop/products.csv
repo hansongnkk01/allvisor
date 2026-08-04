@@ -1,0 +1,6 @@
+name,sku,barcode,category,sold_by,unit_price,cost_price,quantity,low_stock_threshold,available_to_sale,track_stock,price_on_sale,description
+Engine Oil 4L,WS-OIL,9561000000001,Oil,each,120,70,40,10,yes,yes,no,
+Oil Filter,WS-OF,9561000000002,Filters,each,25,10,60,10,yes,yes,no,
+Brake Pad Set,WS-BP,9561000000003,Parts,each,180,90,20,10,yes,yes,no,
+Spark Plug,WS-SP,9561000000004,Parts,each,18,7,80,10,yes,yes,no,
+Air Filter,WS-AF,9561000000005,Filters,each,35,15,45,10,yes,yes,no,

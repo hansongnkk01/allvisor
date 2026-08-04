@@ -1,0 +1,21 @@
+name,sku,barcode,category,sold_by,unit_price,cost_price,quantity,low_stock_threshold,available_to_sale,track_stock,price_on_sale,description
+Tali Nylon 5m,SKU-TALI,8717,Hardware,each,8.5,3.2,120,10,yes,yes,no,Demo short barcode 8717
+Air Mineral 500ml,SKU-AIR,9556123456789,Water,each,1.5,0.6,200,10,yes,yes,no,
+Biskut Coklat,SKU-BISKUT,9556987654321,Biscuits,each,6.9,3.1,80,10,yes,yes,no,
+Sabun Tangan 250ml,SKU-SABUN,8901001234567,Soap,each,9.9,4.5,60,10,yes,yes,no,
+Kabel USB-C 1m,SKU-KABEL,1234567890123,Cables,each,15,7,45,10,yes,yes,no,
+Notebook A5,SKU-NOTE,4006381333931,Notebooks,each,4.5,1.8,90,10,yes,yes,no,
+Tissue Box,SKU-TISSUE,5012345678900,Tissue & paper,each,3.2,1.4,150,10,yes,yes,no,
+Kopi 3-in-1 (10s),SKU-KOPI,8850999111222,Coffee,each,7.5,4,70,10,yes,yes,no,
+Topi Baseball,SKU-TOPI,8717001,Hardware,each,25,12,25,10,yes,yes,no,
+Battery AA 4pcs,SKU-BATT,8717002,Batteries,each,12,5.5,40,10,yes,yes,no,
+Cola Can 330ml,SKU-COLA,9556000000001,Soft drinks,each,2.5,1.2,180,10,yes,yes,no,
+Chips BBQ,SKU-CHIPS,9556000000002,Chips,each,4.2,2,100,10,yes,yes,no,
+Chocolate Bar,SKU-CHOC,9556000000003,Chocolate,each,3.8,1.9,95,10,yes,yes,no,
+Dish Soap 500ml,SKU-DISH,9556000000004,Cleaning,each,6.5,3,55,10,yes,yes,no,
+Rope per meter,SKU-ROPE,9556000000005,Hardware,meter,2,0.8,300,10,yes,yes,no,Sold by meter
+Rice 1kg,SKU-RICE,9556000000006,Household,kg,5.5,3.5,80,10,yes,yes,no,Sold by kg
+Custom cable cut,SKU-CUSTOM,999000111222,Cables,each,0,0,100,10,yes,yes,no,Price set on sale
+Pen Blue,SKU-PEN,9556000000007,Writing,each,1.2,0.4,200,10,yes,yes,no,
+Ball Valve 1/2,SKU-VALVE,9556000000008,Tools,each,18,9,35,10,yes,yes,no,
+Screws pack,SKU-SCREW,9556000000009,Fasteners,each,3,1.1,150,10,yes,yes,no,

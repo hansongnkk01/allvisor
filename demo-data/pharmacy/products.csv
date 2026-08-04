@@ -1,0 +1,9 @@
+name,sku,barcode,category,sold_by,unit_price,cost_price,quantity,low_stock_threshold,available_to_sale,track_stock,price_on_sale,description
+Panadol 500mg 10s,PH-PARA,9559000000001,Analgesics,each,4.5,1.8,300,10,yes,yes,no,
+Amoxicillin 250mg,PH-AMOX,9559000000002,Antibiotics,each,12,5,80,10,yes,yes,no,Rx only
+Vitamin C 1000mg,PH-VITC,9559000000003,Vitamins,each,28,12,100,10,yes,yes,no,
+Cough Syrup 100ml,PH-COUGH,9559000000004,OTC,each,15,6,60,10,yes,yes,no,
+Bandage Roll,PH-BAND,9559000000005,First aid,each,6,2.5,90,10,yes,yes,no,
+Antiseptic 100ml,PH-ANTI,9559000000006,First aid,each,9,3.5,70,10,yes,yes,no,
+Insulin Pen Needle,PH-NEED,9559000000007,Medicines,each,18,8,40,10,yes,yes,no,Controlled
+ORS Sachet,PH-ORS,9559000000008,OTC,each,1.2,0.4,200,10,yes,yes,no,

@@ -13,15 +13,15 @@ export default async function AssessmentsPage({ params }: { params: Promise<{ lo
   const ctx = await requireCapability(locale, "assessments");
   const supabase = await createClient();
 
-  const [{ data: classes }, { data: assessments }, { data: submissions }] = await Promise.all([
+  const [{ data: subjects }, { data: assessments }, { data: submissions }] = await Promise.all([
     supabase
-      .from("tuition_classes")
+      .from("tuition_subjects")
       .select("id, name")
       .eq("organization_id", ctx.organization.id)
       .order("name"),
     supabase
       .from("tuition_assessments")
-      .select("id, title, instructions, due_at, max_score, class_id, created_at")
+      .select("id, title, instructions, due_at, max_score, class_id, subject_id, created_at")
       .eq("organization_id", ctx.organization.id)
       .order("created_at", { ascending: false })
       .limit(50),
@@ -54,12 +54,14 @@ export default async function AssessmentsPage({ params }: { params: Promise<{ lo
               <input name="title" className="input" required placeholder="Chapter 5 quiz" />
             </div>
             <div className="field">
-              <label>{t("classOptional")}</label>
-              <select name="class_id" className="select" defaultValue="">
-                <option value="">{t("allStudents")}</option>
-                {(classes || []).map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
+              <label>{t("subjectRequired")}</label>
+              <select name="subject_id" className="select" required defaultValue="">
+                <option value="" disabled>
+                  —
+                </option>
+                {(subjects || []).map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
                   </option>
                 ))}
               </select>
@@ -75,7 +77,7 @@ export default async function AssessmentsPage({ params }: { params: Promise<{ lo
           </div>
           <div className="field">
             <label>{t("instructions")}</label>
-            <textarea name="instructions" className="textarea" rows={3} />
+            <textarea name="instructions" className="textarea" rows={2} />
           </div>
           <button type="submit" className="btn btn-primary">
             {t("publishAssessment")}
@@ -90,18 +92,18 @@ export default async function AssessmentsPage({ params }: { params: Promise<{ lo
             <thead>
               <tr>
                 <th>{t("assessmentTitle")}</th>
-                <th>{t("className")}</th>
+                <th>{t("subjectName")}</th>
                 <th>{t("dueAt")}</th>
                 <th>{t("maxScore")}</th>
               </tr>
             </thead>
             <tbody>
               {(assessments || []).map((a) => {
-                const cls = (classes || []).find((c) => c.id === a.class_id);
+                const subj = (subjects || []).find((s) => s.id === a.subject_id);
                 return (
                   <tr key={a.id}>
                     <td>{a.title}</td>
-                    <td>{cls?.name || t("allStudents")}</td>
+                    <td>{subj?.name || "—"}</td>
                     <td>{a.due_at ? formatDateTime(a.due_at) : "—"}</td>
                     <td>{a.max_score}</td>
                   </tr>
@@ -126,6 +128,7 @@ export default async function AssessmentsPage({ params }: { params: Promise<{ lo
           {(submissions || []).map((s) => {
             const cust = Array.isArray(s.customers) ? s.customers[0] : s.customers;
             const assessment = (assessments || []).find((a) => a.id === s.assessment_id);
+            const subj = (subjects || []).find((x) => x.id === assessment?.subject_id);
             return (
               <div
                 key={s.id}
@@ -139,8 +142,9 @@ export default async function AssessmentsPage({ params }: { params: Promise<{ lo
                   <div>
                     <strong>{assessment?.title || "Assessment"}</strong>
                     <div className="muted">
-                      {cust?.name || s.customer_id} · {s.status}
-                      {s.submitted_at ? ` · ${formatDateTime(s.submitted_at)}` : ""}
+                      {cust?.name || s.customer_id}
+                      {subj ? ` · ${subj.name}` : ""}
+                      {s.score != null ? "" : ""}
                     </div>
                   </div>
                   {s.score != null ? (
@@ -149,35 +153,28 @@ export default async function AssessmentsPage({ params }: { params: Promise<{ lo
                     </span>
                   ) : null}
                 </div>
-                {s.answer_text ? (
-                  <p style={{ whiteSpace: "pre-wrap", margin: "0.75rem 0" }}>{s.answer_text}</p>
-                ) : (
-                  <p className="muted">{t("notSubmitted")}</p>
-                )}
-                {s.status === "submitted" || s.status === "graded" ? (
-                  <ActionForm action={gradeSubmissionAction} className="row" style={{ flexWrap: "wrap" }}>
-                    <input type="hidden" name="id" value={s.id} />
-                    <input
-                      name="score"
-                      type="number"
-                      className="input"
-                      style={{ width: 100 }}
-                      defaultValue={s.score ?? ""}
-                      placeholder={t("score")}
-                      required
-                    />
-                    <input
-                      name="feedback"
-                      className="input"
-                      style={{ flex: 1, minWidth: 160 }}
-                      defaultValue={s.feedback || ""}
-                      placeholder={t("feedback")}
-                    />
-                    <button type="submit" className="btn btn-soft">
-                      {t("saveGrade")}
-                    </button>
-                  </ActionForm>
-                ) : null}
+                <ActionForm action={gradeSubmissionAction} className="row" style={{ flexWrap: "wrap", marginTop: 8 }}>
+                  <input type="hidden" name="id" value={s.id} />
+                  <input
+                    name="score"
+                    type="number"
+                    className="input"
+                    style={{ width: 100 }}
+                    defaultValue={s.score ?? ""}
+                    placeholder={t("score")}
+                    required
+                  />
+                  <input
+                    name="feedback"
+                    className="input"
+                    style={{ flex: 1, minWidth: 160 }}
+                    defaultValue={s.feedback || ""}
+                    placeholder={t("feedback")}
+                  />
+                  <button type="submit" className="btn btn-soft">
+                    {t("saveGrade")}
+                  </button>
+                </ActionForm>
               </div>
             );
           })}

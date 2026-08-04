@@ -1,6 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { requireOrg } from "@/lib/org";
-import { hasCapability } from "@/lib/niches";
+import { hasCapability, isTuitionNiche } from "@/lib/niches";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { SectionActivityLog } from "@/components/SectionActivityLog";
@@ -26,6 +26,7 @@ export default async function InvoicesPage({
   const ctx = await requireOrg(locale);
   const supabase = await createClient();
   const isClinic = hasCapability(ctx.organization.niche, "allergies");
+  const isTuition = isTuitionNiche(ctx.organization.niche);
 
   const [{ data: invoices }, logs] = await Promise.all([
     supabase
@@ -63,9 +64,13 @@ export default async function InvoicesPage({
           issue_date: inv.issue_date,
           lhdn_status: inv.lhdn_status,
           tax_amount: Number(inv.tax_amount || 0),
-          customers: Array.isArray(inv.customers)
-            ? inv.customers[0] || null
-            : inv.customers,
+          customers: (() => {
+            const c = Array.isArray(inv.customers) ? inv.customers[0] || null : inv.customers;
+            if (!c) return null;
+            return isTuition || !isClinic
+              ? { ...c, risk_level: null, allergies: isClinic ? c.allergies : null }
+              : c;
+          })(),
         }))}
         canLhdn={canLhdn}
         loadPreview={getInvoicePreviewAction}
@@ -73,7 +78,7 @@ export default async function InvoicesPage({
         showAllergies={isClinic}
         labels={{
           number: t("number"),
-          customer: t("customer"),
+          customer: isTuition ? t("student") : t("customer"),
           status: t("status"),
           total: t("total"),
           paid: t("paid"),
@@ -133,7 +138,7 @@ export default async function InvoicesPage({
           exitReasonHint: t("exitReasonHint"),
           exitReasonPlaceholder: t("exitReasonPlaceholder"),
           exitConfirm: t("exitConfirm"),
-          searchPlaceholder: t("searchPlaceholder"),
+          searchPlaceholder: isTuition ? t("searchPlaceholderTuition") : t("searchPlaceholder"),
           needTin,
           planLocked,
         }}

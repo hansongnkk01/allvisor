@@ -1,0 +1,6 @@
+customer_name,customer_ic,customer_phone,test_name,status,result_summary
+Ahmad bin Ali,900101145678,0123456789,FBC,ready,Within normal limits
+Gurpreet Singh,890303145555,0142233445,Lipid profile,ready,LDL slightly high
+Siti Aminah,880202085432,0198765432,Urine FEME,pending,
+Jessica Ng,950430145202,0168899001,HbA1c,ready,6.2%
+Hafiz Abdullah,850909145999,0123344556,FBC,pending,

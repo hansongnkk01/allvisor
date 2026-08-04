@@ -210,9 +210,16 @@ export function AppShell({
         /* fall through */
       }
     }
-    if (key === "customers" && hasCapability(niche, "class_schedule")) {
+    if (key === "customers" && niche === "tuition") {
       try {
         return t("students");
+      } catch {
+        /* fall through */
+      }
+    }
+    if (key === "appointments" && niche === "tuition") {
+      try {
+        return t("schedule");
       } catch {
         /* fall through */
       }

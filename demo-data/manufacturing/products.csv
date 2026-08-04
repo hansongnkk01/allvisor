@@ -1,0 +1,5 @@
+name,sku,barcode,category,sold_by,unit_price,cost_price,quantity,low_stock_threshold,available_to_sale,track_stock,price_on_sale,description
+Steel Sheet A,MFG-ST,9569000000001,Raw materials,each,0,40,500,10,yes,yes,no,Cost tracked
+Plastic Resin,MFG-RS,9569000000002,Raw materials,each,0,12,800,10,yes,yes,no,
+Widget Pro,MFG-WP,9569000000003,Finished goods,each,85,45,120,10,yes,yes,no,
+Widget Lite,MFG-WL,9569000000004,Finished goods,each,55,28,200,10,yes,yes,no,

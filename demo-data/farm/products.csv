@@ -1,0 +1,6 @@
+name,sku,barcode,category,sold_by,unit_price,cost_price,quantity,low_stock_threshold,available_to_sale,track_stock,price_on_sale,description
+Fertilizer 25kg,FRM-FER,9570000000001,Inputs,each,55,35,80,10,yes,yes,no,
+Pesticide 1L,FRM-PES,9570000000002,Inputs,each,40,22,40,10,yes,yes,no,
+Fresh Eggs Tray,FRM-EGG,9570000000003,Produce,each,14,8,60,10,yes,yes,no,
+Leafy Greens Bundle,FRM-GRN,9570000000004,Produce,each,5,2,100,10,yes,yes,no,
+Hoe,FRM-HOE,9570000000005,Tools,each,35,15,20,10,yes,yes,no,

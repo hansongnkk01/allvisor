@@ -119,17 +119,20 @@ export async function enrollStudentAction(formData: FormData) {
 
 export async function createTuitionAssessmentAction(formData: FormData) {
   const { supabase, organization, profile } = await requireMemberWithCapability("assessments");
+  const subjectId = String(formData.get("subject_id") || "") || null;
   const classId = String(formData.get("class_id") || "") || null;
   const title = String(formData.get("title") || "").trim();
   const instructions = String(formData.get("instructions") || "").trim() || null;
   const dueAt = String(formData.get("due_at") || "") || null;
   const maxScore = Number(formData.get("max_score") || 100);
   if (!title) return { error: "Title required" };
+  if (!subjectId) return { error: "Subject required" };
 
   const { data: assessment, error } = await supabase
     .from("tuition_assessments")
     .insert({
       organization_id: organization.id,
+      subject_id: subjectId,
       class_id: classId,
       title,
       instructions,
@@ -140,23 +143,14 @@ export async function createTuitionAssessmentAction(formData: FormData) {
     .single();
   if (error || !assessment) return { error: error?.message || "Failed to create assessment" };
 
-  // Assign to enrolled students (or all customers if no class)
+  // Marks sheet for students enrolled in this subject
   let studentIds: string[] = [];
-  if (classId) {
-    const { data: enrolled } = await supabase
-      .from("tuition_enrollments")
-      .select("customer_id")
-      .eq("organization_id", organization.id)
-      .eq("class_id", classId);
-    studentIds = (enrolled || []).map((e) => e.customer_id);
-  } else {
-    const { data: customers } = await supabase
-      .from("customers")
-      .select("id")
-      .eq("organization_id", organization.id)
-      .limit(500);
-    studentIds = (customers || []).map((c) => c.id);
-  }
+  const { data: enrolled } = await supabase
+    .from("tuition_subject_enrollments")
+    .select("customer_id")
+    .eq("organization_id", organization.id)
+    .eq("subject_id", subjectId);
+  studentIds = (enrolled || []).map((e) => e.customer_id);
 
   if (studentIds.length) {
     await supabase.from("tuition_submissions").insert(
@@ -171,10 +165,10 @@ export async function createTuitionAssessmentAction(formData: FormData) {
 
   await logActivity({
     action: "tuition.assessment.create",
-    summary: `Created assessment ${title}`,
+    summary: `Created assessment record ${title}`,
     entityType: "tuition_assessments",
     entityId: assessment.id,
-    meta: { by: profile.id, assigned: studentIds.length },
+    meta: { by: profile.id, assigned: studentIds.length, subject_id: subjectId },
   });
   revalidateApp("/assessments");
   return { success: true };

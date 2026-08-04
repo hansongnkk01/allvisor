@@ -1,0 +1,4 @@
+invoice_number,issue_date,customer_name,customer_ic,customer_phone,product_name,sku,barcode,quantity,unit_price,payment_method,notes
+PH-001,2026-05-10,Ahmad bin Ali,900101145678,0123456789,Panadol 500mg 10s,PH-PARA,9559000000001,2,4.5,cash,
+PH-002,2026-06-01,Hafiz Abdullah,850909145999,0123344556,Vitamin C 1000mg,PH-VITC,9559000000003,1,28,card,
+PH-003,2026-07-12,Siti Aminah,880202085432,0198765432,Cough Syrup 100ml,PH-COUGH,9559000000004,1,15,cash,

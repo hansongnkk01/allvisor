@@ -1,0 +1,7 @@
+product_name,sku,lot_number,expiry_date,quantity
+Panadol 500mg 10s,PH-PARA,LOT-P24A,2027-06-30,150
+Panadol 500mg 10s,PH-PARA,LOT-P24B,2027-12-31,150
+Amoxicillin 250mg,PH-AMOX,LOT-AX01,2026-11-30,80
+Vitamin C 1000mg,PH-VITC,LOT-VC09,2028-01-15,100
+Cough Syrup 100ml,PH-COUGH,LOT-CS03,2027-03-01,60
+Insulin Pen Needle,PH-NEED,LOT-IN02,2026-09-30,40

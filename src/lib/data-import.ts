@@ -306,14 +306,23 @@ export function rowsToCsv(headers: string[], rows: string[][]) {
   return [headers, ...rows].map((r) => r.map(esc).join(",")).join("\n");
 }
 
-export function downloadTemplate(kind: ImportKind) {
+export function downloadTemplate(kind: ImportKind, opts?: { omitRisk?: boolean }) {
   const t = IMPORT_TEMPLATES[kind];
-  const csv = rowsToCsv(t.headers, t.sample);
+  let headers = [...t.headers];
+  let sample = t.sample.map((row) => [...row]);
+  if (opts?.omitRisk && kind === "patients") {
+    const idx = headers.indexOf("risk_level");
+    if (idx >= 0) {
+      headers = headers.filter((_, i) => i !== idx);
+      sample = sample.map((row) => row.filter((_, i) => i !== idx));
+    }
+  }
+  const csv = rowsToCsv(headers, sample);
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = t.filename;
+  a.download = opts?.omitRisk && kind === "patients" ? "allvisor-students-template.csv" : t.filename;
   a.click();
   URL.revokeObjectURL(url);
 }

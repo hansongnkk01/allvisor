@@ -44,6 +44,7 @@ export function TeamMembersSection({
     name: string;
     role: string;
     jobTitle: string;
+    jobTitlePlaceholder?: string;
     add: string;
     search: string;
     email: string;
@@ -111,7 +112,7 @@ export function TeamMembersSection({
                 <input
                   name="job_title"
                   className="input"
-                  placeholder="SV / Nurse / …"
+                  placeholder={labels.jobTitlePlaceholder || "SV / Nurse / …"}
                 />
               </div>
             </div>

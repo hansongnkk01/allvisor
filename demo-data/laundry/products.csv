@@ -1,0 +1,4 @@
+name,sku,barcode,category,sold_by,unit_price,cost_price,quantity,low_stock_threshold,available_to_sale,track_stock,price_on_sale,description
+Detergent Refill,LAU-DET,9566000000001,Detergent,each,12,5,60,10,yes,yes,no,
+Laundry Bag,LAU-BAG,9566000000002,Bags,each,8,3,40,10,yes,yes,no,
+Fabric Softener,LAU-SOFT,9566000000003,Detergent,each,15,6,35,10,yes,yes,no,

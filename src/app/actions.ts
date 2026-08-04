@@ -151,9 +151,12 @@ export async function upsertCustomerAction(formData: FormData) {
     address: String(formData.get("address") || "").trim() || null,
     notes: String(formData.get("notes") || "") || null,
     allergies: String(formData.get("allergies") || "").trim() || null,
-    risk_level: (["high", "medium", "low"].includes(String(formData.get("risk_level") || ""))
-      ? String(formData.get("risk_level"))
-      : null) as "high" | "medium" | "low" | null,
+    risk_level:
+      organization.niche === "tuition"
+        ? null
+        : ((["high", "medium", "low"].includes(String(formData.get("risk_level") || ""))
+            ? String(formData.get("risk_level"))
+            : null) as "high" | "medium" | "low" | null),
   };
   if (!payload.name) return { error: "Name required" };
   if (!payload.address) return { error: "Address required" };
@@ -272,8 +275,12 @@ export async function upsertCustomerAction(formData: FormData) {
   await logActivity({
     action: id ? "customer.update" : "customer.create",
     summary: id
-      ? `Updated patient/customer: ${payload.name}`
-      : `Registered patient/customer: ${payload.name}`,
+      ? hasCapability(organization.niche, "assessments") || organization.niche === "tuition"
+        ? `Updated student: ${payload.name}`
+        : `Updated patient/customer: ${payload.name}`
+      : hasCapability(organization.niche, "assessments") || organization.niche === "tuition"
+        ? `Registered student: ${payload.name}`
+        : `Registered patient/customer: ${payload.name}`,
     entityType: "customer",
     entityId: customerId || null,
   });
@@ -314,7 +321,10 @@ export async function deleteCustomerAction(id: string) {
 
   await logActivity({
     action: "customer.delete",
-    summary: `Deleted patient/customer: ${customer?.name || id}`,
+    summary:
+      organization.niche === "tuition"
+        ? `Deleted student: ${customer?.name || id}`
+        : `Deleted patient/customer: ${customer?.name || id}`,
     entityType: "customer",
     entityId: id,
   });
@@ -3492,6 +3502,7 @@ export async function importMigrationDataAction(
         continue;
       }
       const risk = String(r.risk_level || "").toLowerCase();
+      const forceNoRisk = organization.niche === "tuition";
       payloads.push({
         organization_id: organization.id,
         name,
@@ -3500,9 +3511,11 @@ export async function importMigrationDataAction(
         email: String(r.email || "").trim() || null,
         address: String(r.address || "").trim() || null,
         notes: String(r.notes || "").trim() || null,
-        risk_level: (["high", "medium", "low"].includes(risk)
-          ? risk
-          : null) as "high" | "medium" | "low" | null,
+        risk_level: forceNoRisk
+          ? null
+          : ((["high", "medium", "low"].includes(risk)
+              ? risk
+              : null) as "high" | "medium" | "low" | null),
         created_by: profile.id,
         created_by_name: actor,
       });
@@ -4025,9 +4038,15 @@ export async function importMigrationDataAction(
     return { error: "Unknown import type" };
   }
 
+  const kindLabel =
+    kind === "patients" && organization.niche === "tuition"
+      ? "students"
+      : kind === "appointments" && organization.niche === "tuition"
+        ? "schedule"
+        : kind;
   await logActivity({
     action: "admin.data_import",
-    summary: `Imported ${inserted} ${kind} row(s) from migration file (${skipped} skipped)`,
+    summary: `Imported ${inserted} ${kindLabel} row(s) from migration file (${skipped} skipped)`,
     entityType: "organization",
     entityId: organization.id,
     meta: { kind, inserted, skipped, errorCount: errors.length },

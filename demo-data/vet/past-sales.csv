@@ -1,0 +1,3 @@
+invoice_number,issue_date,customer_name,customer_ic,customer_phone,product_name,sku,barcode,quantity,unit_price,payment_method,notes
+VET-001,2026-06-10,Ahmad bin Ali,900101145678,0123456789,Dog Food 3kg,VET-DF,9562000000001,1,65,cash,
+VET-002,2026-07-01,Tan Mei Ling,930505145111,0161122334,Cat Food 1.5kg,VET-CF,9562000000002,2,42,card,
