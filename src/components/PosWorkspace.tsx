@@ -78,6 +78,7 @@ export function PosWorkspace({
   categories,
   initialTickets,
   labels,
+  demoMode = false,
 }: {
   products: PosProduct[];
   frequentIds: string[];
@@ -85,6 +86,8 @@ export function PosWorkspace({
   categories: Array<{ id: string; name: string }>;
   initialTickets: HeldTicket[];
   labels: Labels;
+  /** Homepage marketing demo — UI only, no server mutations. */
+  demoMode?: boolean;
 }) {
   const router = useRouter();
   const searchRef = useRef<HTMLInputElement>(null);
@@ -218,6 +221,18 @@ export function PosWorkspace({
     fd.set("payment_method", method);
     if (activeTicketId) fd.set("ticket_id", activeTicketId);
 
+    if (demoMode) {
+      setCart([]);
+      setCustomerId("");
+      setMethod("cash");
+      setActiveTicketId("");
+      setLastInvoiceId("demo-inv");
+      setTickets((current) => current.filter((ticket) => ticket.id !== activeTicketId));
+      setOkMsg(labels.success);
+      searchRef.current?.focus();
+      return;
+    }
+
     startTransition(async () => {
       const res = await posCheckoutAction(fd);
       if (res && "error" in res && res.error) {
@@ -273,6 +288,23 @@ export function PosWorkspace({
       unit_price: line.unitPrice,
       quantity: line.qty,
     }))));
+    if (demoMode) {
+      const held: HeldTicket = {
+        id: activeTicketId || `demo-t-${Date.now()}`,
+        ticket_number: existing?.ticket_number || `T-${tickets.length + 100}`,
+        customer_id: customerId || null,
+        payment_method: method,
+        lines: cart.map((line) => ({
+          productId: line.productId,
+          name: line.name,
+          unitPrice: line.unitPrice,
+          qty: line.qty,
+        })),
+      };
+      setTickets((current) => [held, ...current.filter((ticket) => ticket.id !== held.id)]);
+      newTicket();
+      return;
+    }
     startTransition(async () => {
       const result = await savePosTicketAction(fd);
       if (result && "error" in result && result.error) return setError(result.error);
@@ -597,6 +629,11 @@ export function PosWorkspace({
             style={{ width: "100%", marginTop: ".5rem" }}
             disabled={pending}
             onClick={() => {
+              if (demoMode) {
+                setTickets((current) => current.filter((t) => t.id !== activeTicketId));
+                newTicket();
+                return;
+              }
               const fd = new FormData();
               fd.set("ticket_id", activeTicketId);
               startTransition(async () => {

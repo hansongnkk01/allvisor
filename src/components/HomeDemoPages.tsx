@@ -1,9 +1,39 @@
 "use client";
 
+import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useState, type ReactNode } from "react";
+import { AccountingCashChart } from "@/components/AccountingCashChart";
+import {
+  AccountingExpenseTable,
+  AccountingLedgerTable,
+} from "@/components/AccountingPagedTables";
+import { AppointmentBoard } from "@/components/AppointmentBoard";
+import { ConfirmProvider } from "@/components/ConfirmDialog";
+import { DemoCensor, DemoCensorField } from "@/components/DemoCensor";
+import { InvoicesWorkspace } from "@/components/InvoicesWorkspace";
 import { PageHeader } from "@/components/PageHeader";
-import { DayHourTimetable } from "@/components/DayHourTimetable";
-import { PatientName } from "@/components/PatientName";
+import { PatientsList } from "@/components/PatientsList";
+import { PosWorkspace } from "@/components/PosWorkspace";
+import {
+  demoAccounting,
+  demoAppointments,
+  demoBranches,
+  demoCashSession,
+  demoCustomers,
+  demoHeldTickets,
+  demoInvoicePreview,
+  demoInvoices,
+  demoInventoryRows,
+  demoLhdnSubmissions,
+  demoNicheModule,
+  demoProductCategories,
+  demoProducts,
+  demoServiceCategories,
+  demoTeam,
+  type NicheModuleConfig,
+} from "@/lib/demo-dashboard-data";
+import { getNicheVocab, vocabLabels } from "@/lib/niches";
+import { formatCurrency, formatDateTime } from "@/lib/utils";
 import type { Niche } from "@/lib/types";
 
 type Props = {
@@ -14,192 +44,97 @@ type Props = {
   scheduleLabel: string;
 };
 
-function DemoInput({
-  label,
-  placeholder,
-  defaultValue,
-  type = "text",
+function DemoNoopForm({
+  children,
+  className,
+  style,
 }: {
-  label: string;
-  placeholder?: string;
-  defaultValue?: string;
-  type?: string;
+  children: ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
 }) {
   return (
-    <div className="field">
-      {label ? <label>{label}</label> : null}
-      <input
-        className="input"
-        type={type}
-        placeholder={placeholder}
-        defaultValue={defaultValue}
-        readOnly
-      />
-    </div>
-  );
-}
-
-function DemoSelect({ label, options, value }: { label: string; options: string[]; value?: string }) {
-  return (
-    <div className="field">
-      {label ? <label>{label}</label> : null}
-      <select className="select" defaultValue={value || options[0]} disabled>
-        {options.map((o) => (
-          <option key={o} value={o}>
-            {o}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
-function DemoTextarea({ label, placeholder, rows = 3 }: { label: string; placeholder?: string; rows?: number }) {
-  return (
-    <div className="field">
-      {label ? <label>{label}</label> : null}
-      <textarea className="textarea" placeholder={placeholder} rows={rows} readOnly defaultValue="" />
-    </div>
-  );
-}
-
-function SoftBtn({ children, tone = "soft" }: { children: ReactNode; tone?: "soft" | "danger" | "primary" }) {
-  const cls =
-    tone === "danger" ? "btn btn-ghost" : tone === "primary" ? "btn btn-primary" : "btn btn-soft";
-  return (
-    <button type="button" className={cls} style={tone === "danger" ? { color: "#b42318", background: "rgba(220,38,38,0.08)" } : undefined}>
+    <form
+      className={className}
+      style={style}
+      onSubmit={(e) => {
+        e.preventDefault();
+      }}
+    >
       {children}
-    </button>
+    </form>
   );
 }
 
-function PatientsDemo({ orgName, entityTitle }: { orgName: string; entityTitle: string }) {
-  const rows = [
-    {
-      name: "Aina Rahman",
-      risk: "high" as const,
-      allergies: "Nuts",
-      ic: "900101-14-5678",
-      address: "12 Jalan Melati, Shah Alam",
-      phone: "012-345 6789",
-      email: "aina@email.com",
-      added: "Reception Lina",
-    },
-    {
-      name: "Lim Wei",
-      risk: "low" as const,
-      allergies: null as string | null,
-      ic: "880512-10-3344",
-      address: "88 SS2, Petaling Jaya",
-      phone: "016-778 2210",
-      email: "limwei@email.com",
-      added: "Dr. Amin",
-    },
-    {
-      name: "Siti Aminah",
-      risk: "medium" as const,
-      allergies: "Amoxycillin",
-      ic: "950303-08-1122",
-      address: "B-12-03 Residensi Harmoni",
-      phone: "019-441 2200",
-      email: "siti@email.com",
-      added: "Nurse Farah",
-    },
-    {
-      name: "Tan Mei Ling",
-      risk: "low" as const,
-      allergies: null,
-      ic: "920720-14-9900",
-      address: "No. 5 Lorong Kemboja",
-      phone: "013-990 1188",
-      email: "mei@email.com",
-      added: "Reception Lina",
-    },
-    {
-      name: "Rajesh K.",
-      risk: "medium" as const,
-      allergies: "Seafood",
-      ic: "860909-10-2211",
-      address: "Taman Desa, KL",
-      phone: "014-332 1100",
-      email: "rajesh@email.com",
-      added: "Dr. Amin",
-    },
-  ];
-
+function NicheModuleDemo({ config, orgName }: { config: NicheModuleConfig; orgName: string }) {
   return (
     <div className="stack" style={{ gap: "1.25rem" }}>
-      <PageHeader title={entityTitle} subtitle={orgName} />
-
+      <PageHeader title={config.title} subtitle={config.subtitle || orgName} />
+      {config.fields.length ? (
+        <div className="surface" style={{ padding: "1.25rem" }}>
+          <h3 style={{ marginTop: 0 }}>Add</h3>
+          <DemoNoopForm className="stack">
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+                gap: "0.75rem",
+              }}
+            >
+              {config.fields.map((f) => (
+                <div className="field" key={f.name}>
+                  <label>{f.label}</label>
+                  {f.type === "select" ? (
+                    <select className="select" defaultValue={f.defaultValue ?? ""} disabled>
+                      <option value="">—</option>
+                      {(f.options || []).map((o) => (
+                        <option key={o} value={o}>
+                          {o}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      className="input"
+                      type={f.type || "text"}
+                      defaultValue={f.defaultValue ?? ""}
+                      readOnly
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+            <button type="submit" className="btn btn-primary">
+              Save
+            </button>
+          </DemoNoopForm>
+        </div>
+      ) : null}
       <div className="surface" style={{ padding: "1.25rem" }}>
-        <h3 style={{ marginTop: 0 }}>Add</h3>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-            gap: "0.75rem",
-          }}
-        >
-          <DemoInput label="Name" placeholder="Full name" />
-          <DemoSelect label="Risk" options={["—", "low", "medium", "high"]} />
-          <DemoInput label="IC number" placeholder="900101-14-5678" />
-          <DemoInput label="Email" placeholder="name@email.com" />
-          <DemoInput label="Phone" placeholder="012-3456789" />
-        </div>
-        <div style={{ marginTop: "0.75rem" }}>
-          <DemoInput label="Address" placeholder="Unit / street / city" />
-        </div>
-        <div style={{ marginTop: "0.75rem" }}>
-          <DemoInput label="Allergies" placeholder="e.g. Penicillin, nuts" />
-        </div>
-        <div style={{ marginTop: "0.75rem" }}>
-          <DemoTextarea label="Notes" placeholder="Clinical notes…" rows={2} />
-        </div>
-        <button type="button" className="btn btn-primary" style={{ width: "100%", marginTop: "0.9rem" }}>
-          Save
-        </button>
-      </div>
-
-      <div className="surface" style={{ padding: "1.25rem" }}>
-        <div className="field" style={{ maxWidth: 280, marginBottom: "0.85rem" }}>
-          <label>Search</label>
-          <input className="input" placeholder="Search name, IC, phone…" readOnly />
-        </div>
         <div className="table-wrap">
           <table className="data">
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Risk</th>
-                <th>IC number</th>
-                <th>Address</th>
-                <th>Phone</th>
-                <th>Email</th>
-                <th>Added by</th>
-                <th />
+                {config.columns.map((c) => (
+                  <th key={c}>{c}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
-                <tr key={r.ic}>
-                  <td>
-                    <PatientName name={r.name} risk={r.risk} allergies={r.allergies} />
-                  </td>
-                  <td>{r.risk}</td>
-                  <td>{r.ic}</td>
-                  <td>{r.address}</td>
-                  <td>{r.phone}</td>
-                  <td>{r.email}</td>
-                  <td>{r.added}</td>
-                  <td>
-                    <div className="row" style={{ gap: "0.35rem", flexWrap: "wrap" }}>
-                      <SoftBtn>History</SoftBtn>
-                      <SoftBtn>Edit</SoftBtn>
-                      <SoftBtn tone="danger">Delete</SoftBtn>
-                    </div>
-                  </td>
+              {config.rows.map((row, i) => (
+                <tr key={i}>
+                  {row.map((cell, j) => (
+                    <td key={j}>{cell}</td>
+                  ))}
                 </tr>
               ))}
+              {!config.rows.length ? (
+                <tr>
+                  <td colSpan={config.columns.length} className="muted">
+                    No records yet.
+                  </td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>
@@ -208,1018 +143,465 @@ function PatientsDemo({ orgName, entityTitle }: { orgName: string; entityTitle: 
   );
 }
 
-function AppointmentsDemo({
-  orgName,
-  scheduleLabel,
-}: {
-  orgName: string;
-  scheduleLabel: string;
-}) {
-  const [mode, setMode] = useState<"calendar" | "list">("calendar");
-  const now = useMemo(() => new Date(2026, 7, 5), []);
-  const appts = useMemo(
-    () => [
-      {
-        id: "1",
-        title: "Emergency / walk-in",
-        starts_at: "2026-08-05T02:30:00+08:00",
-        ends_at: "2026-08-05T03:00:00+08:00",
-        status: "completed",
-        customers: { name: "estatotitu", risk_level: "low" as const, allergies: null },
-      },
-      {
-        id: "2",
-        title: "Consult",
-        starts_at: "2026-08-05T09:00:00+08:00",
-        ends_at: "2026-08-05T09:30:00+08:00",
-        status: "confirmed",
-        customers: { name: "Nurul Aisyah", risk_level: "low" as const, allergies: null },
-      },
-      {
-        id: "3",
-        title: "Follow-up",
-        starts_at: "2026-08-05T10:30:00+08:00",
-        ends_at: "2026-08-05T11:00:00+08:00",
-        status: "confirmed",
-        customers: { name: "Rajesh K.", risk_level: "medium" as const, allergies: "Penicillin" },
-      },
-    ],
-    []
-  );
+function CustomersDemo({ niche, orgName, entityTitle }: { niche: Niche; orgName: string; entityTitle: string }) {
+  const t = useTranslations("Customers");
+  const tc = useTranslations("Common");
+  const locale = useLocale();
+  const vocab = getNicheVocab(niche);
+  const isTuition = niche === "tuition";
+  const isClinic = vocab.showAllergies;
+  const customers = useMemo(() => demoCustomers(niche), [niche]);
+  const subjects = [
+    { id: "s1", name: "Math Form 4", price: 120 },
+    { id: "s2", name: "Science Form 5", price: 130 },
+  ];
 
-  const days = Array.from({ length: 31 }, (_, i) => i + 1);
-  const counts: Record<number, number> = { 3: 7, 5: 3, 8: 2, 12: 4, 19: 1, 26: 5 };
+  const rowLabels = {
+    name: t("name"),
+    email: t("email"),
+    phone: t("phone"),
+    ic: t("ic"),
+    address: t("address"),
+    notes: t("notes"),
+    save: t("save"),
+    delete: t("delete"),
+    edit: t("edit"),
+    cancel: t("cancel"),
+    addedBy: t("addedBy"),
+    risk: t("risk"),
+    allergies: t("allergies"),
+    timeline: {
+      timeline: t("timeline"),
+      close: t("timelineClose"),
+      loading: t("timelineLoading"),
+      empty: isClinic ? t("timelineEmpty") : t("timelineEmptyRetail"),
+      visits: t("timelineVisits"),
+      invoices: t("timelineInvoices"),
+      notes: t("notes"),
+      allergies: t("allergies"),
+      contact: t("timelineContact"),
+      status: t("timelineStatus"),
+      total: t("timelineTotal"),
+      paid: t("timelinePaid"),
+    },
+  };
 
   return (
     <div className="stack" style={{ gap: "1.25rem" }}>
-      <PageHeader title={scheduleLabel} subtitle={orgName} />
+      <PageHeader title={entityTitle} subtitle={isTuition ? t("tuitionSubtitle") : orgName} />
 
-      <div className="row" style={{ gap: "0.5rem", flexWrap: "wrap" }}>
-        <button
-          type="button"
-          className={`btn ${mode === "calendar" ? "btn-primary" : "btn-ghost"}`}
-          onClick={() => setMode("calendar")}
-        >
-          Calendar
-        </button>
-        <button
-          type="button"
-          className={`btn ${mode === "list" ? "btn-primary" : "btn-ghost"}`}
-          onClick={() => setMode("list")}
-        >
-          List
-        </button>
-        <div className="row" style={{ marginLeft: "auto", gap: "0.4rem", alignItems: "center" }}>
-          <SoftBtn>Prev</SoftBtn>
-          <strong style={{ minWidth: 120, textAlign: "center" }}>August 2026</strong>
-          <SoftBtn>Next</SoftBtn>
-          <SoftBtn>Today</SoftBtn>
-        </div>
-      </div>
-
-      {mode === "calendar" ? (
-        <div className="surface" style={{ padding: "1rem" }}>
+      <div className="surface" style={{ padding: "1.25rem" }}>
+        <h3 style={{ marginTop: 0 }}>{isTuition ? t("addStudent") : t("add")}</h3>
+        <DemoNoopForm className="stack">
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(7, 1fr)",
-              gap: "0.45rem",
-              marginBottom: "0.5rem",
+              gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+              gap: "0.75rem",
             }}
           >
-            {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
-              <div key={d} className="muted" style={{ fontSize: "0.75rem", textAlign: "center" }}>
-                {d}
+            <div className="field">
+              <label>{t("name")}</label>
+              <input name="name" className="input" readOnly />
+            </div>
+            {isClinic ? (
+              <div className="field">
+                <label>{t("risk")}</label>
+                <select className="select" defaultValue="" disabled>
+                  <option value="">—</option>
+                  <option value="low">{t("riskLow")}</option>
+                  <option value="medium">{t("riskMedium")}</option>
+                  <option value="high">{t("riskHigh")}</option>
+                </select>
               </div>
-            ))}
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={`pad-${i}`} />
-            ))}
-            {days.map((d) => {
-              const selected = d === 5;
-              return (
-                <div
-                  key={d}
-                  className="surface"
-                  style={{
-                    margin: 0,
-                    padding: "0.55rem 0.4rem",
-                    textAlign: "center",
-                    minHeight: 54,
-                    border: selected ? "1px solid var(--accent)" : undefined,
-                    background: selected ? "var(--accent-soft)" : undefined,
-                  }}
-                >
-                  <div style={{ fontWeight: 650 }}>{d}</div>
-                  {counts[d] ? (
-                    <span
-                      className="badge"
-                      style={{ marginTop: 4, display: "inline-block", minWidth: 22 }}
-                    >
-                      {counts[d]}
+            ) : null}
+            <DemoCensorField label={t("ic")} />
+            <div className="field">
+              <label>{t("email")}</label>
+              <input name="email" type="email" className="input" readOnly />
+            </div>
+            <div className="field">
+              <label>{t("phone")}</label>
+              <input name="phone" className="input" readOnly />
+            </div>
+          </div>
+          <div className="field">
+            <label>{t("address")}</label>
+            <input
+              name="address"
+              className="input"
+              placeholder="Street, city, postcode, state"
+              readOnly
+            />
+          </div>
+          {isClinic ? (
+            <div className="field">
+              <label>{t("allergies")}</label>
+              <input name="allergies" className="input" placeholder={t("allergiesPlaceholder")} readOnly />
+            </div>
+          ) : null}
+          <div className="field">
+            <label>{t("notes")}</label>
+            <textarea name="notes" className="textarea" readOnly />
+          </div>
+          {isTuition ? (
+            <div className="field">
+              <label>{t("subjects")}</label>
+              <p className="muted" style={{ margin: "0 0 0.5rem", fontSize: "0.9rem" }}>
+                {t("subjectsHint")}
+              </p>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                  gap: "0.4rem",
+                }}
+              >
+                {subjects.map((c) => (
+                  <label key={c.id} className="row" style={{ gap: "0.4rem", alignItems: "center" }}>
+                    <input type="checkbox" disabled />
+                    <span>
+                      {c.name} ({c.price})
                     </span>
-                  ) : null}
-                </div>
-              );
-            })}
+                  </label>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          <button type="submit" className="btn btn-primary">
+            {t("save")}
+          </button>
+        </DemoNoopForm>
+      </div>
+
+      <div className="surface" style={{ padding: "1.25rem" }}>
+        <PatientsList
+          customers={customers}
+          labels={rowLabels}
+          empty={isTuition ? t("emptyTuition") : t("empty")}
+          searchPlaceholder={tc("search")}
+          showAllergies={vocab.showAllergies}
+          showRisk={vocab.showRisk}
+          demoMode
+        />
+      </div>
+
+      {isTuition ? (
+        <div className="surface" style={{ padding: "1.25rem" }}>
+          <h3 style={{ marginTop: 0 }}>{t("enrolledSubjectsTitle")}</h3>
+          <p className="muted">{t("enrolledSubjectsHint")}</p>
+          <div className="table-wrap">
+            <table className="data">
+              <thead>
+                <tr>
+                  <th>{t("name")}</th>
+                  <th>{t("subjects")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {customers.map((c) => (
+                  <tr key={c.id}>
+                    <td>{c.name}</td>
+                    <td>{c.id === "c3" ? "Math Form 4, Science Form 5" : "Math Form 4"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       ) : null}
-
-      <DayHourTimetable
-        date={now}
-        appointments={appts}
-        orientation="horizontal"
-        hoursConfig={{ openHour: 0, closeHour: 20, closedWeekdays: [6, 0], locale: "en" }}
-        labels={{
-          timetable: "Hour timetable — Wed 5 Aug",
-          occupied: "Occupied",
-          free: "Free",
-          closed: "Clinic closed",
-          publicHoliday: "Public holiday",
-        }}
-      />
-
-      <div className="surface" style={{ padding: "1.25rem" }}>
-        <h3 style={{ marginTop: 0 }}>Wed, 5 Aug 2026</h3>
-        <div className="stack" style={{ gap: "0.85rem" }}>
-          {appts.map((a) => (
-            <div
-              key={a.id}
-              className="row"
-              style={{
-                justifyContent: "space-between",
-                gap: "0.75rem",
-                flexWrap: "wrap",
-                borderBottom: "1px solid var(--line)",
-                paddingBottom: 10,
-              }}
-            >
-              <div>
-                <strong>{a.customers?.name}</strong>
-                <div className="muted" style={{ fontSize: "0.88rem" }}>
-                  {a.title} · {new Date(a.starts_at).toLocaleString("en-MY")} –{" "}
-                  {new Date(a.ends_at).toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" })}
-                </div>
-              </div>
-              <div className="row" style={{ gap: "0.35rem", flexWrap: "wrap" }}>
-                <DemoSelect label="" options={["completed", "confirmed", "booked", "no_show"]} value={a.status} />
-                <SoftBtn>✓</SoftBtn>
-                <button type="button" className="btn btn-soft" style={{ background: "rgba(234,179,8,0.2)" }}>
-                  Edit
-                </button>
-                <SoftBtn tone="danger">Delete</SoftBtn>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function InvoicesDemo({ orgName }: { orgName: string }) {
-  const rows = [
-    {
-      cat: "Dental · paid",
-      title: "gigi cabut",
-      no: "INV-2026-00032",
-      patient: "Aisyah Zahra",
-      risk: "low" as const,
-      total: "RM 200.00",
-      paid: "RM 200.00",
-      at: "3 Ogo 2026, 04:35 PTG",
-      status: "paid",
-    },
-    {
-      cat: "Follow-up · pending",
-      title: "mental",
-      no: "INV-2026-00031",
-      patient: "Hanson Glenn",
-      risk: "high" as const,
-      total: "RM 120.00",
-      paid: "RM 0.00",
-      at: "3 Ogo 2026, 02:10 PTG",
-      status: "unpaid",
-    },
-    {
-      cat: "Consult · paid",
-      title: "Consult + meds",
-      no: "INV-2026-00030",
-      patient: "Aina Rahman",
-      risk: "high" as const,
-      total: "RM 85.00",
-      paid: "RM 85.00",
-      at: "2 Ogo 2026, 11:20 PG",
-      status: "paid",
-    },
-    {
-      cat: "Lab · partial",
-      title: "Blood panel",
-      no: "INV-2026-00029",
-      patient: "Lim Wei",
-      risk: "low" as const,
-      total: "RM 95.00",
-      paid: "RM 40.00",
-      at: "1 Ogo 2026, 03:05 PTG",
-      status: "partial",
-    },
-  ];
-
-  return (
-    <div className="stack" style={{ gap: "1.25rem" }}>
-      <PageHeader title="Invoices" subtitle={orgName} />
-      <div className="row" style={{ gap: "0.75rem", flexWrap: "wrap", alignItems: "flex-end" }}>
-        <DemoSelect label="Filter by day" options={["All days", "Today", "This week"]} />
-        <div className="field" style={{ flex: "1 1 260px" }}>
-          <label>Search</label>
-          <input className="input" placeholder="Search patient, invoice no., notes…" readOnly />
-        </div>
-      </div>
-      <div className="surface" style={{ padding: "1.25rem" }}>
-        <div className="table-wrap">
-          <table className="data">
-            <thead>
-              <tr>
-                <th>Invoice no.</th>
-                <th>Patient</th>
-                <th>Status</th>
-                <th>Total</th>
-                <th>Paid</th>
-                <th>Added at</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.no}>
-                  <td>
-                    <div className="muted" style={{ fontSize: "0.78rem" }}>
-                      {r.cat}
-                    </div>
-                    <div>{r.title}</div>
-                    <div className="muted" style={{ fontSize: "0.8rem" }}>
-                      {r.no}
-                    </div>
-                  </td>
-                  <td>
-                    <PatientName name={r.patient} risk={r.risk} allergies={null} />
-                  </td>
-                  <td>
-                    <span className="badge">{r.status}</span>
-                  </td>
-                  <td>{r.total}</td>
-                  <td>{r.paid}</td>
-                  <td>{r.at}</td>
-                  <td>
-                    <SoftBtn tone="danger">Revoke</SoftBtn>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function InventoryDemo({ orgName }: { orgName: string }) {
-  const frequent = [
-    { name: "Surgical gloves M", sku: "SUP-002", used: 54, onHand: 4100 },
-    { name: "OR S oral rehydration", sku: "MED-003", used: 1, onHand: 153 },
-    { name: "Gauze swab 7.5cm", sku: "SUP-004", used: 1, onHand: 73 },
-    { name: "Paracetamol", sku: "123456", used: 1, onHand: 2004 },
-    { name: "Antiseptic solution 100ml", sku: "SUP-001", used: 1, onHand: 43 },
-  ];
-  const rows = [
-    {
-      name: "Amoxycillin Antibiotics",
-      sku: "160317",
-      barcode: "—",
-      price: "RM 10.00",
-      qty: 206,
-      at: "31 Jul 2026, 02:01 PG",
-    },
-    {
-      name: "Syringe 5ml",
-      sku: "SUP-005",
-      barcode: "—",
-      price: "RM 0.80",
-      qty: 304,
-      at: "30 Jul 2026, 04:41 PTG",
-    },
-    {
-      name: "Saline 500ml",
-      sku: "MED-007",
-      barcode: "8901234567890",
-      price: "RM 3.50",
-      qty: 48,
-      at: "28 Jul 2026, 10:12 PG",
-    },
-    {
-      name: "Face mask (box)",
-      sku: "SUP-010",
-      barcode: "—",
-      price: "RM 12.00",
-      qty: 22,
-      at: "25 Jul 2026, 03:20 PTG",
-    },
-  ];
-
-  return (
-    <div className="stack" style={{ gap: "1.25rem" }}>
-      <PageHeader title="Inventory" subtitle="Medicines and clinic supplies." />
-
-      <div className="surface" style={{ padding: "1.25rem" }}>
-        <h3 style={{ marginTop: 0 }}>Frequently used</h3>
-        <p className="muted" style={{ marginTop: 0, fontSize: "0.88rem" }}>
-          Most issued / sold in the last 90 days — keep these easy to find.
-        </p>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-            gap: "0.65rem",
-          }}
-        >
-          {frequent.map((f) => (
-            <div key={f.sku} className="surface" style={{ margin: 0, padding: "0.75rem" }}>
-              <strong style={{ fontSize: "0.9rem" }}>{f.name}</strong>
-              <div className="muted" style={{ fontSize: "0.78rem", marginTop: 4 }}>
-                SKU: {f.sku}
-              </div>
-              <div style={{ fontSize: "0.82rem", marginTop: 6 }}>
-                {f.used} used · {f.onHand} on hand
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="surface" style={{ padding: "1.25rem" }}>
-        <h3 style={{ marginTop: 0 }}>Add item</h3>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
-            gap: "0.65rem",
-          }}
-        >
-          <DemoInput label="Name" defaultValue="Paracetamol 500mg" />
-          <DemoInput label="SKU" />
-          <DemoInput label="Barcode" placeholder="EAN / scan code (opt)" />
-          <DemoInput label="Price" defaultValue="0" />
-          <DemoInput label="Cost" defaultValue="0" />
-          <DemoInput label="Quantity" defaultValue="0" />
-          <DemoInput label="Low threshold" defaultValue="5" />
-        </div>
-        <button type="button" className="btn btn-primary" style={{ width: "100%", marginTop: "0.85rem" }}>
-          Save
-        </button>
-      </div>
-
-      <div className="surface" style={{ padding: "1.25rem" }}>
-        <div className="field" style={{ maxWidth: 280, marginBottom: "0.75rem" }}>
-          <label>Search</label>
-          <input className="input" placeholder="Search item…" readOnly />
-        </div>
-        <div className="row" style={{ gap: "0.5rem", marginBottom: "0.85rem", flexWrap: "wrap", alignItems: "center" }}>
-          <label className="row" style={{ gap: 6 }}>
-            <input type="checkbox" readOnly /> Select all items
-          </label>
-          <DemoSelect label="" options={["Adjust qty", "Set threshold"]} />
-          <input style={{ width: 70 }} defaultValue="0" readOnly />
-          <SoftBtn>OK for selected items (0)</SoftBtn>
-        </div>
-        <div className="table-wrap">
-          <table className="data">
-            <thead>
-              <tr>
-                <th />
-                <th>Name</th>
-                <th>SKU</th>
-                <th>Barcode</th>
-                <th>Price</th>
-                <th>Quantity</th>
-                <th>Retail</th>
-                <th>Category</th>
-                <th>Added at</th>
-                <th>Adjust stock</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.sku}>
-                  <td>
-                    <input type="checkbox" readOnly />
-                  </td>
-                  <td>{r.name}</td>
-                  <td>{r.sku}</td>
-                  <td>{r.barcode}</td>
-                  <td>{r.price}</td>
-                  <td>{r.qty}</td>
-                  <td>
-                    <span className="badge">each</span>
-                  </td>
-                  <td>—</td>
-                  <td>{r.at}</td>
-                  <td>
-                    <div className="row" style={{ gap: 4 }}>
-                      <select disabled defaultValue="+">
-                        <option>+</option>
-                        <option>-</option>
-                      </select>
-                      <input style={{ width: 56 }} defaultValue="0" readOnly />
-                      <SoftBtn>OK</SoftBtn>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
       <p className="muted" style={{ fontSize: "0.8rem", margin: 0 }}>
-        Showing demo stock for {orgName}.
+        {locale.startsWith("ms") ? "Demo · data contoh" : "Demo · sample data"} · {orgName}
       </p>
     </div>
   );
 }
 
-function AdminDemo({ orgName }: { orgName: string }) {
-  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+function AppointmentsDemo({ niche, orgName, scheduleLabel }: { niche: Niche; orgName: string; scheduleLabel: string }) {
+  const t = useTranslations("Appointments");
+  const locale = useLocale();
+  const V = vocabLabels(niche, locale);
+  const entityCap = V.entity.replace(/\b\w/g, (c) => c.toUpperCase());
+  const appointments = useMemo(() => demoAppointments(niche), [niche]);
+  const patients = useMemo(
+    () =>
+      demoCustomers(niche).map((c) => ({
+        id: c.id,
+        name: c.name,
+        risk_level: c.risk_level,
+        allergies: c.allergies,
+      })),
+    [niche]
+  );
+  const categories = demoServiceCategories(niche);
+
   return (
     <div className="stack" style={{ gap: "1.25rem" }}>
-      <PageHeader title="Admin" subtitle={orgName} />
-
+      <PageHeader title={scheduleLabel} subtitle={orgName} />
       <div className="surface" style={{ padding: "1.25rem" }}>
-        <h3 style={{ marginTop: 0 }}>Add branch</h3>
-        <p className="muted" style={{ marginTop: 0 }}>
-          Link another clinic branch under the same owner account.
-        </p>
-        <div className="row" style={{ gap: "0.55rem", flexWrap: "wrap" }}>
-          <div className="field" style={{ flex: "1 1 220px" }}>
-            <label>Branch name</label>
-            <input className="input" defaultValue="Klinik Bestari KL" readOnly />
-          </div>
-          <button type="button" className="btn btn-primary" style={{ alignSelf: "flex-end" }}>
-            Link branch
-          </button>
-        </div>
+        <AppointmentBoard
+          demoMode
+          appointments={appointments}
+          patients={patients}
+          categories={categories}
+          hoursConfig={{
+            openHour: 9,
+            closeHour: 18,
+            closedWeekdays: [0],
+            locale,
+          }}
+          labels={{
+            calendar: t("calendar"),
+            list: t("list"),
+            today: t("today"),
+            patient: entityCap,
+            status: t("status"),
+            notes: t("notes"),
+            reminder: t("reminder"),
+            delete: t("delete"),
+            empty: t("empty"),
+            prev: t("prev"),
+            next: t("next"),
+            timetable: t("timetable"),
+            occupied: t("occupied"),
+            free: t("free"),
+            closed: `${V.businessTitle} closed`,
+            publicHoliday: t("publicHoliday"),
+            edit: t("edit"),
+            save: t("save"),
+            cancel: t("cancel"),
+            startsAt: t("startsAt"),
+            endsAt: t("endsAt"),
+            bookHint: t("bookHint").replace(/patient/gi, V.entity),
+            pickStart: t("pickStart"),
+            pickEnd: t("pickEnd"),
+            pickPatient: t("pickPatient").replace(/patient/gi, V.entity),
+            bookNow: t("bookNow"),
+            category: t("category"),
+            needCategory: t("needCategory"),
+            resetBooking: t("resetBooking"),
+            searchPatient: t("searchPatient"),
+            searchCategory: t("searchCategory"),
+            completeConfirm1: t("completeConfirm1"),
+            completeConfirm2: t("completeConfirm2"),
+          }}
+        />
       </div>
-
-      <div className="surface" style={{ padding: "1.25rem" }}>
-        <div className="row" style={{ justifyContent: "space-between", marginBottom: "0.75rem" }}>
-          <h3 style={{ margin: 0 }}>1. {orgName} (this clinic)</h3>
-          <SoftBtn>Minimize</SoftBtn>
-        </div>
-
-        <h4 style={{ marginBottom: "0.55rem" }}>Clinic hours & weekly off</h4>
-        <DemoInput label="Service charge (%)" defaultValue="0" />
-        <button type="button" className="btn btn-soft" style={{ width: "100%", margin: "0.55rem 0 1rem" }}>
-          Save service charge
-        </button>
-
-        <div className="row" style={{ gap: "0.75rem", flexWrap: "wrap" }}>
-          <DemoSelect
-            label="Opens at"
-            options={["00:00", "08:00", "09:00"]}
-            value="00:00"
-          />
-          <DemoSelect
-            label="Closes at (last hour shown)"
-            options={["18:00", "20:00", "22:00"]}
-            value="20:00"
-          />
-        </div>
-
-        <div style={{ marginTop: "0.85rem" }}>
-          <div className="muted" style={{ fontSize: "0.8rem", marginBottom: 6 }}>
-            Weekly off days
-          </div>
-          <div className="row" style={{ gap: "0.75rem", flexWrap: "wrap" }}>
-            {days.map((d) => (
-              <label key={d} className="row" style={{ gap: 4 }}>
-                <input type="checkbox" defaultChecked={d === "Sat" || d === "Sun"} readOnly />
-                {d}
-              </label>
-            ))}
-          </div>
-        </div>
-        <button type="button" className="btn btn-primary" style={{ width: "100%", marginTop: "1rem" }}>
-          Save clinic hours
-        </button>
-
-        <div style={{ marginTop: "1.25rem", borderTop: "1px solid var(--line)", paddingTop: "1rem" }}>
-          <div className="row" style={{ justifyContent: "space-between" }}>
-            <h4 style={{ margin: 0 }}>Categories</h4>
-            <SoftBtn>Expand</SoftBtn>
-          </div>
-          <p className="muted" style={{ fontSize: "0.86rem" }}>
-            Category name · Description (collapsed in demo)
-          </p>
-        </div>
-      </div>
-
-      <button
-        type="button"
-        className="btn btn-ghost"
-        style={{ borderColor: "rgba(220,38,38,0.35)", color: "#b42318" }}
-      >
-        Exit admin zone
-      </button>
     </div>
   );
 }
 
-function AccountingDemo({ orgName }: { orgName: string }) {
-  const periods = ["Today", "This week", "This month", "Previous 3 months", "Previous 6 months", "This year"];
-  const [period, setPeriod] = useState("This month");
-  const scales = ["By hour", "By day", "By week", "By month"];
-  const [scale, setScale] = useState("By day");
+function InvoicesDemo({ niche, orgName }: { niche: Niche; orgName: string }) {
+  const t = useTranslations("Invoices");
+  const td = useTranslations("InvoiceDetail");
+  const locale = useLocale();
+  const vocab = getNicheVocab(niche);
+  const V = vocabLabels(niche, locale);
+  const isClinic = vocab.showAllergies;
+  const invoices = useMemo(() => demoInvoices(niche), [niche]);
 
   return (
     <div className="stack" style={{ gap: "1.25rem" }}>
-      <PageHeader title="Clinic accounting" subtitle="Track all cash in and cash out for the clinic." />
-
-      <div className="row" style={{ gap: "0.4rem", flexWrap: "wrap" }}>
-        {periods.map((p) => (
-          <button
-            key={p}
-            type="button"
-            className={`btn ${period === p ? "btn-primary" : "btn-ghost"}`}
-            onClick={() => setPeriod(p)}
-          >
-            {p}
-          </button>
-        ))}
-      </div>
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-          gap: "0.65rem",
+      <PageHeader title={t("title")} subtitle={orgName} />
+      <InvoicesWorkspace
+        demoMode
+        invoices={invoices}
+        canLhdn
+        loadPreview={async (id) => demoInvoicePreview(id, niche, orgName)}
+        showAllergies={isClinic}
+        labels={{
+          number: t("number"),
+          customer: V.entity.replace(/\b\w/g, (c) => c.toUpperCase()),
+          status: t("status"),
+          total: t("total"),
+          paid: t("paid"),
+          createdAt: t("createdAt"),
+          actions: t("actions"),
+          view: t("view"),
+          viewPrint: t("viewPrint"),
+          empty: t("empty"),
+          revoke: t("revoke"),
+          filterDay: t("filterDay"),
+          allDays: t("allDays"),
+          submitLhdn: td("submitLhdn"),
+          resubmitLhdn: td("resubmitLhdn"),
+          submitLhdnHint: td("submitLhdnHint"),
+          submitLhdnPlanLocked: td("submitLhdnPlanLocked"),
+          submitLhdnNeedTin: td("submitLhdnNeedTin"),
+          submitLhdnAlready: td("submitLhdnAlready"),
+          refreshLhdnStatus: td("refreshLhdnStatus"),
+          lhdnStatusLine: td("lhdnStatusLine"),
+          cancelLhdn: td("cancelLhdn"),
+          cancelLhdnHint: td("cancelLhdnHint"),
+          cancelLhdnPrompt: td("cancelLhdnPrompt"),
+          recordPayment: td("recordPayment"),
+          balanceDue: td("balanceDue"),
+          pay: td("pay"),
+          editStatus: td("editStatus"),
+          editStatusHint: td("editStatusHint"),
+          statusNote: td("statusNote"),
+          saveStatus: td("saveStatus"),
+          payments: td("payments"),
+          noPayments: td("noPayments"),
+          date: td("date"),
+          method: td("method"),
+          print: td("print"),
+          billTo: td("billTo"),
+          description: td("description"),
+          qty: td("qty"),
+          price: td("price"),
+          amount: td("amount"),
+          subtotal: td("subtotal"),
+          tax: td("tax"),
+          medicine: isClinic ? td("medicine") : td("medicineRetail"),
+          additional: td("additional"),
+          productService: td("productService"),
+          serviceTax: td("serviceTax"),
+          addCost: td("addCost"),
+          deleteCost: td("deleteCost"),
+          costKind: td("costKind"),
+          costDesc: td("costDesc"),
+          costAmount: td("costAmount"),
+          costItem: td("costItem"),
+          costQty: td("costQty"),
+          noInventory: td("noInventory"),
+          extrasHint: isClinic ? td("extrasHint") : td("extrasHintRetail"),
+          exitWarn: t("exitWarn"),
+          exitReasonTitle: t("exitReasonTitle"),
+          exitReasonHint: t("exitReasonHint"),
+          exitReasonPlaceholder: t("exitReasonPlaceholder"),
+          exitConfirm: t("exitConfirm"),
+          searchPlaceholder: locale.startsWith("ms")
+            ? `Cari ${V.entity}, no. invois, notes…`
+            : `Search ${V.entity}, invoice no., notes…`,
+          needTin: false,
+          planLocked: false,
         }}
-      >
-        {[
-          ["Income (cash in)", "RM 113,660.50"],
-          ["Expenses (cash out)", "RM 0.00"],
-          ["Profit / Loss", "RM 113,660.50"],
-          ["Net cash flow", "RM 113,660.50"],
-        ].map(([label, value]) => (
-          <div key={label} className="surface kpi" style={{ margin: 0 }}>
-            <div className="kpi-label">{label}</div>
-            <div className="kpi-value" style={{ fontSize: "1.15rem" }}>
-              {value}
+      />
+    </div>
+  );
+}
+
+function PosDemo({ niche, orgName }: { niche: Niche; orgName: string }) {
+  const t = useTranslations("POS");
+  const products = useMemo(() => demoProducts(niche), [niche]);
+  const customers = useMemo(
+    () => demoCustomers(niche).map((c) => ({ id: c.id, name: c.name })),
+    [niche]
+  );
+  const categories = demoProductCategories();
+
+  return (
+    <div className="stack" style={{ gap: "1.25rem" }}>
+      <PageHeader title={t("title")} subtitle={orgName} />
+      <PosWorkspace
+        demoMode
+        products={products}
+        frequentIds={products.slice(0, 3).map((p) => p.id)}
+        customers={customers}
+        categories={categories}
+        initialTickets={demoHeldTickets()}
+        labels={{
+          search: t("search"),
+          searchHint: t("searchHint"),
+          cart: t("cart"),
+          total: t("total"),
+          qty: t("qty"),
+          customer: t("customer"),
+          payment: t("payment"),
+          cash: t("cash"),
+          card: t("card"),
+          ewallet: t("ewallet"),
+          transfer: t("transfer"),
+          checkout: t("checkout"),
+          emptyCart: t("emptyCart"),
+          add: t("add"),
+          remove: t("remove"),
+          frequent: t("frequent"),
+          stock: t("stock"),
+          success: t("success"),
+          checkingOut: t("checkingOut"),
+        }}
+      />
+    </div>
+  );
+}
+
+function InventoryDemo({ niche, orgName }: { niche: Niche; orgName: string }) {
+  const t = useTranslations("Inventory");
+  const rows = useMemo(() => demoInventoryRows(niche), [niche]);
+  const categories = demoProductCategories();
+
+  return (
+    <div className="stack" style={{ gap: "1.25rem" }}>
+      <PageHeader title={t("title")} subtitle={orgName} />
+      <div className="surface" style={{ padding: "1.25rem" }}>
+        <h3 style={{ marginTop: 0 }}>{t("add")}</h3>
+        <DemoNoopForm className="stack">
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+              gap: "0.75rem",
+            }}
+          >
+            <div className="field">
+              <label>{t("name")}</label>
+              <input className="input" readOnly />
+            </div>
+            <div className="field">
+              <label>{t("sku")}</label>
+              <input className="input" readOnly />
+            </div>
+            <div className="field">
+              <label>{t("barcode")}</label>
+              <input className="input" readOnly />
+            </div>
+            <div className="field">
+              <label>{t("price")}</label>
+              <input className="input" type="number" readOnly />
+            </div>
+            <div className="field">
+              <label>{t("qty")}</label>
+              <input className="input" type="number" readOnly />
+            </div>
+            <div className="field">
+              <label>Category</label>
+              <select className="select" disabled>
+                {categories.map((c) => (
+                  <option key={c.id}>{c.name}</option>
+                ))}
+              </select>
             </div>
           </div>
-        ))}
-      </div>
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-          gap: "0.85rem",
-        }}
-      >
-        <div className="surface" style={{ padding: "1.15rem" }}>
-          <h3 style={{ marginTop: 0 }}>Add cash in</h3>
-          <DemoSelect label="Category" options={["Consultation", "Procedure", "Medicine"]} />
-          <DemoInput label="Amount" placeholder="0.00" />
-          <DemoInput label="Date" type="date" defaultValue="2026-08-05" />
-          <DemoTextarea label="Description" rows={2} />
-          <button type="button" className="btn btn-primary" style={{ width: "100%", marginTop: "0.65rem" }}>
-            Save
+          <button type="submit" className="btn btn-primary">
+            {t("save")}
           </button>
-        </div>
-        <div className="surface" style={{ padding: "1.15rem" }}>
-          <h3 style={{ marginTop: 0 }}>Add cash out</h3>
-          <DemoSelect label="Category" options={["Rent", "Utilities", "Payroll", "Inventory"]} />
-          <DemoInput label="Amount" placeholder="0.00" />
-          <DemoInput label="Date" type="date" defaultValue="2026-08-05" />
-          <DemoTextarea label="Description" rows={2} />
-          <button type="button" className="btn btn-primary" style={{ width: "100%", marginTop: "0.65rem" }}>
-            Save
-          </button>
-        </div>
+        </DemoNoopForm>
       </div>
-
       <div className="surface" style={{ padding: "1.25rem" }}>
-        <h3 style={{ marginTop: 0 }}>Money vs time</h3>
-        <div className="row" style={{ gap: "0.4rem", marginBottom: "0.85rem", flexWrap: "wrap" }}>
-          {scales.map((s) => (
-            <button
-              key={s}
-              type="button"
-              className={`btn ${scale === s ? "btn-primary" : "btn-ghost"}`}
-              onClick={() => setScale(s)}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-        <div
-          style={{
-            height: 160,
-            borderRadius: 12,
-            border: "1px solid var(--line)",
-            background:
-              "linear-gradient(180deg, color-mix(in srgb, var(--accent) 12%, transparent), transparent)",
-            position: "relative",
-            overflow: "hidden",
-          }}
-        >
-          <svg width="100%" height="100%" viewBox="0 0 400 160" preserveAspectRatio="none">
-            <polyline
-              fill="none"
-              stroke="var(--accent)"
-              strokeWidth="3"
-              points="0,120 40,110 80,90 120,95 160,70 200,60 240,55 280,40 320,45 360,30 400,25"
-            />
-          </svg>
-          <div className="muted" style={{ position: "absolute", bottom: 8, left: 12, fontSize: "0.78rem" }}>
-            Demo chart · {period} · {scale} · {orgName}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function LhdnDemo({ orgName }: { orgName: string }) {
-  return (
-    <div className="stack" style={{ gap: "1.25rem" }}>
-      <PageHeader
-        title="LHDN e-Invoice"
-        subtitle="Allvisor submits e-Invoices to MyInvois as your authorized intermediary. Each clinic uses its own TIN."
-      />
-
-      <div
-        className="surface"
-        style={{
-          padding: "0.75rem 1rem",
-          background: "rgba(22,163,74,0.08)",
-          borderColor: "rgba(22,163,74,0.25)",
-        }}
-      >
-        Live MyInvois credentials detected (taxpayer mode).
-      </div>
-
-      <div className="surface" style={{ padding: "1.25rem" }}>
-        <h3 style={{ marginTop: 0 }}>How this works for your clinic</h3>
-        <ol style={{ margin: 0, paddingLeft: "1.2rem", lineHeight: 1.55 }}>
-          <li>Create / log in to your MyInvois portal with your business TIN.</li>
-          <li>Add Allvisor as intermediary under Representatives → Intermediaries.</li>
-          <li>Save your TIN + NRIC/ROB/ROC below and mark the checkbox.</li>
-          <li>Paid invoices can auto-submit; track status under Submissions.</li>
-        </ol>
-        <p className="muted" style={{ fontSize: "0.82rem", marginBottom: 0 }}>
-          Allvisor holds one platform API credential. Your Client Secret is never required.
-        </p>
-      </div>
-
-      <div className="surface" style={{ padding: "1.25rem" }}>
-        <DemoInput label="Your business TIN" defaultValue="IG50742749010" />
-        <div style={{ marginTop: "0.75rem" }}>
-          <DemoInput label="NRIC / ROB / ROC" defaultValue="011216100769" />
-        </div>
-        <p className="muted" style={{ fontSize: "0.8rem" }}>
-          Use NRIC for sole prop, ROB/ROC for companies — same as MyInvois registration.
-        </p>
-        <label className="row" style={{ gap: 8, margin: "0.75rem 0" }}>
-          <input type="checkbox" defaultChecked readOnly />
-          I authorized Allvisor as my intermediary in the MyInvois portal (Representatives →
-          Intermediaries).
-        </label>
-        <p className="muted" style={{ fontSize: "0.78rem" }}>
-          Marked linked: 31 Jul 2026, 09:36 PM · {orgName}
-        </p>
-        <button type="button" className="btn btn-primary" style={{ width: "100%" }}>
-          Save LHDN settings
-        </button>
-      </div>
-
-      <div className="surface" style={{ padding: "1.25rem" }}>
-        <h3 style={{ marginTop: 0 }}>Submissions</h3>
+        <h3 style={{ marginTop: 0 }}>{t("frequentlyUsed")}</h3>
         <div className="table-wrap">
           <table className="data">
             <thead>
               <tr>
-                <th>Invoice</th>
-                <th>Patient</th>
-                <th>Submitted</th>
-                <th>MyInvois</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[
-                ["INV-1042", "Aina Rahman", "4 Aug 09:20", "a1b2…9f", "Accepted"],
-                ["INV-1040", "Lim Wei", "3 Aug 17:05", "—", "Awaiting"],
-                ["INV-1039", "Siti Aminah", "3 Aug 12:40", "c3d4…1a", "Accepted"],
-                ["INV-1036", "Rajesh K.", "1 Aug 11:00", "—", "Rejected"],
-              ].map((r) => (
-                <tr key={r[0]}>
-                  <td>{r[0]}</td>
-                  <td>{r[1]}</td>
-                  <td>{r[2]}</td>
-                  <td>{r[3]}</td>
-                  <td>
-                    <span className="badge">{r[4]}</span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function CrmDemo({
-  orgName,
-  entityTitle,
-  niche,
-}: {
-  orgName: string;
-  entityTitle: string;
-  niche: Niche;
-}) {
-  const careLike =
-    niche === "clinic" || niche === "vet" || niche === "physio" || niche === "lab";
-  if (careLike && niche === "clinic") {
-    return <PatientsDemo orgName={orgName} entityTitle={entityTitle} />;
-  }
-
-  const fields =
-    niche === "gym"
-      ? (
-          <>
-            <DemoInput label="Name" placeholder="Member name" />
-            <DemoSelect label="Plan" options={["Monthly", "Quarterly", "Annual", "PT pack"]} />
-            <DemoInput label="Phone" placeholder="012-3456789" />
-            <DemoInput label="Email" placeholder="name@email.com" />
-          </>
-        )
-      : niche === "tuition"
-        ? (
-            <>
-              <DemoInput label="Student name" placeholder="Full name" />
-              <DemoInput label="Parent phone" placeholder="012-3456789" />
-              <DemoInput label="Form / Level" placeholder="Form 4" />
-              <DemoInput label="Email" placeholder="parent@email.com" />
-            </>
-          )
-        : careLike
-          ? (
-              <>
-                <DemoInput label="Name" placeholder="Full name" />
-                <DemoSelect label="Risk" options={["—", "low", "medium", "high"]} />
-                <DemoInput label="Phone" placeholder="012-3456789" />
-                <DemoInput label="Email" placeholder="name@email.com" />
-              </>
-            )
-          : (
-              <>
-                <DemoInput label="Name" placeholder="Customer / company" />
-                <DemoInput label="Phone" placeholder="012-3456789" />
-                <DemoInput label="Email" placeholder="name@email.com" />
-                <DemoInput label="Notes" placeholder="Optional" />
-              </>
-            );
-
-  const columns =
-    niche === "gym"
-      ? ["Member ID", "Name", "Plan", "Phone", "Status"]
-      : niche === "tuition"
-        ? ["ID", "Student", "Parent phone", "Level", "Status"]
-        : careLike
-          ? ["ID", "Name", "Phone", "Risk", "Status"]
-          : ["Code", "Customer", "Phone", "Last visit", "Status"];
-
-  const rows =
-    niche === "gym"
-      ? [
-          ["MEM-220", "Hafiz Omar", "Monthly", "017-220 3344", "Active"],
-          ["MEM-219", "Mei Ling", "Monthly", "012-889 1100", "Active"],
-          ["MEM-218", "Amir Razak", "Quarterly", "013-441 2200", "Due soon"],
-          ["MEM-216", "Jason Tan", "PT pack", "019-332 7788", "Frozen"],
-        ]
-      : niche === "tuition"
-        ? [
-            ["ST-081", "Aina Rahman", "012-345 6789", "Form 4", "Active"],
-            ["ST-080", "Lim Wei", "016-778 2210", "Form 5", "Active"],
-            ["ST-079", "Siti Aminah", "019-441 2200", "Form 3", "New"],
-          ]
-        : careLike
-          ? [
-              ["PT-081", "Aina Rahman", "012-345 6789", "high", "Active"],
-              ["PT-080", "Lim Wei", "016-778 2210", "low", "Active"],
-              ["PT-079", "Siti Aminah", "019-441 2200", "medium", "New"],
-            ]
-          : [
-              ["CU-4201", "Cafe Luna Sdn Bhd", "07-3321 8890", "4 Aug", "Active"],
-              ["CU-4198", "Workshop 88", "012-778 2211", "3 Aug", "Active"],
-              ["CU-4192", "Mei Hardware", "016-554 0091", "1 Aug", "Active"],
-              ["CU-4180", "Walk-in", "—", "4 Aug", "Walk-in"],
-            ];
-
-  return (
-    <div className="stack" style={{ gap: "1.25rem" }}>
-      <PageHeader title={entityTitle} subtitle={orgName} />
-      <div className="surface" style={{ padding: "1.25rem" }}>
-        <h3 style={{ marginTop: 0 }}>Add</h3>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-            gap: "0.75rem",
-          }}
-        >
-          {fields}
-        </div>
-        <button type="button" className="btn btn-primary" style={{ width: "100%", marginTop: "0.9rem" }}>
-          Save
-        </button>
-      </div>
-      <div className="surface" style={{ padding: "1.25rem" }}>
-        <div className="field" style={{ maxWidth: 280, marginBottom: "0.85rem" }}>
-          <label>Search</label>
-          <input className="input" placeholder="Search…" readOnly />
-        </div>
-        <div className="table-wrap">
-          <table className="data">
-            <thead>
-              <tr>
-                {columns.map((c) => (
-                  <th key={c}>{c}</th>
-                ))}
-                <th />
+                <th>{t("name")}</th>
+                <th>{t("sku")}</th>
+                <th>{t("barcode")}</th>
+                <th>{t("price")}</th>
+                <th>{t("qty")}</th>
+                <th>Category</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r[0]}>
-                  {r.map((cell, i) => (
-                    <td key={i}>{i === r.length - 1 ? <span className="badge">{cell}</span> : cell}</td>
-                  ))}
-                  <td>
-                    <div className="row" style={{ gap: "0.35rem" }}>
-                      <SoftBtn>Edit</SoftBtn>
-                      <SoftBtn tone="danger">Delete</SoftBtn>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function SpecialtyDemo({
-  title,
-  orgName,
-  addFields,
-  columns,
-  rows,
-}: {
-  title: string;
-  orgName: string;
-  addFields: ReactNode;
-  columns: string[];
-  rows: string[][];
-}) {
-  return (
-    <div className="stack" style={{ gap: "1.25rem" }}>
-      <PageHeader title={title} subtitle={orgName} />
-      <div className="surface" style={{ padding: "1.25rem" }}>
-        <h3 style={{ marginTop: 0 }}>Add</h3>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-            gap: "0.75rem",
-          }}
-        >
-          {addFields}
-        </div>
-        <button type="button" className="btn btn-primary" style={{ width: "100%", marginTop: "0.9rem" }}>
-          Save
-        </button>
-      </div>
-      <div className="surface" style={{ padding: "1.25rem" }}>
-        <div className="table-wrap">
-          <table className="data">
-            <thead>
-              <tr>
-                {columns.map((c) => (
-                  <th key={c}>{c}</th>
-                ))}
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r, idx) => (
-                <tr key={`${title}-${idx}`}>
-                  {r.map((cell, i) => (
-                    <td key={i}>{i === r.length - 1 ? <span className="badge">{cell}</span> : cell}</td>
-                  ))}
-                  <td>
-                    <div className="row" style={{ gap: "0.35rem" }}>
-                      <SoftBtn>Edit</SoftBtn>
-                      <SoftBtn tone="danger">Delete</SoftBtn>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function PosDemo({ orgName }: { orgName: string }) {
-  return (
-    <div className="stack" style={{ gap: "1.25rem" }}>
-      <PageHeader title="POS / Sales" subtitle={orgName} />
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.1fr) minmax(0, 0.9fr)", gap: "0.85rem" }}>
-        <div className="surface" style={{ padding: "1.15rem" }}>
-          <h3 style={{ marginTop: 0 }}>Cart</h3>
-          <div className="field" style={{ marginBottom: "0.75rem" }}>
-            <label>Scan / search item</label>
-            <input className="input" placeholder="Barcode or product name…" readOnly />
-          </div>
-          <div className="table-wrap">
-            <table className="data">
-              <thead>
-                <tr>
-                  <th>Item</th>
-                  <th>Qty</th>
-                  <th>Price</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>Paracetamol 500mg</td>
-                  <td>2</td>
-                  <td>RM 6.00</td>
-                </tr>
-                <tr>
-                  <td>Surgical gloves M</td>
-                  <td>1</td>
-                  <td>RM 12.00</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-        <div className="surface" style={{ padding: "1.15rem" }}>
-          <h3 style={{ marginTop: 0 }}>Checkout</h3>
-          <DemoSelect label="Payment" options={["Cash", "QR", "Card", "E-wallet"]} />
-          <div className="kpi" style={{ margin: "0.75rem 0" }}>
-            <div className="kpi-label">Total</div>
-            <div className="kpi-value">RM 18.00</div>
-          </div>
-          <button type="button" className="btn btn-primary" style={{ width: "100%" }}>
-            Complete sale
-          </button>
-          <p className="muted" style={{ fontSize: "0.8rem", marginTop: "0.75rem" }}>
-            Demo POS — no payment is processed.
-          </p>
-        </div>
-      </div>
-      <div className="surface" style={{ padding: "1.25rem" }}>
-        <h3 style={{ marginTop: 0 }}>Today’s tickets</h3>
-        <div className="table-wrap">
-          <table className="data">
-            <thead>
-              <tr>
-                <th>Ticket</th>
-                <th>Counter</th>
-                <th>Method</th>
-                <th>Time</th>
-                <th>Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[
-                ["POS-8821", "Counter 1", "Cash", "10:12", "RM 86.00"],
-                ["POS-8820", "Counter 2", "QR", "11:05", "RM 42.50"],
-                ["POS-8819", "Counter 1", "Card", "12:40", "RM 125.00"],
-              ].map((r) => (
-                <tr key={r[0]}>
-                  {r.map((c) => (
-                    <td key={c}>{c}</td>
-                  ))}
+                <tr key={r.id}>
+                  <td>{r.name}</td>
+                  <td>{r.sku}</td>
+                  <td>{r.barcode || "—"}</td>
+                  <td>{formatCurrency(r.unit_price)}</td>
+                  <td>{r.quantity}</td>
+                  <td>{r.category}</td>
                 </tr>
               ))}
             </tbody>
@@ -1231,591 +613,530 @@ function PosDemo({ orgName }: { orgName: string }) {
 }
 
 function CashDemo({ orgName }: { orgName: string }) {
+  const t = useTranslations("RetailPages");
+  const session = demoCashSession();
+  const expected =
+    session.openingFloat +
+    session.movements.reduce(
+      (s, m) => s + (m.type === "out" ? -m.amount : m.amount),
+      0
+    );
+
   return (
     <div className="stack" style={{ gap: "1.25rem" }}>
-      <PageHeader title="Cash drawer" subtitle={orgName} />
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-          gap: "0.65rem",
-        }}
-      >
-        {[
-          ["Opening float", "RM 200.00"],
-          ["Cash sales", "RM 128.50"],
-          ["Expected close", "RM 378.50"],
-        ].map(([l, v]) => (
-          <div key={l} className="surface kpi" style={{ margin: 0 }}>
-            <div className="kpi-label">{l}</div>
-            <div className="kpi-value" style={{ fontSize: "1.1rem" }}>
-              {v}
-            </div>
+      <PageHeader title={t("cashTitle")} subtitle={t("cashSubtitle")} />
+      <div className="surface" style={{ padding: "1.25rem" }}>
+        <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
+          <div>
+            <h3 style={{ margin: 0 }}>Open session</h3>
+            <p className="muted">Opened by Reception Lina · {orgName}</p>
           </div>
-        ))}
+          <div style={{ textAlign: "right" }}>
+            <div className="muted">Expected cash</div>
+            <strong style={{ fontSize: "1.5rem" }}>{formatCurrency(expected)}</strong>
+          </div>
+        </div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1rem" }}>
+        <div className="surface" style={{ padding: "1.25rem" }}>
+          <h3 style={{ marginTop: 0 }}>Cash in / out</h3>
+          <DemoNoopForm className="stack">
+            <select className="select" disabled>
+              <option>Cash in</option>
+              <option>Cash out</option>
+            </select>
+            <input className="input" type="number" placeholder="Amount" readOnly />
+            <input className="input" placeholder="Reason / note" readOnly />
+            <button className="btn btn-primary" type="submit">
+              Record movement
+            </button>
+          </DemoNoopForm>
+        </div>
+        <div className="surface" style={{ padding: "1.25rem" }}>
+          <h3 style={{ marginTop: 0 }}>Close & reconcile</h3>
+          <DemoNoopForm className="stack">
+            <div className="field">
+              <label>Counted cash</label>
+              <input className="input" type="number" readOnly />
+            </div>
+            <textarea className="input" placeholder="Closing notes" readOnly />
+            <button className="btn btn-ghost" type="submit">
+              Close session
+            </button>
+          </DemoNoopForm>
+        </div>
       </div>
       <div className="surface" style={{ padding: "1.25rem" }}>
-        <h3 style={{ marginTop: 0 }}>Movements</h3>
+        <h3 style={{ marginTop: 0 }}>Current movements</h3>
         <div className="table-wrap">
           <table className="data">
             <thead>
               <tr>
-                <th>Type</th>
-                <th>Ref</th>
                 <th>Time</th>
+                <th>Type</th>
+                <th>Note</th>
+                <th>Staff</th>
                 <th>Amount</th>
-                <th>Balance</th>
               </tr>
             </thead>
             <tbody>
-              {[
-                ["Open", "Drawer A", "08:00", "RM 200.00", "RM 200.00"],
-                ["Sale", "POS-8821", "10:12", "+ RM 86.00", "RM 286.00"],
-                ["Sale", "POS-8820", "11:05", "+ RM 42.50", "RM 328.50"],
-                ["Float", "Top-up", "12:00", "+ RM 50.00", "RM 378.50"],
-              ].map((r) => (
-                <tr key={r.join("-")}>
-                  {r.map((c) => (
-                    <td key={c}>{c}</td>
-                  ))}
+              {session.movements.map((m) => (
+                <tr key={m.id}>
+                  <td>{formatDateTime(m.at)}</td>
+                  <td>{m.type}</td>
+                  <td>{m.note}</td>
+                  <td>Reception Lina</td>
+                  <td>{formatCurrency(m.amount)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        <button type="button" className="btn btn-primary" style={{ width: "100%", marginTop: "0.85rem" }}>
-          Close drawer
+      </div>
+      <div className="surface" style={{ padding: "1.25rem" }}>
+        <h3 style={{ marginTop: 0 }}>Session history</h3>
+        <div className="table-wrap">
+          <table className="data">
+            <thead>
+              <tr>
+                <th>Opened</th>
+                <th>Staff</th>
+                <th>Status</th>
+                <th>Expected</th>
+                <th>Counted</th>
+                <th>Variance</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>{formatDateTime(session.movements[0]?.at)}</td>
+                <td>Reception Lina</td>
+                <td>
+                  <span className="badge">open</span>
+                </td>
+                <td>{formatCurrency(expected)}</td>
+                <td>—</td>
+                <td>—</td>
+              </tr>
+              <tr>
+                <td>{formatDateTime(new Date(Date.now() - 86400000).toISOString())}</td>
+                <td>Admin</td>
+                <td>
+                  <span className="badge">closed</span>
+                </td>
+                <td>{formatCurrency(520)}</td>
+                <td>{formatCurrency(515)}</td>
+                <td>{formatCurrency(-5)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AccountingDemo({ niche, orgName }: { niche: Niche; orgName: string }) {
+  const t = useTranslations("Accounting");
+  const data = demoAccounting();
+  const [period, setPeriod] = useState("14d");
+  const ledgerRows = data.ledger.map((r) => ({
+    id: r.id,
+    entry_date: r.date,
+    entry_type: r.type === "in" ? "income" : "expense",
+    description: r.description,
+    source: r.category,
+    amount: r.amount,
+    created_at: `${r.date}T10:00:00+08:00`,
+  }));
+  const expenseRows = data.expenses.map((r) => ({
+    id: r.id,
+    expense_date: r.date,
+    category: r.category,
+    description: r.description,
+    amount: r.amount,
+  }));
+
+  return (
+    <div className="stack" style={{ gap: "1.25rem" }}>
+      <PageHeader title={t("title")} subtitle={`${orgName} · ${niche}`} />
+      <div className="row" style={{ flexWrap: "wrap", gap: 8 }}>
+        {["7d", "14d", "30d", "90d"].map((p) => (
+          <button
+            key={p}
+            type="button"
+            className={period === p ? "btn btn-soft" : "btn btn-ghost"}
+            onClick={() => setPeriod(p)}
+          >
+            {p}
+          </button>
+        ))}
+      </div>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+          gap: "0.75rem",
+        }}
+      >
+        <div className="surface" style={{ padding: "1rem" }}>
+          <div className="muted">Cash in</div>
+          <strong style={{ fontSize: "1.35rem" }}>{formatCurrency(data.inflow)}</strong>
+        </div>
+        <div className="surface" style={{ padding: "1rem" }}>
+          <div className="muted">Cash out</div>
+          <strong style={{ fontSize: "1.35rem" }}>{formatCurrency(data.outflow)}</strong>
+        </div>
+        <div className="surface" style={{ padding: "1rem" }}>
+          <div className="muted">Net</div>
+          <strong style={{ fontSize: "1.35rem" }}>
+            {formatCurrency(data.inflow - data.outflow)}
+          </strong>
+        </div>
+      </div>
+      <div className="surface" style={{ padding: "1.25rem" }}>
+        <AccountingCashChart
+          ledger={ledgerRows.map((r) => ({
+            id: r.id,
+            entry_type: r.entry_type,
+            amount: r.amount,
+            entry_date: r.entry_date,
+            created_at: r.created_at,
+            description: r.description,
+          }))}
+          labels={{
+            title: t("cashFlow"),
+            byHour: "Hour",
+            byDay: "Day",
+            byWeek: "Week",
+            byMonth: "Month",
+            income: t("income"),
+            expense: t("expense"),
+            empty: t("emptyLedger"),
+          }}
+        />
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1rem" }}>
+        <div className="surface" style={{ padding: "1.25rem" }}>
+          <h3 style={{ marginTop: 0 }}>Record cash in</h3>
+          <DemoNoopForm className="stack">
+            <input className="input" placeholder="Amount" readOnly />
+            <input className="input" placeholder="Description" readOnly />
+            <button className="btn btn-primary" type="submit">
+              Save
+            </button>
+          </DemoNoopForm>
+        </div>
+        <div className="surface" style={{ padding: "1.25rem" }}>
+          <h3 style={{ marginTop: 0 }}>Record cash out</h3>
+          <DemoNoopForm className="stack">
+            <input className="input" placeholder="Amount" readOnly />
+            <input className="input" placeholder="Description" readOnly />
+            <button className="btn btn-primary" type="submit">
+              Save
+            </button>
+          </DemoNoopForm>
+        </div>
+      </div>
+      <AccountingLedgerTable
+        title="Ledger"
+        exportLabel="Export"
+        filename="demo-ledger.csv"
+        rows={ledgerRows}
+        empty="No entries"
+        labels={{
+          date: "Date",
+          type: "Type",
+          description: "Description",
+          source: "Source",
+          amount: "Amount",
+          recordedAt: "Recorded",
+        }}
+      />
+      <AccountingExpenseTable
+        title="Expenses"
+        exportLabel="Export"
+        filename="demo-expenses.csv"
+        rows={expenseRows}
+        empty="No expenses"
+        labels={{
+          date: "Date",
+          category: "Category",
+          description: "Description",
+          amount: "Amount",
+        }}
+      />
+    </div>
+  );
+}
+
+function LhdnDemo({ niche, orgName }: { niche: Niche; orgName: string }) {
+  const t = useTranslations("Lhdn");
+  const locale = useLocale();
+  const V = vocabLabels(niche, locale);
+  const rows = demoLhdnSubmissions();
+
+  return (
+    <div className="stack" style={{ gap: "1.25rem" }}>
+      <PageHeader title={t("title")} subtitle={V.lhdnSubtitle} />
+      <div className="surface" style={{ padding: "1rem 1.25rem" }}>
+        <p style={{ margin: 0 }}>{t("demoMode")}</p>
+      </div>
+      <div className="surface" style={{ padding: "1.25rem" }}>
+        <h3 style={{ marginTop: 0 }}>{V.lhdnHowTitle}</h3>
+        <ol style={{ margin: "0.5rem 0 0", paddingLeft: "1.25rem", lineHeight: 1.55 }}>
+          <li>{t("howStep1")}</li>
+          <li>{t("howStep2", { name: "Allvisor" })}</li>
+          <li>{t("howStep3", { name: "Allvisor" })}</li>
+          <li>{t("howStep4")}</li>
+        </ol>
+      </div>
+      <div className="surface" style={{ padding: "1.25rem" }}>
+        <DemoNoopForm className="stack">
+          <DemoCensorField label={t("tin")} />
+          <DemoCensorField label={t("brn")} />
+          <p className="muted" style={{ margin: 0, fontSize: "0.9rem" }}>
+            {orgName} — values hidden in demo preview.
+          </p>
+          <label className="row" style={{ gap: 8, alignItems: "center" }}>
+            <input type="checkbox" checked readOnly />
+            <span>Intermediary linked</span>
+          </label>
+          <button type="submit" className="btn btn-primary">
+            Save LHDN settings
+          </button>
+        </DemoNoopForm>
+      </div>
+      <div className="surface" style={{ padding: "1.25rem" }}>
+        <h3 style={{ marginTop: 0 }}>Submissions</h3>
+        <div className="table-wrap">
+          <table className="data">
+            <thead>
+              <tr>
+                <th>Invoice</th>
+                <th>Customer</th>
+                <th>Submitted</th>
+                <th>UUID</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.invoice}>
+                  <td>{r.invoice}</td>
+                  <td>{r.customer}</td>
+                  <td>{r.submitted}</td>
+                  <td>
+                    <DemoCensor width={88} height={12} />
+                  </td>
+                  <td>
+                    <span className="badge">{r.status}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AdminDemo({ niche, orgName }: { niche: Niche; orgName: string }) {
+  const t = useTranslations("Admin");
+  const team = demoTeam();
+  const branches = demoBranches();
+  const categories = demoServiceCategories(niche);
+
+  return (
+    <div className="stack" style={{ gap: "1.25rem" }}>
+      <PageHeader title={t("title")} subtitle={orgName} />
+
+      <div className="surface" style={{ padding: "1.25rem" }}>
+        <h3 style={{ marginTop: 0 }}>{t("staffTitle")}</h3>
+        <div className="table-wrap">
+          <table className="data">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+              </tr>
+            </thead>
+            <tbody>
+              {team.map((m) => (
+                <tr key={m.id}>
+                  <td>{m.name}</td>
+                  <td>{m.email}</td>
+                  <td>
+                    <span className="badge">{m.role}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="surface" style={{ padding: "1.25rem" }}>
+        <h3 style={{ marginTop: 0 }}>Business settings</h3>
+        <DemoNoopForm className="stack">
+          <div className="field">
+            <label>Organization name</label>
+            <input className="input" defaultValue={orgName} readOnly />
+          </div>
+          <div className="field">
+            <label>Phone</label>
+            <input className="input" defaultValue="03-1234 5678" readOnly />
+          </div>
+          <div className="field">
+            <label>Address</label>
+            <input className="input" defaultValue="12 Jalan Demo, 50000 Kuala Lumpur" readOnly />
+          </div>
+          <DemoCensorField label="Business TIN" />
+          <button type="submit" className="btn btn-primary">
+            Save settings
+          </button>
+        </DemoNoopForm>
+      </div>
+
+      <div className="surface" style={{ padding: "1.25rem" }}>
+        <h3 style={{ marginTop: 0 }}>Invoice format</h3>
+        <DemoNoopForm className="stack">
+          <div className="field">
+            <label>Prefix</label>
+            <input className="input" defaultValue="INV-" readOnly />
+          </div>
+          <div className="field">
+            <label>Next number</label>
+            <input className="input" defaultValue="1043" readOnly />
+          </div>
+          <button type="submit" className="btn btn-soft">
+            Save format
+          </button>
+        </DemoNoopForm>
+      </div>
+
+      <div className="surface" style={{ padding: "1.25rem" }}>
+        <h3 style={{ marginTop: 0 }}>Branches</h3>
+        <div className="table-wrap">
+          <table className="data">
+            <thead>
+              <tr>
+                <th>Branch</th>
+                <th>Address</th>
+              </tr>
+            </thead>
+            <tbody>
+              {branches.map((b) => (
+                <tr key={b.id}>
+                  <td>{b.name}</td>
+                  <td>{b.address}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="surface" style={{ padding: "1.25rem" }}>
+        <h3 style={{ marginTop: 0 }}>Service catalogue</h3>
+        <DemoNoopForm className="stack">
+          <div className="field">
+            <label>Category</label>
+            <select className="select" disabled>
+              {categories.map((c) => (
+                <option key={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label>Service item</label>
+            <input className="input" placeholder="New service" readOnly />
+          </div>
+          <button type="submit" className="btn btn-primary">
+            Add service
+          </button>
+        </DemoNoopForm>
+        <div className="table-wrap" style={{ marginTop: "1rem" }}>
+          <table className="data">
+            <thead>
+              <tr>
+                <th>Category</th>
+                <th>Item</th>
+                <th>Price</th>
+              </tr>
+            </thead>
+            <tbody>
+              {categories.map((c, i) => (
+                <tr key={c.id}>
+                  <td>{c.name}</td>
+                  <td>{c.name} standard</td>
+                  <td>{formatCurrency(40 + i * 20)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="surface" style={{ padding: "1.25rem" }}>
+        <h3 style={{ marginTop: 0 }}>Opening hours</h3>
+        <DemoNoopForm className="row" style={{ flexWrap: "wrap", gap: 12 }}>
+          <div className="field">
+            <label>Open</label>
+            <input className="input" defaultValue="09:00" readOnly />
+          </div>
+          <div className="field">
+            <label>Close</label>
+            <input className="input" defaultValue="18:00" readOnly />
+          </div>
+          <button type="submit" className="btn btn-soft">
+            Save hours
+          </button>
+        </DemoNoopForm>
+      </div>
+
+      <div className="surface" style={{ padding: "1.25rem" }}>
+        <h3 style={{ marginTop: 0 }}>Data import</h3>
+        <p className="muted">Import customers / products from CSV (disabled in demo).</p>
+        <button type="button" className="btn btn-soft" disabled>
+          Choose file
         </button>
       </div>
     </div>
   );
 }
 
-/** Rich frontend-only pages that mirror the real authenticated dashboard UI. */
+/** Rich frontend-only pages that mount the same client UI as the real app. */
 export function HomeDemoPage({ view, niche, orgName, entityTitle, scheduleLabel }: Props) {
-  if (view === "customers") {
-    return <CrmDemo orgName={orgName} entityTitle={entityTitle} niche={niche} />;
-  }
+  const content = (() => {
+    if (view === "customers") {
+      return <CustomersDemo niche={niche} orgName={orgName} entityTitle={entityTitle} />;
+    }
+    if (view === "appointments") {
+      return <AppointmentsDemo niche={niche} orgName={orgName} scheduleLabel={scheduleLabel} />;
+    }
+    if (view === "invoices") return <InvoicesDemo niche={niche} orgName={orgName} />;
+    if (view === "inventory") return <InventoryDemo niche={niche} orgName={orgName} />;
+    if (view === "pos") return <PosDemo niche={niche} orgName={orgName} />;
+    if (view === "cash") return <CashDemo orgName={orgName} />;
+    if (view === "admin") return <AdminDemo niche={niche} orgName={orgName} />;
+    if (view === "accounting") return <AccountingDemo niche={niche} orgName={orgName} />;
+    if (view === "lhdn") return <LhdnDemo niche={niche} orgName={orgName} />;
 
-  if (view === "appointments") {
-    return <AppointmentsDemo orgName={orgName} scheduleLabel={scheduleLabel} />;
-  }
+    const moduleConfig = demoNicheModule(view, niche);
+    if (moduleConfig) {
+      return <NicheModuleDemo config={moduleConfig} orgName={orgName} />;
+    }
 
-  if (view === "invoices") {
-    return <InvoicesDemo orgName={orgName} />;
-  }
-
-  if (view === "inventory") {
-    return <InventoryDemo orgName={orgName} />;
-  }
-
-  if (view === "pos") return <PosDemo orgName={orgName} />;
-  if (view === "cash") return <CashDemo orgName={orgName} />;
-  if (view === "admin") return <AdminDemo orgName={orgName} />;
-  if (view === "accounting") return <AccountingDemo orgName={orgName} />;
-  if (view === "lhdn") return <LhdnDemo orgName={orgName} />;
-
-  if (view === "pets") {
     return (
-      <SpecialtyDemo
-        title="Pets"
-        orgName={orgName}
-        addFields={
-          <>
-            <DemoInput label="Pet name" placeholder="Buddy" />
-            <DemoInput label="Species" placeholder="Dog / Cat" />
-            <DemoInput label="Owner" placeholder="Owner name" />
-            <DemoInput label="Vaccine due" placeholder="YYYY-MM-DD" />
-          </>
-        }
-        columns={["Pet", "Species", "Owner", "Next vaccine", "Status"]}
-        rows={[
-          ["Buddy", "Dog", "Aina Rahman", "12 Sep 2026", "Active"],
-          ["Mimi", "Cat", "Lim Wei", "3 Oct 2026", "Active"],
-          ["Rocky", "Dog", "Hafiz Omar", "Overdue", "Alert"],
-        ]}
-      />
+      <div className="surface" style={{ padding: "1.25rem" }}>
+        <PageHeader title={view} subtitle={orgName} />
+        <p className="muted">Demo preview for this section.</p>
+      </div>
     );
-  }
+  })();
 
-  if (view === "memberships") {
-    return (
-      <SpecialtyDemo
-        title="Memberships"
-        orgName={orgName}
-        addFields={
-          <>
-            <DemoInput label="Member" placeholder="Name" />
-            <DemoSelect label="Plan" options={["Monthly", "Quarterly", "Annual"]} />
-            <DemoInput label="Start" type="date" defaultValue="2026-08-05" />
-          </>
-        }
-        columns={["Member", "Plan", "Start", "Renewal", "Status"]}
-        rows={[
-          ["Hafiz Omar", "Monthly", "5 Jul 2026", "5 Aug 2026", "Active"],
-          ["Mei Ling", "Monthly", "12 Jul 2026", "12 Aug 2026", "Active"],
-          ["Amir Razak", "Quarterly", "1 Jun 2026", "1 Sep 2026", "Due soon"],
-        ]}
-      />
-    );
-  }
-
-  if (view === "classes") {
-    return (
-      <SpecialtyDemo
-        title="Classes"
-        orgName={orgName}
-        addFields={
-          <>
-            <DemoInput label="Class name" placeholder="HIIT" />
-            <DemoInput label="Coach" placeholder="Coach name" />
-            <DemoInput label="Time" placeholder="19:00" />
-            <DemoInput label="Capacity" defaultValue="16" />
-          </>
-        }
-        columns={["Time", "Class", "Coach", "Studio", "Booked"]}
-        rows={[
-          ["06:30", "HIIT", "Coach Dan", "Studio A", "14/16"],
-          ["09:00", "Yoga", "Coach Mei", "Studio B", "11/12"],
-          ["19:00", "HIIT", "Coach Dan", "Studio A", "12/16"],
-        ]}
-      />
-    );
-  }
-
-  if (view === "checkins") {
-    return (
-      <SpecialtyDemo
-        title="Check-ins"
-        orgName={orgName}
-        addFields={
-          <>
-            <DemoInput label="Member / pass" placeholder="Scan or name" />
-            <DemoSelect label="Gate" options={["Gate A", "Gate B"]} />
-          </>
-        }
-        columns={["Time", "Member", "Gate", "Plan", "Status"]}
-        rows={[
-          ["18:02", "Hafiz Omar", "Gate A", "Monthly", "In"],
-          ["18:05", "Mei Ling", "Gate A", "Monthly", "In"],
-          ["18:27", "Guest pass", "Gate B", "Day", "In"],
-        ]}
-      />
-    );
-  }
-
-  if (view === "subjects") {
-    return (
-      <SpecialtyDemo
-        title="Subjects"
-        orgName={orgName}
-        addFields={
-          <>
-            <DemoInput label="Subject" placeholder="Additional Mathematics" />
-            <DemoInput label="Teacher" placeholder="Teacher name" />
-            <DemoInput label="Fee" placeholder="RM 120" />
-          </>
-        }
-        columns={["Subject", "Teacher", "Students", "Fee", "Status"]}
-        rows={[
-          ["Add Math", "Cikgu Amir", "18", "RM 120", "Open"],
-          ["Physics", "Cikgu Mei", "14", "RM 110", "Open"],
-          ["English", "Ms Farah", "22", "RM 90", "Full"],
-        ]}
-      />
-    );
-  }
-
-  if (view === "attendance") {
-    return (
-      <SpecialtyDemo
-        title="Attendance"
-        orgName={orgName}
-        addFields={
-          <>
-            <DemoSelect label="Class" options={["Add Math · Form 4", "Physics · Form 5"]} />
-            <DemoInput label="Date" type="date" defaultValue="2026-08-05" />
-          </>
-        }
-        columns={["Student", "Class", "Date", "Status"]}
-        rows={[
-          ["Aina Rahman", "Add Math", "5 Aug", "Present"],
-          ["Lim Wei", "Add Math", "5 Aug", "Present"],
-          ["Siti Aminah", "Add Math", "5 Aug", "Absent"],
-        ]}
-      />
-    );
-  }
-
-  if (view === "assessments") {
-    return (
-      <SpecialtyDemo
-        title="Assessments"
-        orgName={orgName}
-        addFields={
-          <>
-            <DemoInput label="Title" placeholder="Chapter 3 quiz" />
-            <DemoSelect label="Subject" options={["Add Math", "Physics"]} />
-            <DemoInput label="Max marks" defaultValue="100" />
-          </>
-        }
-        columns={["Assessment", "Subject", "Date", "Avg", "Status"]}
-        rows={[
-          ["Chapter 3 quiz", "Add Math", "2 Aug", "78", "Published"],
-          ["Term test 1", "Physics", "28 Jul", "71", "Published"],
-        ]}
-      />
-    );
-  }
-
-  if (view === "jobs") {
-    return (
-      <SpecialtyDemo
-        title="Job cards"
-        orgName={orgName}
-        addFields={
-          <>
-            <DemoInput label="Vehicle" placeholder="WXY 1234" />
-            <DemoInput label="Customer" placeholder="Owner name" />
-            <DemoInput label="Issue" placeholder="Brake pads" />
-          </>
-        }
-        columns={["Job", "Vehicle", "Customer", "Bay", "Status"]}
-        rows={[
-          ["JOB-441", "WXY 1234", "Hafiz Omar", "Bay 2", "In progress"],
-          ["JOB-440", "ABC 9988", "Mei Ling", "Bay 1", "Waiting parts"],
-          ["JOB-439", "JKL 2201", "Lim Wei", "Bay 3", "Completed"],
-        ]}
-      />
-    );
-  }
-
-  if (view === "vehicles") {
-    return (
-      <SpecialtyDemo
-        title="Vehicles"
-        orgName={orgName}
-        addFields={
-          <>
-            <DemoInput label="Plate" placeholder="WXY 1234" />
-            <DemoInput label="Make / model" placeholder="Honda City" />
-            <DemoInput label="Owner" placeholder="Customer" />
-          </>
-        }
-        columns={["Plate", "Vehicle", "Owner", "Last service", "Status"]}
-        rows={[
-          ["WXY 1234", "Honda City", "Hafiz Omar", "5 Aug 2026", "In workshop"],
-          ["ABC 9988", "Toyota Vios", "Mei Ling", "28 Jul 2026", "Active"],
-        ]}
-      />
-    );
-  }
-
-  if (view === "tables") {
-    return (
-      <SpecialtyDemo
-        title="Tables"
-        orgName={orgName}
-        addFields={
-          <>
-            <DemoInput label="Table" placeholder="T12" />
-            <DemoSelect label="Zone" options={["Indoor", "Outdoor", "VIP"]} />
-            <DemoInput label="Seats" defaultValue="4" />
-          </>
-        }
-        columns={["Table", "Zone", "Seats", "Order", "Status"]}
-        rows={[
-          ["T12", "Indoor", "4", "ORD-882", "Occupied"],
-          ["T03", "Outdoor", "2", "—", "Free"],
-          ["V1", "VIP", "6", "ORD-880", "Billing"],
-        ]}
-      />
-    );
-  }
-
-  if (view === "rooms") {
-    return (
-      <SpecialtyDemo
-        title="Rooms"
-        orgName={orgName}
-        addFields={
-          <>
-            <DemoInput label="Room" placeholder="Deluxe 201" />
-            <DemoSelect label="Type" options={["Standard", "Deluxe", "Suite"]} />
-            <DemoInput label="Rate" placeholder="RM 180" />
-          </>
-        }
-        columns={["Room", "Type", "Guest", "Checkout", "Status"]}
-        rows={[
-          ["201", "Deluxe", "Aina Rahman", "6 Aug", "Occupied"],
-          ["105", "Standard", "—", "—", "Vacant"],
-          ["301", "Suite", "Lim Wei", "7 Aug", "Occupied"],
-        ]}
-      />
-    );
-  }
-
-  if (view === "listings") {
-    return (
-      <SpecialtyDemo
-        title="Listings"
-        orgName={orgName}
-        addFields={
-          <>
-            <DemoInput label="Title" placeholder="Condo for rent" />
-            <DemoInput label="Area" placeholder="Bangsar" />
-            <DemoInput label="Price" placeholder="RM 2,800" />
-          </>
-        }
-        columns={["Listing", "Area", "Type", "Price", "Status"]}
-        rows={[
-          ["Bangsar Condo A", "Bangsar", "Rent", "RM 2,800", "Active"],
-          ["PJ Terrace", "Petaling Jaya", "Sale", "RM 980k", "Active"],
-        ]}
-      />
-    );
-  }
-
-  if (view === "shipments") {
-    return (
-      <SpecialtyDemo
-        title="Shipments"
-        orgName={orgName}
-        addFields={
-          <>
-            <DemoInput label="Tracking" placeholder="SP-10021" />
-            <DemoInput label="Customer" placeholder="Name" />
-            <DemoSelect label="Status" options={["Picked up", "In transit", "Delivered"]} />
-          </>
-        }
-        columns={["Tracking", "Customer", "Route", "ETA", "Status"]}
-        rows={[
-          ["SP-10021", "Cafe Luna", "KL → JB", "5 Aug", "In transit"],
-          ["SP-10018", "Workshop 88", "KL → Penang", "Delivered", "Delivered"],
-        ]}
-      />
-    );
-  }
-
-  if (view === "projects") {
-    return (
-      <SpecialtyDemo
-        title="Projects"
-        orgName={orgName}
-        addFields={
-          <>
-            <DemoInput label="Project" placeholder="Renovation Lot 12" />
-            <DemoInput label="Client" placeholder="Client name" />
-            <DemoInput label="Claim %" defaultValue="30" />
-          </>
-        }
-        columns={["Project", "Client", "Progress", "Next claim", "Status"]}
-        rows={[
-          ["Lot 12 reno", "Encik Hafiz", "45%", "RM 12,000", "Active"],
-          ["Shop fit-out", "Cafe Luna", "80%", "RM 8,500", "Active"],
-        ]}
-      />
-    );
-  }
-
-  if (view === "workOrders") {
-    return (
-      <SpecialtyDemo
-        title="Work orders"
-        orgName={orgName}
-        addFields={
-          <>
-            <DemoInput label="WO #" placeholder="WO-220" />
-            <DemoInput label="Product" placeholder="SKU / BOM" />
-            <DemoInput label="Qty" defaultValue="100" />
-          </>
-        }
-        columns={["WO", "Product", "Qty", "Line", "Status"]}
-        rows={[
-          ["WO-220", "Widget A", "100", "Line 1", "WIP"],
-          ["WO-218", "Widget B", "40", "Line 2", "Queued"],
-        ]}
-      />
-    );
-  }
-
-  if (view === "matters") {
-    return (
-      <SpecialtyDemo
-        title="Matters"
-        orgName={orgName}
-        addFields={
-          <>
-            <DemoInput label="Matter" placeholder="Sale & purchase" />
-            <DemoInput label="Client" placeholder="Client name" />
-            <DemoSelect label="Type" options={["Conveyancing", "Litigation", "Advisory"]} />
-          </>
-        }
-        columns={["Matter", "Client", "Type", "Next date", "Status"]}
-        rows={[
-          ["SPA Lot 88", "Aina Rahman", "Conveyancing", "12 Aug", "Open"],
-          ["Debt claim", "ProSupply", "Litigation", "20 Aug", "Open"],
-        ]}
-      />
-    );
-  }
-
-  if (view === "events") {
-    return (
-      <SpecialtyDemo
-        title="Events"
-        orgName={orgName}
-        addFields={
-          <>
-            <DemoInput label="Event" placeholder="Wedding dinner" />
-            <DemoInput label="Client" placeholder="Client name" />
-            <DemoInput label="Date" type="date" defaultValue="2026-09-12" />
-          </>
-        }
-        columns={["Event", "Client", "Date", "Pax", "Status"]}
-        rows={[
-          ["Wedding dinner", "Aina & Hafiz", "12 Sep", "250", "Confirmed"],
-          ["Corp launch", "Gadget Hub", "28 Aug", "80", "Planning"],
-        ]}
-      />
-    );
-  }
-
-  if (view === "plots") {
-    return (
-      <SpecialtyDemo
-        title="Plots"
-        orgName={orgName}
-        addFields={
-          <>
-            <DemoInput label="Plot" placeholder="Plot A1" />
-            <DemoInput label="Crop" placeholder="Chili" />
-            <DemoInput label="Area" placeholder="0.5 acre" />
-          </>
-        }
-        columns={["Plot", "Crop", "Area", "Harvest", "Status"]}
-        rows={[
-          ["A1", "Chili", "0.5 acre", "Sep 2026", "Growing"],
-          ["B2", "Leafy greens", "0.3 acre", "Aug 2026", "Ready"],
-        ]}
-      />
-    );
-  }
-
-  if (view === "packages") {
-    return (
-      <SpecialtyDemo
-        title="Packages"
-        orgName={orgName}
-        addFields={
-          <>
-            <DemoInput label="Package" placeholder="10-session physio" />
-            <DemoInput label="Sessions" defaultValue="10" />
-            <DemoInput label="Price" placeholder="RM 900" />
-          </>
-        }
-        columns={["Package", "Patient", "Left", "Expiry", "Status"]}
-        rows={[
-          ["10-session", "Aina Rahman", "6", "5 Nov 2026", "Active"],
-          ["5-session", "Lim Wei", "1", "20 Aug 2026", "Low"],
-        ]}
-      />
-    );
-  }
-
-  if (view === "labResults") {
-    return (
-      <SpecialtyDemo
-        title="Lab results"
-        orgName={orgName}
-        addFields={
-          <>
-            <DemoInput label="Patient" placeholder="Name" />
-            <DemoInput label="Test" placeholder="Full blood count" />
-            <DemoSelect label="Status" options={["Pending", "Ready", "Delivered"]} />
-          </>
-        }
-        columns={["Result", "Patient", "Test", "Ready at", "Status"]}
-        rows={[
-          ["LR-1042", "Aina Rahman", "FBC", "4 Aug 16:00", "Ready"],
-          ["LR-1041", "Lim Wei", "Lipid", "—", "Pending"],
-        ]}
-      />
-    );
-  }
-
-  if (view === "laundry") {
-    return (
-      <SpecialtyDemo
-        title="Laundry tickets"
-        orgName={orgName}
-        addFields={
-          <>
-            <DemoInput label="Ticket" placeholder="LD-220" />
-            <DemoInput label="Customer" placeholder="Name" />
-            <DemoSelect label="Service" options={["Wash & fold", "Dry clean", "Express"]} />
-          </>
-        }
-        columns={["Ticket", "Customer", "Service", "Ready", "Status"]}
-        rows={[
-          ["LD-220", "Mei Ling", "Wash & fold", "5 Aug 18:00", "Processing"],
-          ["LD-219", "Hafiz Omar", "Dry clean", "Ready", "Ready"],
-        ]}
-      />
-    );
-  }
-
-  if (view === "receipts" || view === "categories" || view === "logistics" || view === "printers" || view === "commissions" || view === "batches" || view === "eyeRx" || view === "labOrders" || view === "variants" || view === "serials" || view === "priceTiers") {
-    const titleMap: Record<string, string> = {
-      receipts: "Past receipts",
-      categories: "Categories",
-      logistics: "Logistics",
-      printers: "Printers",
-      commissions: "Commissions",
-      batches: "Batches",
-      eyeRx: "Eye Rx",
-      labOrders: "Lab orders",
-      variants: "Variants",
-      serials: "Serials",
-      priceTiers: "Price tiers",
-    };
-    return (
-      <SpecialtyDemo
-        title={titleMap[view] || view}
-        orgName={orgName}
-        addFields={
-          <>
-            <DemoInput label="Name / ref" placeholder="Demo item" />
-            <DemoInput label="Notes" placeholder="Optional" />
-          </>
-        }
-        columns={["Ref", "Detail", "Updated", "Status"]}
-        rows={[
-          [`${view.toUpperCase()}-01`, "Demo record A", "4 Aug 2026", "Active"],
-          [`${view.toUpperCase()}-02`, "Demo record B", "3 Aug 2026", "Active"],
-          [`${view.toUpperCase()}-03`, "Demo record C", "1 Aug 2026", "Pending"],
-        ]}
-      />
-    );
-  }
-
-  // Fallback — still a form + table so every nav key has a real UI shell
-  return (
-    <SpecialtyDemo
-      title={view}
-      orgName={orgName}
-      addFields={
-        <>
-          <DemoInput label="Name" placeholder="Demo item" />
-          <DemoInput label="Notes" placeholder="Optional" />
-        </>
-      }
-      columns={["#", "Detail", "Status"]}
-      rows={[
-        ["1", "Demo record", "Ready"],
-        ["2", "Demo record", "Ready"],
-      ]}
-    />
-  );
+  return <ConfirmProvider>{content}</ConfirmProvider>;
 }
-

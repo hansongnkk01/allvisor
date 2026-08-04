@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ActionForm } from "@/components/ActionForm";
+import { DemoCensor } from "@/components/DemoCensor";
 import { PatientName } from "@/components/PatientName";
 import { PatientSafetyBanner } from "@/components/PatientSafetyBanner";
 import {
@@ -33,11 +34,14 @@ export function CustomerRow({
   labels,
   showAllergies = true,
   showRisk = true,
+  demoMode = false,
 }: {
   customer: Customer;
   labels: Labels;
   showAllergies?: boolean;
   showRisk?: boolean;
+  /** Homepage marketing demo — censor IC; no server mutations. */
+  demoMode?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const allergies = showAllergies ? customer.allergies : null;
@@ -49,7 +53,7 @@ export function CustomerRow({
       <tr>
         <td colSpan={colSpan}>
           <ActionForm
-            action={upsertCustomerAction}
+            action={demoMode ? async () => ({ success: true }) : upsertCustomerAction}
             onSuccess={() => setEditing(false)}
             className="stack"
             style={{ padding: "0.5rem 0" }}
@@ -83,11 +87,17 @@ export function CustomerRow({
               ) : null}
               <div className="field">
                 <label>{labels.ic}</label>
-                <input
-                  name="ic_number"
-                  className="input"
-                  defaultValue={customer.ic_number || ""}
-                />
+                {demoMode ? (
+                  <div className="demo-censor-field">
+                    <DemoCensor width="72%" height={14} aria-label={labels.ic} />
+                  </div>
+                ) : (
+                  <input
+                    name="ic_number"
+                    className="input"
+                    defaultValue={customer.ic_number || ""}
+                  />
+                )}
               </div>
               <div className="field">
                 <label>{labels.email}</label>
@@ -167,7 +177,13 @@ export function CustomerRow({
         ) : null}
       </td>
       {showRisk ? <td>{customer.risk_level || "—"}</td> : null}
-      <td>{customer.ic_number || "—"}</td>
+      <td>
+        {demoMode ? (
+          <DemoCensor width={96} height={12} aria-label={labels.ic} />
+        ) : (
+          customer.ic_number || "—"
+        )}
+      </td>
       <td style={{ maxWidth: 180, whiteSpace: "normal" }}>{customer.address || "—"}</td>
       <td>{customer.phone || "—"}</td>
       <td>{customer.email || "—"}</td>
@@ -179,7 +195,9 @@ export function CustomerRow({
       </td>
       <td>
         <div className="row" style={{ justifyContent: "flex-end", flexWrap: "wrap" }}>
-          <PatientTimelineButton customer={customer} labels={labels.timeline} />
+          {!demoMode ? (
+            <PatientTimelineButton customer={customer} labels={labels.timeline} />
+          ) : null}
           <button
             type="button"
             className="btn btn-soft"
@@ -188,15 +206,21 @@ export function CustomerRow({
           >
             {labels.edit}
           </button>
-          <form
-            action={async () => {
-              await deleteCustomerAction(customer.id);
-            }}
-          >
-            <button type="submit" className="btn btn-ghost" style={{ padding: "0.35rem 0.7rem" }}>
+          {demoMode ? (
+            <button type="button" className="btn btn-ghost" style={{ padding: "0.35rem 0.7rem" }}>
               {labels.delete}
             </button>
-          </form>
+          ) : (
+            <form
+              action={async () => {
+                await deleteCustomerAction(customer.id);
+              }}
+            >
+              <button type="submit" className="btn btn-ghost" style={{ padding: "0.35rem 0.7rem" }}>
+                {labels.delete}
+              </button>
+            </form>
+          )}
         </div>
       </td>
     </tr>

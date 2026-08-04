@@ -13,6 +13,7 @@ export function PatientsList({
   searchPlaceholder,
   showAllergies = true,
   showRisk = true,
+  demoMode = false,
 }: {
   customers: Customer[];
   labels: {
@@ -35,6 +36,7 @@ export function PatientsList({
   searchPlaceholder: string;
   showAllergies?: boolean;
   showRisk?: boolean;
+  demoMode?: boolean;
 }) {
   const [q, setQ] = useState("");
   const filtered = useMemo(() => {
@@ -92,6 +94,7 @@ export function PatientsList({
                 labels={labels}
                 showAllergies={showAllergies}
                 showRisk={showRisk}
+                demoMode={demoMode}
               />
             ))}
             {!filtered.length ? (

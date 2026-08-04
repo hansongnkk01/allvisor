@@ -133,6 +133,7 @@ export function AppointmentBoard({
   hoursConfig,
   patients = [],
   categories = [],
+  demoMode = false,
 }: {
   appointments: Appt[];
   patients?: PatientOpt[];
@@ -173,6 +174,8 @@ export function AppointmentBoard({
     completeConfirm2: string;
   };
   hoursConfig?: TimetableHours;
+  /** Homepage marketing demo — UI only, no server mutations. */
+  demoMode?: boolean;
 }) {
   const router = useRouter();
   const confirm = useConfirm();
@@ -245,6 +248,7 @@ export function AppointmentBoard({
   }
 
   function refreshAfter(action: () => Promise<unknown>) {
+    if (demoMode) return;
     startTransition(async () => {
       await action();
       router.refresh();
@@ -321,6 +325,10 @@ export function AppointmentBoard({
       cancelLabel: "Cancel",
     });
     if (!ok) return;
+    if (demoMode) {
+      setOptimisticCompleted((prev) => new Set(prev).add(id));
+      return;
+    }
     setCompletingId(id);
     setOptimisticCompleted((prev) => new Set(prev).add(id));
     try {
@@ -382,6 +390,7 @@ export function AppointmentBoard({
       refreshAfter(() => deleteAppointmentAction(id));
     },
     onSave: async (formData: FormData) => {
+      if (demoMode) return { error: undefined };
       const nextStatus = String(formData.get("status") || "") as AppointmentStatus;
       const apptId = String(formData.get("id") || "");
       if (nextStatus === "completed" && apptId) {
@@ -674,6 +683,10 @@ export function AppointmentBoard({
                       fd.set("status", "scheduled");
                       fd.set("notes", notes);
                       setBookError(null);
+                      if (demoMode) {
+                        resetBooking();
+                        return;
+                      }
                       startTransition(async () => {
                         const result = await createAppointmentAction(fd);
                         if (result && "error" in result && result.error) {

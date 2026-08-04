@@ -152,11 +152,19 @@ function SectionLabel({ children, first }: { children: ReactNode; first?: boolea
   );
 }
 
+const HREF_SEGMENT_TO_VIEW: Record<string, string> = Object.fromEntries(
+  Object.entries(NAV_HREF).map(([key, href]) => {
+    const seg = href.replace(/^\//, "").split("/").filter(Boolean).pop() || key;
+    return [seg, key];
+  })
+);
+
 function hrefToView(href: string): string {
   const clean = href.replace(/\/$/, "") || "/dashboard";
   if (clean === "/dashboard" || clean.endsWith("/dashboard")) return "dashboard";
   const parts = clean.split("/").filter(Boolean);
-  return parts[parts.length - 1] || "dashboard";
+  const seg = parts[parts.length - 1] || "dashboard";
+  return HREF_SEGMENT_TO_VIEW[seg] || seg;
 }
 
 const DEMO_INVOICES = [

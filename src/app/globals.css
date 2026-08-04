@@ -1045,6 +1045,24 @@ html[data-landing="true"] {
 }
 
 /* Mini-site dashboard frame beside hero copy */
+.demo-censor {
+  display: inline-block;
+  vertical-align: middle;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--ink) 14%, var(--bg));
+  flex-shrink: 0;
+}
+
+.demo-censor-field {
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 0.75rem;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--ink) 3%, var(--bg));
+}
+
 .home-demo {
   display: flex;
   flex-direction: column;

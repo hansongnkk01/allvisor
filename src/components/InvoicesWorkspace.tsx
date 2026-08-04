@@ -106,12 +106,15 @@ export function InvoicesWorkspace({
   labels,
   initialPreviewId,
   showAllergies = true,
+  demoMode = false,
 }: {
   invoices: InvoiceListRow[];
   canLhdn: boolean;
   loadPreview: (id: string) => Promise<{ data?: PreviewPayload; error?: string }>;
   initialPreviewId?: string | null;
   showAllergies?: boolean;
+  /** Homepage marketing demo — UI only, no server mutations / route changes. */
+  demoMode?: boolean;
   labels: {
     number: string;
     customer: string;
@@ -258,7 +261,7 @@ export function InvoicesWorkspace({
     setExitError(null);
     setPreviewId(null);
     setPreview(null);
-    router.replace("/invoices");
+    if (!demoMode) router.replace("/invoices");
   }
 
   function requestClosePreview() {
@@ -284,6 +287,10 @@ export function InvoicesWorkspace({
       return;
     }
     startExit(async () => {
+      if (demoMode) {
+        doClosePreview();
+        return;
+      }
       const fd = new FormData();
       fd.set("invoice_id", inv.id);
       fd.set("reason", reason);
@@ -306,6 +313,7 @@ export function InvoicesWorkspace({
       danger: true,
     });
     if (!ok) return;
+    if (demoMode) return;
     const result = await revokeInvoiceAction(id);
     if (result && "error" in result && result.error) {
       await confirm({
@@ -325,7 +333,7 @@ export function InvoicesWorkspace({
     startTransition(async () => {
       const res = await loadPreview(id);
       if (res.data) setPreview(res.data);
-      router.refresh();
+      if (!demoMode) router.refresh();
     });
   };
 
@@ -349,9 +357,10 @@ export function InvoicesWorkspace({
                 <InvoicePreviewBody
                   data={preview}
                   labels={labels}
-                  canLhdn={canLhdn}
+                  canLhdn={demoMode ? false : canLhdn}
                   showAllergies={showAllergies}
                   onSubmitted={reloadPreview}
+                  demoMode={demoMode}
                 />
               ) : null}
             </div>
@@ -631,12 +640,14 @@ function InvoicePreviewBody({
   canLhdn,
   onSubmitted,
   showAllergies = true,
+  demoMode = false,
 }: {
   data: PreviewPayload;
   labels: PreviewLabels;
   canLhdn: boolean;
   onSubmitted: () => void;
   showAllergies?: boolean;
+  demoMode?: boolean;
 }) {
   const invoice = data.invoice;
   const editable = invoice.status !== "paid" && invoice.status !== "void";
@@ -711,7 +722,7 @@ function InvoicePreviewBody({
               {labels.lhdnStatusLine.replace("{status}", myStatus || lhdnStatus)}
             </span>
           ) : null}
-          {editable && balance > 0 ? (
+          {editable && balance > 0 && !demoMode ? (
             <RecordPaymentForm
               compact
               invoiceId={invoice.id}
@@ -723,6 +734,11 @@ function InvoicePreviewBody({
               }}
               onSuccess={onSubmitted}
             />
+          ) : null}
+          {editable && balance > 0 && demoMode ? (
+            <button type="button" className="btn btn-soft no-print" onClick={onSubmitted}>
+              {labels.pay}
+            </button>
           ) : null}
           <PrintInvoiceButton
             label={labels.print}
@@ -835,7 +851,7 @@ function InvoicePreviewBody({
         </div>
         <InvoiceCostPanel
           invoiceId={invoice.id}
-          editable={editable}
+          editable={editable && !demoMode}
           serviceChargePercent={pct}
           lines={data.lines}
           products={data.products || []}
@@ -927,7 +943,7 @@ function InvoicePreviewBody({
         <h3 style={{ marginTop: 0 }}>{labels.editStatus}</h3>
         <p className="muted">{labels.editStatusHint}</p>
         <ActionForm
-          action={updateInvoiceStatusAction}
+          action={demoMode ? async () => ({ success: true }) : updateInvoiceStatusAction}
           className="row"
           onSuccess={() => onSubmitted()}
         >
