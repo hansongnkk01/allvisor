@@ -71,6 +71,8 @@ const PRESETS: PreviewNiche[] = ["clinic", "retail", "gym"];
 
 /** Real desktop canvas width — scaled down to fit the hero frame. */
 const STAGE_W = 1280;
+/** Extra shrink so the demo sits smaller beside the hero copy. */
+const DEMO_FIT = 0.8;
 
 const ORG: Record<PreviewNiche, string> = {
   clinic: "Klinik Harmoni",

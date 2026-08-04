@@ -1154,7 +1154,7 @@ html[data-landing="true"] {
   width: 100%;
   aspect-ratio: 16 / 10;
   height: auto;
-  max-height: min(820px, 84vh);
+  max-height: min(656px, 67vh);
   border-radius: 16px;
   border: 1px solid color-mix(in srgb, var(--ink) 18%, var(--line));
   background: var(--bg);
