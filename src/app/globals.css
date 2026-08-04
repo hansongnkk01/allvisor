@@ -1100,6 +1100,8 @@ html[data-landing="true"] {
   justify-content: flex-start;
   gap: 0.45rem;
   align-self: flex-start;
+  width: 80%;
+  max-width: 100%;
 }
 
 .home-demo__arrow {
@@ -1151,7 +1153,8 @@ html[data-landing="true"] {
 .home-demo__viewport {
   --home-demo-scale: 1;
   position: relative;
-  width: 100%;
+  width: 80%;
+  max-width: 100%;
   aspect-ratio: 16 / 10;
   height: auto;
   max-height: min(656px, 67vh);
