@@ -1,12 +1,12 @@
 import { setRequestLocale } from "next-intl/server";
-import { HomeClient } from "@/components/HomeClient";
+import { StartLandingClient } from "@/components/StartLandingClient";
 
-export default async function HomePage({
+export default async function StartPage({
   params,
 }: {
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  return <HomeClient />;
+  return <StartLandingClient />;
 }
