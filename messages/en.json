@@ -67,30 +67,35 @@
         "nav1": "Dashboard",
         "nav2": "POS / Sales",
         "nav3": "Inventory",
-        "nav4": "Invoices"
+        "nav4": "Invoices",
+        "nav5": "Cash drawer"
       },
       "gym": {
         "nav1": "Dashboard",
         "nav2": "Members",
         "nav3": "Classes",
-        "nav4": "Invoices"
+        "nav4": "Invoices",
+        "nav5": "Check-ins"
       }
     },
     "demoKpi": {
       "clinic": {
         "kpi1": "Appointments today",
         "kpi2": "Collected",
-        "kpi3": "Unpaid"
+        "kpi3": "Unpaid",
+        "kpi4": "Patients"
       },
       "retail": {
         "kpi1": "Sales today",
         "kpi2": "Transactions",
-        "kpi3": "Low stock"
+        "kpi3": "Low stock",
+        "kpi4": "Cash expected"
       },
       "gym": {
         "kpi1": "Active members",
         "kpi2": "Classes today",
-        "kpi3": "Fees due"
+        "kpi3": "Fees due",
+        "kpi4": "Check-ins"
       }
     },
     "demoAct": {
@@ -114,6 +119,58 @@
       "clinic": "Recent invoices",
       "retail": "Today’s sales",
       "gym": "Membership & classes"
+    },
+    "demoPanel": {
+      "clinic": {
+        "upcoming": "Upcoming appointments"
+      },
+      "retail": {
+        "top": "Top sellers"
+      },
+      "gym": {
+        "checkins": "Recent check-ins"
+      }
+    },
+    "demoView": {
+      "clinic": {
+        "patientsTitle": "Patients",
+        "patientsSub": "Active patient records for Klinik Harmoni",
+        "patientsPanel": "Patient list",
+        "apptsTitle": "Appointments",
+        "apptsSub": "Today’s schedule by room",
+        "apptsPanel": "Today’s appointments",
+        "invTitle": "Invoices",
+        "invSub": "Billing & payment status",
+        "invPanel": "All invoices"
+      },
+      "retail": {
+        "posTitle": "POS / Sales",
+        "posSub": "Live counter tickets today",
+        "posPanel": "Sales tickets",
+        "invTitle": "Inventory",
+        "invSub": "Stock levels & low alerts",
+        "invPanel": "Low stock items",
+        "cashTitle": "Cash drawer",
+        "cashSub": "Float, sales & expected close",
+        "cashPanel": "Drawer movements",
+        "invoicesTitle": "Invoices",
+        "invoicesSub": "Wholesale & account sales",
+        "invoicesPanel": "Customer invoices"
+      },
+      "gym": {
+        "membersTitle": "Members",
+        "membersSub": "Membership status at Palio Fitness",
+        "membersPanel": "Member list",
+        "classesTitle": "Classes",
+        "classesSub": "Today’s timetable & capacity",
+        "classesPanel": "Class schedule",
+        "checkinsTitle": "Check-ins",
+        "checkinsSub": "Gate entries this evening",
+        "checkinsPanel": "Live check-ins",
+        "invTitle": "Invoices",
+        "invSub": "Membership & PT billing",
+        "invPanel": "Fee invoices"
+      }
     }
   },
   "Nav": {

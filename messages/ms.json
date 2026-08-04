@@ -67,30 +67,35 @@
         "nav1": "Dashboard",
         "nav2": "POS / Jualan",
         "nav3": "Inventori",
-        "nav4": "Invois"
+        "nav4": "Invois",
+        "nav5": "Laci tunai"
       },
       "gym": {
         "nav1": "Dashboard",
         "nav2": "Ahli",
         "nav3": "Kelas",
-        "nav4": "Invois"
+        "nav4": "Invois",
+        "nav5": "Check-in"
       }
     },
     "demoKpi": {
       "clinic": {
         "kpi1": "Temujanji hari ini",
         "kpi2": "Kutipan",
-        "kpi3": "Belum bayar"
+        "kpi3": "Belum bayar",
+        "kpi4": "Pesakit"
       },
       "retail": {
         "kpi1": "Jualan hari ini",
         "kpi2": "Transaksi",
-        "kpi3": "Stok rendah"
+        "kpi3": "Stok rendah",
+        "kpi4": "Tunai dijangka"
       },
       "gym": {
         "kpi1": "Ahli aktif",
         "kpi2": "Kelas hari ini",
-        "kpi3": "Yuran tertunggak"
+        "kpi3": "Yuran tertunggak",
+        "kpi4": "Check-in"
       }
     },
     "demoAct": {
@@ -114,6 +119,58 @@
       "clinic": "Invois terkini",
       "retail": "Jualan hari ini",
       "gym": "Keahlian & kelas"
+    },
+    "demoPanel": {
+      "clinic": {
+        "upcoming": "Temujanji akan datang"
+      },
+      "retail": {
+        "top": "Item terlaris"
+      },
+      "gym": {
+        "checkins": "Check-in terkini"
+      }
+    },
+    "demoView": {
+      "clinic": {
+        "patientsTitle": "Pesakit",
+        "patientsSub": "Rekod pesakit aktif Klinik Harmoni",
+        "patientsPanel": "Senarai pesakit",
+        "apptsTitle": "Temujanji",
+        "apptsSub": "Jadual hari ini mengikut bilik",
+        "apptsPanel": "Temujanji hari ini",
+        "invTitle": "Invois",
+        "invSub": "Status bil & bayaran",
+        "invPanel": "Semua invois"
+      },
+      "retail": {
+        "posTitle": "POS / Jualan",
+        "posSub": "Tiket kaunter hari ini",
+        "posPanel": "Tiket jualan",
+        "invTitle": "Inventori",
+        "invSub": "Paras stok & amaran rendah",
+        "invPanel": "Item stok rendah",
+        "cashTitle": "Laci tunai",
+        "cashSub": "Float, jualan & penutupan dijangka",
+        "cashPanel": "Pergerakan laci",
+        "invoicesTitle": "Invois",
+        "invoicesSub": "Jualan borong & akaun",
+        "invoicesPanel": "Invois pelanggan"
+      },
+      "gym": {
+        "membersTitle": "Ahli",
+        "membersSub": "Status keahlian Palio Fitness",
+        "membersPanel": "Senarai ahli",
+        "classesTitle": "Kelas",
+        "classesSub": "Jadual & kapasiti hari ini",
+        "classesPanel": "Jadual kelas",
+        "checkinsTitle": "Check-in",
+        "checkinsSub": "Masuk pintu malam ini",
+        "checkinsPanel": "Check-in langsung",
+        "invTitle": "Invois",
+        "invSub": "Bil keahlian & PT",
+        "invPanel": "Invois yuran"
+      }
     }
   },
   "Nav": {
