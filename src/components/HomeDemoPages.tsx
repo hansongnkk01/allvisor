@@ -4,12 +4,11 @@ import { useMemo, useState, type ReactNode } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { DayHourTimetable } from "@/components/DayHourTimetable";
 import { PatientName } from "@/components/PatientName";
-
-export type DemoNiche = "clinic" | "retail" | "gym";
+import type { Niche } from "@/lib/types";
 
 type Props = {
   view: string;
-  niche: DemoNiche;
+  niche: Niche;
   orgName: string;
   entityTitle: string;
   scheduleLabel: string;
@@ -941,20 +940,180 @@ function LhdnDemo({ orgName }: { orgName: string }) {
   );
 }
 
-function GenericOpsDemo({
+function CrmDemo({
+  orgName,
+  entityTitle,
+  niche,
+}: {
+  orgName: string;
+  entityTitle: string;
+  niche: Niche;
+}) {
+  const careLike =
+    niche === "clinic" || niche === "vet" || niche === "physio" || niche === "lab";
+  if (careLike && niche === "clinic") {
+    return <PatientsDemo orgName={orgName} entityTitle={entityTitle} />;
+  }
+
+  const fields =
+    niche === "gym"
+      ? (
+          <>
+            <DemoInput label="Name" placeholder="Member name" />
+            <DemoSelect label="Plan" options={["Monthly", "Quarterly", "Annual", "PT pack"]} />
+            <DemoInput label="Phone" placeholder="012-3456789" />
+            <DemoInput label="Email" placeholder="name@email.com" />
+          </>
+        )
+      : niche === "tuition"
+        ? (
+            <>
+              <DemoInput label="Student name" placeholder="Full name" />
+              <DemoInput label="Parent phone" placeholder="012-3456789" />
+              <DemoInput label="Form / Level" placeholder="Form 4" />
+              <DemoInput label="Email" placeholder="parent@email.com" />
+            </>
+          )
+        : careLike
+          ? (
+              <>
+                <DemoInput label="Name" placeholder="Full name" />
+                <DemoSelect label="Risk" options={["—", "low", "medium", "high"]} />
+                <DemoInput label="Phone" placeholder="012-3456789" />
+                <DemoInput label="Email" placeholder="name@email.com" />
+              </>
+            )
+          : (
+              <>
+                <DemoInput label="Name" placeholder="Customer / company" />
+                <DemoInput label="Phone" placeholder="012-3456789" />
+                <DemoInput label="Email" placeholder="name@email.com" />
+                <DemoInput label="Notes" placeholder="Optional" />
+              </>
+            );
+
+  const columns =
+    niche === "gym"
+      ? ["Member ID", "Name", "Plan", "Phone", "Status"]
+      : niche === "tuition"
+        ? ["ID", "Student", "Parent phone", "Level", "Status"]
+        : careLike
+          ? ["ID", "Name", "Phone", "Risk", "Status"]
+          : ["Code", "Customer", "Phone", "Last visit", "Status"];
+
+  const rows =
+    niche === "gym"
+      ? [
+          ["MEM-220", "Hafiz Omar", "Monthly", "017-220 3344", "Active"],
+          ["MEM-219", "Mei Ling", "Monthly", "012-889 1100", "Active"],
+          ["MEM-218", "Amir Razak", "Quarterly", "013-441 2200", "Due soon"],
+          ["MEM-216", "Jason Tan", "PT pack", "019-332 7788", "Frozen"],
+        ]
+      : niche === "tuition"
+        ? [
+            ["ST-081", "Aina Rahman", "012-345 6789", "Form 4", "Active"],
+            ["ST-080", "Lim Wei", "016-778 2210", "Form 5", "Active"],
+            ["ST-079", "Siti Aminah", "019-441 2200", "Form 3", "New"],
+          ]
+        : careLike
+          ? [
+              ["PT-081", "Aina Rahman", "012-345 6789", "high", "Active"],
+              ["PT-080", "Lim Wei", "016-778 2210", "low", "Active"],
+              ["PT-079", "Siti Aminah", "019-441 2200", "medium", "New"],
+            ]
+          : [
+              ["CU-4201", "Cafe Luna Sdn Bhd", "07-3321 8890", "4 Aug", "Active"],
+              ["CU-4198", "Workshop 88", "012-778 2211", "3 Aug", "Active"],
+              ["CU-4192", "Mei Hardware", "016-554 0091", "1 Aug", "Active"],
+              ["CU-4180", "Walk-in", "—", "4 Aug", "Walk-in"],
+            ];
+
+  return (
+    <div className="stack" style={{ gap: "1.25rem" }}>
+      <PageHeader title={entityTitle} subtitle={orgName} />
+      <div className="surface" style={{ padding: "1.25rem" }}>
+        <h3 style={{ marginTop: 0 }}>Add</h3>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+            gap: "0.75rem",
+          }}
+        >
+          {fields}
+        </div>
+        <button type="button" className="btn btn-primary" style={{ width: "100%", marginTop: "0.9rem" }}>
+          Save
+        </button>
+      </div>
+      <div className="surface" style={{ padding: "1.25rem" }}>
+        <div className="field" style={{ maxWidth: 280, marginBottom: "0.85rem" }}>
+          <label>Search</label>
+          <input className="input" placeholder="Search…" readOnly />
+        </div>
+        <div className="table-wrap">
+          <table className="data">
+            <thead>
+              <tr>
+                {columns.map((c) => (
+                  <th key={c}>{c}</th>
+                ))}
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r[0]}>
+                  {r.map((cell, i) => (
+                    <td key={i}>{i === r.length - 1 ? <span className="badge">{cell}</span> : cell}</td>
+                  ))}
+                  <td>
+                    <div className="row" style={{ gap: "0.35rem" }}>
+                      <SoftBtn>Edit</SoftBtn>
+                      <SoftBtn tone="danger">Delete</SoftBtn>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SpecialtyDemo({
   title,
   orgName,
+  addFields,
   columns,
   rows,
 }: {
   title: string;
   orgName: string;
+  addFields: ReactNode;
   columns: string[];
   rows: string[][];
 }) {
   return (
     <div className="stack" style={{ gap: "1.25rem" }}>
       <PageHeader title={title} subtitle={orgName} />
+      <div className="surface" style={{ padding: "1.25rem" }}>
+        <h3 style={{ marginTop: 0 }}>Add</h3>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+            gap: "0.75rem",
+          }}
+        >
+          {addFields}
+        </div>
+        <button type="button" className="btn btn-primary" style={{ width: "100%", marginTop: "0.9rem" }}>
+          Save
+        </button>
+      </div>
       <div className="surface" style={{ padding: "1.25rem" }}>
         <div className="table-wrap">
           <table className="data">
@@ -963,15 +1122,103 @@ function GenericOpsDemo({
                 {columns.map((c) => (
                   <th key={c}>{c}</th>
                 ))}
+                <th />
               </tr>
             </thead>
             <tbody>
-              {rows.map((row, i) => (
-                <tr key={`${title}-${i}`}>
-                  {row.map((cell, j) => (
-                    <td key={j}>
-                      {j === row.length - 1 ? <span className="badge">{cell}</span> : cell}
-                    </td>
+              {rows.map((r, idx) => (
+                <tr key={`${title}-${idx}`}>
+                  {r.map((cell, i) => (
+                    <td key={i}>{i === r.length - 1 ? <span className="badge">{cell}</span> : cell}</td>
+                  ))}
+                  <td>
+                    <div className="row" style={{ gap: "0.35rem" }}>
+                      <SoftBtn>Edit</SoftBtn>
+                      <SoftBtn tone="danger">Delete</SoftBtn>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PosDemo({ orgName }: { orgName: string }) {
+  return (
+    <div className="stack" style={{ gap: "1.25rem" }}>
+      <PageHeader title="POS / Sales" subtitle={orgName} />
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.1fr) minmax(0, 0.9fr)", gap: "0.85rem" }}>
+        <div className="surface" style={{ padding: "1.15rem" }}>
+          <h3 style={{ marginTop: 0 }}>Cart</h3>
+          <div className="field" style={{ marginBottom: "0.75rem" }}>
+            <label>Scan / search item</label>
+            <input className="input" placeholder="Barcode or product name…" readOnly />
+          </div>
+          <div className="table-wrap">
+            <table className="data">
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th>Qty</th>
+                  <th>Price</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Paracetamol 500mg</td>
+                  <td>2</td>
+                  <td>RM 6.00</td>
+                </tr>
+                <tr>
+                  <td>Surgical gloves M</td>
+                  <td>1</td>
+                  <td>RM 12.00</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div className="surface" style={{ padding: "1.15rem" }}>
+          <h3 style={{ marginTop: 0 }}>Checkout</h3>
+          <DemoSelect label="Payment" options={["Cash", "QR", "Card", "E-wallet"]} />
+          <div className="kpi" style={{ margin: "0.75rem 0" }}>
+            <div className="kpi-label">Total</div>
+            <div className="kpi-value">RM 18.00</div>
+          </div>
+          <button type="button" className="btn btn-primary" style={{ width: "100%" }}>
+            Complete sale
+          </button>
+          <p className="muted" style={{ fontSize: "0.8rem", marginTop: "0.75rem" }}>
+            Demo POS — no payment is processed.
+          </p>
+        </div>
+      </div>
+      <div className="surface" style={{ padding: "1.25rem" }}>
+        <h3 style={{ marginTop: 0 }}>Today’s tickets</h3>
+        <div className="table-wrap">
+          <table className="data">
+            <thead>
+              <tr>
+                <th>Ticket</th>
+                <th>Counter</th>
+                <th>Method</th>
+                <th>Time</th>
+                <th>Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                ["POS-8821", "Counter 1", "Cash", "10:12", "RM 86.00"],
+                ["POS-8820", "Counter 2", "QR", "11:05", "RM 42.50"],
+                ["POS-8819", "Counter 1", "Card", "12:40", "RM 125.00"],
+              ].map((r) => (
+                <tr key={r[0]}>
+                  {r.map((c) => (
+                    <td key={c}>{c}</td>
                   ))}
                 </tr>
               ))}
@@ -983,146 +1230,592 @@ function GenericOpsDemo({
   );
 }
 
+function CashDemo({ orgName }: { orgName: string }) {
+  return (
+    <div className="stack" style={{ gap: "1.25rem" }}>
+      <PageHeader title="Cash drawer" subtitle={orgName} />
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+          gap: "0.65rem",
+        }}
+      >
+        {[
+          ["Opening float", "RM 200.00"],
+          ["Cash sales", "RM 128.50"],
+          ["Expected close", "RM 378.50"],
+        ].map(([l, v]) => (
+          <div key={l} className="surface kpi" style={{ margin: 0 }}>
+            <div className="kpi-label">{l}</div>
+            <div className="kpi-value" style={{ fontSize: "1.1rem" }}>
+              {v}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="surface" style={{ padding: "1.25rem" }}>
+        <h3 style={{ marginTop: 0 }}>Movements</h3>
+        <div className="table-wrap">
+          <table className="data">
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Ref</th>
+                <th>Time</th>
+                <th>Amount</th>
+                <th>Balance</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                ["Open", "Drawer A", "08:00", "RM 200.00", "RM 200.00"],
+                ["Sale", "POS-8821", "10:12", "+ RM 86.00", "RM 286.00"],
+                ["Sale", "POS-8820", "11:05", "+ RM 42.50", "RM 328.50"],
+                ["Float", "Top-up", "12:00", "+ RM 50.00", "RM 378.50"],
+              ].map((r) => (
+                <tr key={r.join("-")}>
+                  {r.map((c) => (
+                    <td key={c}>{c}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <button type="button" className="btn btn-primary" style={{ width: "100%", marginTop: "0.85rem" }}>
+          Close drawer
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /** Rich frontend-only pages that mirror the real authenticated dashboard UI. */
 export function HomeDemoPage({ view, niche, orgName, entityTitle, scheduleLabel }: Props) {
   if (view === "customers") {
-    if (niche === "clinic") return <PatientsDemo orgName={orgName} entityTitle={entityTitle} />;
-    if (niche === "gym") {
-      return (
-        <GenericOpsDemo
-          title={entityTitle}
-          orgName={orgName}
-          columns={["Member ID", "Name", "Plan", "Check-ins (30d)", "Status"]}
-          rows={[
-            ["MEM-220", "Hafiz Omar", "Monthly", "14", "Active"],
-            ["MEM-219", "Mei Ling", "Monthly", "11", "Active"],
-            ["MEM-218", "Amir Razak", "Quarterly", "6", "Due soon"],
-            ["MEM-216", "Jason Tan", "PT pack", "3", "Frozen"],
-          ]}
-        />
-      );
-    }
-    return (
-      <GenericOpsDemo
-        title={entityTitle}
-        orgName={orgName}
-        columns={["Code", "Customer", "Phone", "Last purchase", "Status"]}
-        rows={[
-          ["CU-4201", "Cafe Luna Sdn Bhd", "07-3321 8890", "4 Aug · RM 420", "Active"],
-          ["CU-4198", "Workshop 88", "012-778 2211", "3 Aug · RM 890", "Active"],
-          ["CU-4192", "Mei Hardware", "016-554 0091", "1 Aug · RM 156", "Active"],
-        ]}
-      />
-    );
+    return <CrmDemo orgName={orgName} entityTitle={entityTitle} niche={niche} />;
   }
 
   if (view === "appointments") {
     return <AppointmentsDemo orgName={orgName} scheduleLabel={scheduleLabel} />;
   }
+
   if (view === "invoices") {
-    return niche === "clinic" ? (
-      <InvoicesDemo orgName={orgName} />
-    ) : (
-      <GenericOpsDemo
-        title="Invoices"
-        orgName={orgName}
-        columns={["Invoice", "Customer", "Date", "Total", "Status"]}
-        rows={[
-          ["INV-331", "Wholesale Sdn Bhd", "4 Aug 2026", "RM 1,240.00", "Unpaid"],
-          ["INV-330", "Cafe Luna", "3 Aug 2026", "RM 420.00", "Paid"],
-          ["INV-329", "Workshop 88", "2 Aug 2026", "RM 890.00", "Partial"],
-        ]}
-      />
-    );
+    return <InvoicesDemo orgName={orgName} />;
   }
+
   if (view === "inventory") {
-    return niche === "clinic" ? (
-      <InventoryDemo orgName={orgName} />
-    ) : (
-      <GenericOpsDemo
-        title="Inventory"
-        orgName={orgName}
-        columns={["SKU", "Product", "Qty", "Reorder", "Status"]}
-        rows={[
-          ["SKU-12", "Cable 2m", "5", "10", "Low"],
-          ["SKU-07", "Adapter USB-C", "3", "8", "Low"],
-          ["SKU-44", "Power bank 10k", "2", "6", "Critical"],
-        ]}
-      />
-    );
+    return <InventoryDemo orgName={orgName} />;
   }
+
+  if (view === "pos") return <PosDemo orgName={orgName} />;
+  if (view === "cash") return <CashDemo orgName={orgName} />;
   if (view === "admin") return <AdminDemo orgName={orgName} />;
   if (view === "accounting") return <AccountingDemo orgName={orgName} />;
   if (view === "lhdn") return <LhdnDemo orgName={orgName} />;
 
-  if (view === "pos") {
+  if (view === "pets") {
     return (
-      <GenericOpsDemo
-        title="POS / Sales"
+      <SpecialtyDemo
+        title="Pets"
         orgName={orgName}
-        columns={["Ticket", "Counter", "Method", "Time", "Amount"]}
-        rows={[
-          ["POS-8821", "Counter 1", "Cash", "10:12", "RM 86.00"],
-          ["POS-8820", "Counter 2", "QR", "11:05", "RM 42.50"],
-          ["POS-8819", "Counter 1", "Card", "12:40", "RM 125.00"],
-        ]}
-      />
-    );
-  }
-  if (view === "cash") {
-    return (
-      <GenericOpsDemo
-        title="Cash drawer"
-        orgName={orgName}
-        columns={["Type", "Ref", "Time", "Amount", "Balance"]}
-        rows={[
-          ["Open", "Drawer A", "08:00", "RM 200.00", "RM 200.00"],
-          ["Sale", "POS-8821", "10:12", "+ RM 86.00", "RM 286.00"],
-          ["Expected", "Close", "—", "—", "RM 378.50"],
-        ]}
-      />
-    );
-  }
-  if (view === "memberships" || view === "classes" || view === "checkins") {
-    const title =
-      view === "memberships" ? "Memberships" : view === "classes" ? "Classes" : "Check-ins";
-    return (
-      <GenericOpsDemo
-        title={title}
-        orgName={orgName}
-        columns={
-          view === "checkins"
-            ? ["Time", "Member", "Gate", "Status"]
-            : view === "classes"
-              ? ["Time", "Class", "Coach", "Booked"]
-              : ["Member", "Plan", "Renewal", "Status"]
+        addFields={
+          <>
+            <DemoInput label="Pet name" placeholder="Buddy" />
+            <DemoInput label="Species" placeholder="Dog / Cat" />
+            <DemoInput label="Owner" placeholder="Owner name" />
+            <DemoInput label="Vaccine due" placeholder="YYYY-MM-DD" />
+          </>
         }
-        rows={
-          view === "checkins"
-            ? [
-                ["18:02", "Hafiz Omar", "Gate A", "In"],
-                ["18:05", "Mei Ling", "Gate A", "In"],
-              ]
-            : view === "classes"
-              ? [
-                  ["06:30", "HIIT", "Coach Dan", "14/16"],
-                  ["09:00", "Yoga", "Coach Mei", "11/12"],
-                ]
-              : [
-                  ["Hafiz Omar", "Monthly", "5 Aug 2026", "Active"],
-                  ["Mei Ling", "Monthly", "12 Aug 2026", "Active"],
-                ]
-        }
+        columns={["Pet", "Species", "Owner", "Next vaccine", "Status"]}
+        rows={[
+          ["Buddy", "Dog", "Aina Rahman", "12 Sep 2026", "Active"],
+          ["Mimi", "Cat", "Lim Wei", "3 Oct 2026", "Active"],
+          ["Rocky", "Dog", "Hafiz Omar", "Overdue", "Alert"],
+        ]}
       />
     );
   }
 
+  if (view === "memberships") {
+    return (
+      <SpecialtyDemo
+        title="Memberships"
+        orgName={orgName}
+        addFields={
+          <>
+            <DemoInput label="Member" placeholder="Name" />
+            <DemoSelect label="Plan" options={["Monthly", "Quarterly", "Annual"]} />
+            <DemoInput label="Start" type="date" defaultValue="2026-08-05" />
+          </>
+        }
+        columns={["Member", "Plan", "Start", "Renewal", "Status"]}
+        rows={[
+          ["Hafiz Omar", "Monthly", "5 Jul 2026", "5 Aug 2026", "Active"],
+          ["Mei Ling", "Monthly", "12 Jul 2026", "12 Aug 2026", "Active"],
+          ["Amir Razak", "Quarterly", "1 Jun 2026", "1 Sep 2026", "Due soon"],
+        ]}
+      />
+    );
+  }
+
+  if (view === "classes") {
+    return (
+      <SpecialtyDemo
+        title="Classes"
+        orgName={orgName}
+        addFields={
+          <>
+            <DemoInput label="Class name" placeholder="HIIT" />
+            <DemoInput label="Coach" placeholder="Coach name" />
+            <DemoInput label="Time" placeholder="19:00" />
+            <DemoInput label="Capacity" defaultValue="16" />
+          </>
+        }
+        columns={["Time", "Class", "Coach", "Studio", "Booked"]}
+        rows={[
+          ["06:30", "HIIT", "Coach Dan", "Studio A", "14/16"],
+          ["09:00", "Yoga", "Coach Mei", "Studio B", "11/12"],
+          ["19:00", "HIIT", "Coach Dan", "Studio A", "12/16"],
+        ]}
+      />
+    );
+  }
+
+  if (view === "checkins") {
+    return (
+      <SpecialtyDemo
+        title="Check-ins"
+        orgName={orgName}
+        addFields={
+          <>
+            <DemoInput label="Member / pass" placeholder="Scan or name" />
+            <DemoSelect label="Gate" options={["Gate A", "Gate B"]} />
+          </>
+        }
+        columns={["Time", "Member", "Gate", "Plan", "Status"]}
+        rows={[
+          ["18:02", "Hafiz Omar", "Gate A", "Monthly", "In"],
+          ["18:05", "Mei Ling", "Gate A", "Monthly", "In"],
+          ["18:27", "Guest pass", "Gate B", "Day", "In"],
+        ]}
+      />
+    );
+  }
+
+  if (view === "subjects") {
+    return (
+      <SpecialtyDemo
+        title="Subjects"
+        orgName={orgName}
+        addFields={
+          <>
+            <DemoInput label="Subject" placeholder="Additional Mathematics" />
+            <DemoInput label="Teacher" placeholder="Teacher name" />
+            <DemoInput label="Fee" placeholder="RM 120" />
+          </>
+        }
+        columns={["Subject", "Teacher", "Students", "Fee", "Status"]}
+        rows={[
+          ["Add Math", "Cikgu Amir", "18", "RM 120", "Open"],
+          ["Physics", "Cikgu Mei", "14", "RM 110", "Open"],
+          ["English", "Ms Farah", "22", "RM 90", "Full"],
+        ]}
+      />
+    );
+  }
+
+  if (view === "attendance") {
+    return (
+      <SpecialtyDemo
+        title="Attendance"
+        orgName={orgName}
+        addFields={
+          <>
+            <DemoSelect label="Class" options={["Add Math · Form 4", "Physics · Form 5"]} />
+            <DemoInput label="Date" type="date" defaultValue="2026-08-05" />
+          </>
+        }
+        columns={["Student", "Class", "Date", "Status"]}
+        rows={[
+          ["Aina Rahman", "Add Math", "5 Aug", "Present"],
+          ["Lim Wei", "Add Math", "5 Aug", "Present"],
+          ["Siti Aminah", "Add Math", "5 Aug", "Absent"],
+        ]}
+      />
+    );
+  }
+
+  if (view === "assessments") {
+    return (
+      <SpecialtyDemo
+        title="Assessments"
+        orgName={orgName}
+        addFields={
+          <>
+            <DemoInput label="Title" placeholder="Chapter 3 quiz" />
+            <DemoSelect label="Subject" options={["Add Math", "Physics"]} />
+            <DemoInput label="Max marks" defaultValue="100" />
+          </>
+        }
+        columns={["Assessment", "Subject", "Date", "Avg", "Status"]}
+        rows={[
+          ["Chapter 3 quiz", "Add Math", "2 Aug", "78", "Published"],
+          ["Term test 1", "Physics", "28 Jul", "71", "Published"],
+        ]}
+      />
+    );
+  }
+
+  if (view === "jobs") {
+    return (
+      <SpecialtyDemo
+        title="Job cards"
+        orgName={orgName}
+        addFields={
+          <>
+            <DemoInput label="Vehicle" placeholder="WXY 1234" />
+            <DemoInput label="Customer" placeholder="Owner name" />
+            <DemoInput label="Issue" placeholder="Brake pads" />
+          </>
+        }
+        columns={["Job", "Vehicle", "Customer", "Bay", "Status"]}
+        rows={[
+          ["JOB-441", "WXY 1234", "Hafiz Omar", "Bay 2", "In progress"],
+          ["JOB-440", "ABC 9988", "Mei Ling", "Bay 1", "Waiting parts"],
+          ["JOB-439", "JKL 2201", "Lim Wei", "Bay 3", "Completed"],
+        ]}
+      />
+    );
+  }
+
+  if (view === "vehicles") {
+    return (
+      <SpecialtyDemo
+        title="Vehicles"
+        orgName={orgName}
+        addFields={
+          <>
+            <DemoInput label="Plate" placeholder="WXY 1234" />
+            <DemoInput label="Make / model" placeholder="Honda City" />
+            <DemoInput label="Owner" placeholder="Customer" />
+          </>
+        }
+        columns={["Plate", "Vehicle", "Owner", "Last service", "Status"]}
+        rows={[
+          ["WXY 1234", "Honda City", "Hafiz Omar", "5 Aug 2026", "In workshop"],
+          ["ABC 9988", "Toyota Vios", "Mei Ling", "28 Jul 2026", "Active"],
+        ]}
+      />
+    );
+  }
+
+  if (view === "tables") {
+    return (
+      <SpecialtyDemo
+        title="Tables"
+        orgName={orgName}
+        addFields={
+          <>
+            <DemoInput label="Table" placeholder="T12" />
+            <DemoSelect label="Zone" options={["Indoor", "Outdoor", "VIP"]} />
+            <DemoInput label="Seats" defaultValue="4" />
+          </>
+        }
+        columns={["Table", "Zone", "Seats", "Order", "Status"]}
+        rows={[
+          ["T12", "Indoor", "4", "ORD-882", "Occupied"],
+          ["T03", "Outdoor", "2", "—", "Free"],
+          ["V1", "VIP", "6", "ORD-880", "Billing"],
+        ]}
+      />
+    );
+  }
+
+  if (view === "rooms") {
+    return (
+      <SpecialtyDemo
+        title="Rooms"
+        orgName={orgName}
+        addFields={
+          <>
+            <DemoInput label="Room" placeholder="Deluxe 201" />
+            <DemoSelect label="Type" options={["Standard", "Deluxe", "Suite"]} />
+            <DemoInput label="Rate" placeholder="RM 180" />
+          </>
+        }
+        columns={["Room", "Type", "Guest", "Checkout", "Status"]}
+        rows={[
+          ["201", "Deluxe", "Aina Rahman", "6 Aug", "Occupied"],
+          ["105", "Standard", "—", "—", "Vacant"],
+          ["301", "Suite", "Lim Wei", "7 Aug", "Occupied"],
+        ]}
+      />
+    );
+  }
+
+  if (view === "listings") {
+    return (
+      <SpecialtyDemo
+        title="Listings"
+        orgName={orgName}
+        addFields={
+          <>
+            <DemoInput label="Title" placeholder="Condo for rent" />
+            <DemoInput label="Area" placeholder="Bangsar" />
+            <DemoInput label="Price" placeholder="RM 2,800" />
+          </>
+        }
+        columns={["Listing", "Area", "Type", "Price", "Status"]}
+        rows={[
+          ["Bangsar Condo A", "Bangsar", "Rent", "RM 2,800", "Active"],
+          ["PJ Terrace", "Petaling Jaya", "Sale", "RM 980k", "Active"],
+        ]}
+      />
+    );
+  }
+
+  if (view === "shipments") {
+    return (
+      <SpecialtyDemo
+        title="Shipments"
+        orgName={orgName}
+        addFields={
+          <>
+            <DemoInput label="Tracking" placeholder="SP-10021" />
+            <DemoInput label="Customer" placeholder="Name" />
+            <DemoSelect label="Status" options={["Picked up", "In transit", "Delivered"]} />
+          </>
+        }
+        columns={["Tracking", "Customer", "Route", "ETA", "Status"]}
+        rows={[
+          ["SP-10021", "Cafe Luna", "KL → JB", "5 Aug", "In transit"],
+          ["SP-10018", "Workshop 88", "KL → Penang", "Delivered", "Delivered"],
+        ]}
+      />
+    );
+  }
+
+  if (view === "projects") {
+    return (
+      <SpecialtyDemo
+        title="Projects"
+        orgName={orgName}
+        addFields={
+          <>
+            <DemoInput label="Project" placeholder="Renovation Lot 12" />
+            <DemoInput label="Client" placeholder="Client name" />
+            <DemoInput label="Claim %" defaultValue="30" />
+          </>
+        }
+        columns={["Project", "Client", "Progress", "Next claim", "Status"]}
+        rows={[
+          ["Lot 12 reno", "Encik Hafiz", "45%", "RM 12,000", "Active"],
+          ["Shop fit-out", "Cafe Luna", "80%", "RM 8,500", "Active"],
+        ]}
+      />
+    );
+  }
+
+  if (view === "workOrders") {
+    return (
+      <SpecialtyDemo
+        title="Work orders"
+        orgName={orgName}
+        addFields={
+          <>
+            <DemoInput label="WO #" placeholder="WO-220" />
+            <DemoInput label="Product" placeholder="SKU / BOM" />
+            <DemoInput label="Qty" defaultValue="100" />
+          </>
+        }
+        columns={["WO", "Product", "Qty", "Line", "Status"]}
+        rows={[
+          ["WO-220", "Widget A", "100", "Line 1", "WIP"],
+          ["WO-218", "Widget B", "40", "Line 2", "Queued"],
+        ]}
+      />
+    );
+  }
+
+  if (view === "matters") {
+    return (
+      <SpecialtyDemo
+        title="Matters"
+        orgName={orgName}
+        addFields={
+          <>
+            <DemoInput label="Matter" placeholder="Sale & purchase" />
+            <DemoInput label="Client" placeholder="Client name" />
+            <DemoSelect label="Type" options={["Conveyancing", "Litigation", "Advisory"]} />
+          </>
+        }
+        columns={["Matter", "Client", "Type", "Next date", "Status"]}
+        rows={[
+          ["SPA Lot 88", "Aina Rahman", "Conveyancing", "12 Aug", "Open"],
+          ["Debt claim", "ProSupply", "Litigation", "20 Aug", "Open"],
+        ]}
+      />
+    );
+  }
+
+  if (view === "events") {
+    return (
+      <SpecialtyDemo
+        title="Events"
+        orgName={orgName}
+        addFields={
+          <>
+            <DemoInput label="Event" placeholder="Wedding dinner" />
+            <DemoInput label="Client" placeholder="Client name" />
+            <DemoInput label="Date" type="date" defaultValue="2026-09-12" />
+          </>
+        }
+        columns={["Event", "Client", "Date", "Pax", "Status"]}
+        rows={[
+          ["Wedding dinner", "Aina & Hafiz", "12 Sep", "250", "Confirmed"],
+          ["Corp launch", "Gadget Hub", "28 Aug", "80", "Planning"],
+        ]}
+      />
+    );
+  }
+
+  if (view === "plots") {
+    return (
+      <SpecialtyDemo
+        title="Plots"
+        orgName={orgName}
+        addFields={
+          <>
+            <DemoInput label="Plot" placeholder="Plot A1" />
+            <DemoInput label="Crop" placeholder="Chili" />
+            <DemoInput label="Area" placeholder="0.5 acre" />
+          </>
+        }
+        columns={["Plot", "Crop", "Area", "Harvest", "Status"]}
+        rows={[
+          ["A1", "Chili", "0.5 acre", "Sep 2026", "Growing"],
+          ["B2", "Leafy greens", "0.3 acre", "Aug 2026", "Ready"],
+        ]}
+      />
+    );
+  }
+
+  if (view === "packages") {
+    return (
+      <SpecialtyDemo
+        title="Packages"
+        orgName={orgName}
+        addFields={
+          <>
+            <DemoInput label="Package" placeholder="10-session physio" />
+            <DemoInput label="Sessions" defaultValue="10" />
+            <DemoInput label="Price" placeholder="RM 900" />
+          </>
+        }
+        columns={["Package", "Patient", "Left", "Expiry", "Status"]}
+        rows={[
+          ["10-session", "Aina Rahman", "6", "5 Nov 2026", "Active"],
+          ["5-session", "Lim Wei", "1", "20 Aug 2026", "Low"],
+        ]}
+      />
+    );
+  }
+
+  if (view === "labResults") {
+    return (
+      <SpecialtyDemo
+        title="Lab results"
+        orgName={orgName}
+        addFields={
+          <>
+            <DemoInput label="Patient" placeholder="Name" />
+            <DemoInput label="Test" placeholder="Full blood count" />
+            <DemoSelect label="Status" options={["Pending", "Ready", "Delivered"]} />
+          </>
+        }
+        columns={["Result", "Patient", "Test", "Ready at", "Status"]}
+        rows={[
+          ["LR-1042", "Aina Rahman", "FBC", "4 Aug 16:00", "Ready"],
+          ["LR-1041", "Lim Wei", "Lipid", "—", "Pending"],
+        ]}
+      />
+    );
+  }
+
+  if (view === "laundry") {
+    return (
+      <SpecialtyDemo
+        title="Laundry tickets"
+        orgName={orgName}
+        addFields={
+          <>
+            <DemoInput label="Ticket" placeholder="LD-220" />
+            <DemoInput label="Customer" placeholder="Name" />
+            <DemoSelect label="Service" options={["Wash & fold", "Dry clean", "Express"]} />
+          </>
+        }
+        columns={["Ticket", "Customer", "Service", "Ready", "Status"]}
+        rows={[
+          ["LD-220", "Mei Ling", "Wash & fold", "5 Aug 18:00", "Processing"],
+          ["LD-219", "Hafiz Omar", "Dry clean", "Ready", "Ready"],
+        ]}
+      />
+    );
+  }
+
+  if (view === "receipts" || view === "categories" || view === "logistics" || view === "printers" || view === "commissions" || view === "batches" || view === "eyeRx" || view === "labOrders" || view === "variants" || view === "serials" || view === "priceTiers") {
+    const titleMap: Record<string, string> = {
+      receipts: "Past receipts",
+      categories: "Categories",
+      logistics: "Logistics",
+      printers: "Printers",
+      commissions: "Commissions",
+      batches: "Batches",
+      eyeRx: "Eye Rx",
+      labOrders: "Lab orders",
+      variants: "Variants",
+      serials: "Serials",
+      priceTiers: "Price tiers",
+    };
+    return (
+      <SpecialtyDemo
+        title={titleMap[view] || view}
+        orgName={orgName}
+        addFields={
+          <>
+            <DemoInput label="Name / ref" placeholder="Demo item" />
+            <DemoInput label="Notes" placeholder="Optional" />
+          </>
+        }
+        columns={["Ref", "Detail", "Updated", "Status"]}
+        rows={[
+          [`${view.toUpperCase()}-01`, "Demo record A", "4 Aug 2026", "Active"],
+          [`${view.toUpperCase()}-02`, "Demo record B", "3 Aug 2026", "Active"],
+          [`${view.toUpperCase()}-03`, "Demo record C", "1 Aug 2026", "Pending"],
+        ]}
+      />
+    );
+  }
+
+  // Fallback — still a form + table so every nav key has a real UI shell
   return (
-    <GenericOpsDemo
+    <SpecialtyDemo
       title={view}
       orgName={orgName}
+      addFields={
+        <>
+          <DemoInput label="Name" placeholder="Demo item" />
+          <DemoInput label="Notes" placeholder="Optional" />
+        </>
+      }
       columns={["#", "Detail", "Status"]}
-      rows={[["—", "Demo page", "Ready"]]}
+      rows={[
+        ["1", "Demo record", "Ready"],
+        ["2", "Demo record", "Ready"],
+      ]}
     />
   );
 }
+

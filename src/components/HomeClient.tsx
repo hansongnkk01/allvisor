@@ -31,7 +31,7 @@ import {
   Sprout,
   type LucideIcon,
 } from "lucide-react";
-import { HomeDashboardPreview, type PreviewNiche } from "@/components/HomeDashboardPreview";
+import { HomeDashboardPreview } from "@/components/HomeDashboardPreview";
 import type { Niche } from "@/lib/types";
 import { nichesInGroup } from "@/lib/niche-capabilities";
 import { nicheThemeAttr } from "@/lib/utils";
@@ -133,7 +133,7 @@ export function HomeClient() {
   const nichesT = useTranslations("Landing");
   const brand = useTranslations("Brand");
   const [preview, setPreview] = useState<Niche | null>(null);
-  const [demoNiche, setDemoNiche] = useState<PreviewNiche>("clinic");
+  const [demoNiche, setDemoNiche] = useState<Niche>("clinic");
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const nicheGridRef = useRef<HTMLElement | null>(null);
   const pageNiche = (preview ?? demoNiche) as Niche;

@@ -64,20 +64,16 @@ import { getNavSectionsForNiche, hasCapability, vocabLabels } from "@/lib/niches
 import { NAV_HREF } from "@/lib/niche-capabilities";
 import { formatCurrency, nicheThemeAttr } from "@/lib/utils";
 import { HomeDemoPage } from "@/components/HomeDemoPages";
+import { NICHES } from "@/lib/niches";
+import { DEMO_ORG, LANDING_TITLE_KEY } from "@/lib/demo-orgs";
 import type { Niche } from "@/lib/types";
 
-export type PreviewNiche = Extract<Niche, "clinic" | "retail" | "gym">;
+export type PreviewNiche = Niche;
 
-const PRESETS: PreviewNiche[] = ["clinic", "retail", "gym"];
+const CAROUSEL_PAGE_SIZE = 3;
 
 /** Real desktop canvas width — scaled down to fit the hero frame. */
 const STAGE_W = 1280;
-
-const ORG: Record<PreviewNiche, string> = {
-  clinic: "Klinik Harmoni",
-  retail: "ProSupply Mart",
-  gym: "Palio Fitness",
-};
 
 const icons: Record<string, ReactNode> = {
   dashboard: <LayoutDashboard size={18} />,
@@ -277,10 +273,10 @@ export function HomeDashboardPreview({
   const tNav = useTranslations("Nav");
   const tDash = useTranslations("Dashboard");
   const tBrand = useTranslations("Brand");
+  const tLanding = useTranslations("Landing");
   const locale = useLocale();
   const [view, setView] = useState("dashboard");
-  const index = PRESETS.indexOf(niche);
-  const orgName = ORG[niche];
+  const orgName = DEMO_ORG[niche];
   const canAppointments = hasCapability(niche, "appointments");
   const canPos = hasCapability(niche, "pos");
   const V = vocabLabels(niche, locale);
@@ -293,9 +289,22 @@ export function HomeDashboardPreview({
   const [scale, setScale] = useState(1);
   const [stageH, setStageH] = useState(800);
   const [asideH, setAsideH] = useState(720);
+  const totalCarouselPages = Math.ceil(NICHES.length / CAROUSEL_PAGE_SIZE);
+  const [carouselPage, setCarouselPage] = useState(() =>
+    Math.max(0, Math.floor(NICHES.indexOf(niche) / CAROUSEL_PAGE_SIZE))
+  );
+  const visibleNiches = NICHES.slice(
+    carouselPage * CAROUSEL_PAGE_SIZE,
+    carouselPage * CAROUSEL_PAGE_SIZE + CAROUSEL_PAGE_SIZE
+  );
 
   useEffect(() => {
     setView("dashboard");
+  }, [niche]);
+
+  useEffect(() => {
+    const idx = NICHES.indexOf(niche);
+    if (idx >= 0) setCarouselPage(Math.floor(idx / CAROUSEL_PAGE_SIZE));
   }, [niche]);
 
   useEffect(() => {
@@ -310,7 +319,6 @@ export function HomeDashboardPreview({
       const next = Math.min(1, frame.clientWidth / STAGE_W);
       const safe = next > 0 ? next : 1;
       setScale(safe);
-      // Fill the frame height after scale — sidebar stays put, main scrolls inside.
       const layoutH = frame.clientHeight / safe;
       setStageH(layoutH);
       setAsideH(Math.max(560, layoutH - 32));
@@ -322,8 +330,15 @@ export function HomeDashboardPreview({
     return () => ro.disconnect();
   }, [niche, view]);
 
-  function go(delta: number) {
-    onNicheChange(PRESETS[(index + delta + PRESETS.length) % PRESETS.length]);
+  function shiftCarousel(delta: number) {
+    const nextPage = (carouselPage + delta + totalCarouselPages) % totalCarouselPages;
+    setCarouselPage(nextPage);
+    const first = NICHES[nextPage * CAROUSEL_PAGE_SIZE];
+    if (first) onNicheChange(first);
+  }
+
+  function nicheLabel(id: Niche) {
+    return tLanding(LANDING_TITLE_KEY[id] as "clinicTitle");
   }
 
   function labelFor(key: string) {
@@ -355,11 +370,11 @@ export function HomeDashboardPreview({
   return (
     <div className="home-demo" data-niche={nicheThemeAttr(niche)}>
       <div className="home-demo__carousel" aria-label={t("demoTabsLabel")}>
-        <button type="button" className="home-demo__arrow" aria-label={t("demoPrev")} onClick={() => go(-1)}>
+        <button type="button" className="home-demo__arrow" aria-label={t("demoPrev")} onClick={() => shiftCarousel(-1)}>
           <ChevronLeft size={20} strokeWidth={2.75} />
         </button>
         <div className="home-demo__tabs" role="tablist">
-          {PRESETS.map((id) => (
+          {visibleNiches.map((id) => (
             <button
               key={id}
               type="button"
@@ -369,11 +384,11 @@ export function HomeDashboardPreview({
               data-active={niche === id ? "true" : "false"}
               onClick={() => onNicheChange(id)}
             >
-              {t(`demoTab.${id}` as "demoTab.clinic")}
+              {nicheLabel(id)}
             </button>
           ))}
         </div>
-        <button type="button" className="home-demo__arrow" aria-label={t("demoNext")} onClick={() => go(1)}>
+        <button type="button" className="home-demo__arrow" aria-label={t("demoNext")} onClick={() => shiftCarousel(1)}>
           <ChevronRight size={20} strokeWidth={2.75} />
         </button>
       </div>
