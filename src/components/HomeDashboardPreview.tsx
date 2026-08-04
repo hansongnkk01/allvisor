@@ -70,8 +70,16 @@ import type { Niche } from "@/lib/types";
 
 export type PreviewNiche = Niche;
 
+const AUTO_NEXT_MS = 3000;
+const CAROUSEL_TRANSITION_MS = 420;
+
 /** Real desktop canvas width — scaled down to fit the hero frame. */
 const STAGE_W = 1280;
+
+function wrapNicheIndex(i: number) {
+  const n = NICHES.length;
+  return ((i % n) + n) % n;
+}
 
 const icons: Record<string, ReactNode> = {
   dashboard: <LayoutDashboard size={18} />,
@@ -287,23 +295,36 @@ export function HomeDashboardPreview({
   const [scale, setScale] = useState(1);
   const [stageH, setStageH] = useState(800);
   const [asideH, setAsideH] = useState(720);
-  const nicheRef = useRef(niche);
-  const carouselPausedRef = useRef(false);
-  const nicheIndex = Math.max(0, NICHES.indexOf(niche));
-  // Always show [prev | center(selected) | next] — white pill stays on the center slot.
-  const visibleNiches = [
-    NICHES[(nicheIndex - 1 + NICHES.length) % NICHES.length],
-    NICHES[nicheIndex],
-    NICHES[(nicheIndex + 1) % NICHES.length],
-  ];
+  const [centerIdx, setCenterIdx] = useState(() => Math.max(0, NICHES.indexOf(niche)));
+  const [phase, setPhase] = useState<"idle" | "next" | "prev">("idle");
+  const [hoverPaused, setHoverPaused] = useState(false);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const phaseRef = useRef(phase);
+  const centerIdxRef = useRef(centerIdx);
+  const onNicheChangeRef = useRef(onNicheChange);
+  phaseRef.current = phase;
+  centerIdxRef.current = centerIdx;
+  onNicheChangeRef.current = onNicheChange;
 
-  useEffect(() => {
-    nicheRef.current = niche;
-  }, [niche]);
+  const carouselItems = useMemo(() => {
+    if (phase === "next") {
+      return [centerIdx - 1, centerIdx, centerIdx + 1, centerIdx + 2].map((i) => NICHES[wrapNicheIndex(i)]);
+    }
+    if (phase === "prev") {
+      return [centerIdx - 2, centerIdx - 1, centerIdx, centerIdx + 1].map((i) => NICHES[wrapNicheIndex(i)]);
+    }
+    return [centerIdx - 1, centerIdx, centerIdx + 1].map((i) => NICHES[wrapNicheIndex(i)]);
+  }, [centerIdx, phase]);
 
   useEffect(() => {
     setView("dashboard");
   }, [niche]);
+
+  useEffect(() => {
+    if (phase !== "idle") return;
+    const idx = NICHES.indexOf(niche);
+    if (idx >= 0 && idx !== centerIdx) setCenterIdx(idx);
+  }, [niche, phase, centerIdx]);
 
   useEffect(() => {
     mainScrollRef.current?.scrollTo({ top: 0 });
@@ -329,17 +350,79 @@ export function HomeDashboardPreview({
   }, [niche, view]);
 
   useEffect(() => {
-    const timer = window.setInterval(() => {
-      if (carouselPausedRef.current) return;
-      const idx = Math.max(0, NICHES.indexOf(nicheRef.current));
-      onNicheChange(NICHES[(idx + 1) % NICHES.length]);
-    }, 3000);
-    return () => window.clearInterval(timer);
-  }, [onNicheChange]);
+    if (phase === "idle") return;
+    const track = trackRef.current;
+    if (!track) return;
 
-  function shiftCarousel(delta: number) {
-    const next = NICHES[(nicheIndex + delta + NICHES.length) % NICHES.length];
-    onNicheChange(next);
+    const fromIdx = centerIdxRef.current;
+    const dir = phase;
+    const reduceMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    const slotPct = -100 / 4; // one slot relative to a 4-item track
+    const start = dir === "next" ? 0 : slotPct;
+    const end = dir === "next" ? slotPct : 0;
+
+    const finish = () => {
+      const nextIdx = wrapNicheIndex(fromIdx + (dir === "next" ? 1 : -1));
+      setCenterIdx(nextIdx);
+      onNicheChangeRef.current(NICHES[nextIdx]);
+      track.style.transition = "none";
+      track.style.transform = "translateX(0)";
+      setPhase("idle");
+    };
+
+    if (reduceMotion) {
+      finish();
+      return;
+    }
+
+    track.style.transition = "none";
+    track.style.transform = `translateX(${start}%)`;
+
+    let cancelled = false;
+    let timeoutId = 0;
+    const raf1 = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (cancelled) return;
+        track.style.transition = `transform ${CAROUSEL_TRANSITION_MS}ms cubic-bezier(0.33, 0, 0.2, 1)`;
+        track.style.transform = `translateX(${end}%)`;
+      });
+    });
+
+    const onEnd = (e: TransitionEvent) => {
+      if (e.target !== track || e.propertyName !== "transform") return;
+      track.removeEventListener("transitionend", onEnd);
+      window.clearTimeout(timeoutId);
+      if (!cancelled) finish();
+    };
+    track.addEventListener("transitionend", onEnd);
+    timeoutId = window.setTimeout(() => {
+      track.removeEventListener("transitionend", onEnd);
+      if (!cancelled) finish();
+    }, CAROUSEL_TRANSITION_MS + 80);
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf1);
+      window.clearTimeout(timeoutId);
+      track.removeEventListener("transitionend", onEnd);
+    };
+  }, [phase]);
+
+  useEffect(() => {
+    if (hoverPaused || phase !== "idle") return;
+    const id = window.setInterval(() => {
+      if (phaseRef.current !== "idle") return;
+      setPhase("next");
+    }, AUTO_NEXT_MS);
+    return () => window.clearInterval(id);
+  }, [hoverPaused, phase, centerIdx]);
+
+  function shiftCarousel(delta: 1 | -1) {
+    if (phase !== "idle") return;
+    setPhase(delta > 0 ? "next" : "prev");
   }
 
   function nicheLabel(id: Niche) {
@@ -373,35 +456,48 @@ export function HomeDashboardPreview({
   }
 
   return (
-    <div className="home-demo" data-niche={nicheThemeAttr(niche)}>
-      <div
-        className="home-demo__carousel"
-        aria-label={t("demoTabsLabel")}
-        onMouseEnter={() => {
-          carouselPausedRef.current = true;
-        }}
-        onMouseLeave={() => {
-          carouselPausedRef.current = false;
-        }}
-      >
+    <div
+      className="home-demo"
+      data-niche={nicheThemeAttr(niche)}
+      onMouseEnter={() => setHoverPaused(true)}
+      onMouseLeave={() => setHoverPaused(false)}
+    >
+      <div className="home-demo__carousel" aria-label={t("demoTabsLabel")}>
         <button type="button" className="home-demo__arrow" aria-label={t("demoPrev")} onClick={() => shiftCarousel(-1)}>
           <ChevronLeft size={20} strokeWidth={2.75} />
         </button>
         <div className="home-demo__tabs" role="tablist">
-          {visibleNiches.map((id, slot) => (
-            <button
-              key={`${id}-${slot}`}
-              type="button"
-              role="tab"
-              aria-selected={slot === 1}
-              className="home-demo__tab"
-              data-active={slot === 1 ? "true" : "false"}
-              data-slot={slot === 0 ? "prev" : slot === 1 ? "center" : "next"}
-              onClick={() => onNicheChange(id)}
-            >
-              {nicheLabel(id)}
-            </button>
-          ))}
+          <div className="home-demo__center-pill" aria-hidden="true" />
+          <div
+            ref={trackRef}
+            className="home-demo__track"
+            style={{ width: `${(carouselItems.length / 3) * 100}%` }}
+          >
+            {carouselItems.map((id, slot) => {
+              const isCenter =
+                (phase === "idle" && slot === 1) ||
+                (phase === "next" && slot === 1) ||
+                (phase === "prev" && slot === 2);
+              return (
+                <button
+                  key={`${id}-${slot}-${phase}`}
+                  type="button"
+                  role="tab"
+                  aria-selected={isCenter}
+                  className="home-demo__tab"
+                  data-slot={isCenter ? "center" : "side"}
+                  style={{ flex: `0 0 ${100 / carouselItems.length}%` }}
+                  onClick={() => {
+                    if (phase !== "idle") return;
+                    if (slot === 0) shiftCarousel(-1);
+                    else if (slot === 2) shiftCarousel(1);
+                  }}
+                >
+                  {nicheLabel(id)}
+                </button>
+              );
+            })}
+          </div>
         </div>
         <button type="button" className="home-demo__arrow" aria-label={t("demoNext")} onClick={() => shiftCarousel(1)}>
           <ChevronRight size={20} strokeWidth={2.75} />
