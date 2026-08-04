@@ -18,8 +18,9 @@ const DAYS = [
 export default async function ClassesPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const t = await getTranslations("Tuition");
   const ctx = await requireCapability(locale, "class_schedule");
+  const isTuition = ctx.organization.niche === "tuition";
+  const t = await getTranslations(isTuition ? "Tuition" : "Gym");
   const supabase = await createClient();
 
   const [{ data: classes }, { data: customers }, { data: enrollments }, { data: subjectRows }] = await Promise.all([
@@ -39,11 +40,13 @@ export default async function ClassesPage({ params }: { params: Promise<{ locale
       .select("id, class_id, customer_id, customers(name)")
       .eq("organization_id", ctx.organization.id)
       .limit(500),
-    supabase
-      .from("tuition_subjects")
-      .select("id, name, teacher_name")
-      .eq("organization_id", ctx.organization.id)
-      .order("name"),
+    isTuition
+      ? supabase
+          .from("tuition_subjects")
+          .select("id, name, teacher_name")
+          .eq("organization_id", ctx.organization.id)
+          .order("name")
+      : Promise.resolve({ data: [] as { id: string; name: string; teacher_name: string | null }[] }),
   ]);
 
   const byDay = new Map<number, typeof classes>();
@@ -70,20 +73,27 @@ export default async function ClassesPage({ params }: { params: Promise<{ locale
           >
             <div className="field">
               <label>{t("className")}</label>
-              <input name="name" className="input" required placeholder="Math Form 3" />
+              <input
+                name="name"
+                className="input"
+                required
+                placeholder={isTuition ? "Math Form 3" : t("classPlaceholder")}
+              />
             </div>
-            <div className="field">
-              <label>{t("linkedSubject")}</label>
-              <select name="subject_id" className="select" defaultValue="">
-                <option value="">—</option>
-                {(subjectRows || []).map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                    {s.teacher_name ? ` · ${s.teacher_name}` : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {isTuition ? (
+              <div className="field">
+                <label>{t("linkedSubject")}</label>
+                <select name="subject_id" className="select" defaultValue="">
+                  <option value="">—</option>
+                  {(subjectRows || []).map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                      {s.teacher_name ? ` · ${s.teacher_name}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
             <div className="field">
               <label>{t("teacher")}</label>
               <input name="teacher_name" className="input" defaultValue="-" />
@@ -136,7 +146,7 @@ export default async function ClassesPage({ params }: { params: Promise<{ locale
               <div
                 key={d.value}
                 style={{
-                  border: "1px solid var(--border)",
+                  border: "1px solid var(--line)",
                   borderRadius: 12,
                   padding: "0.75rem",
                   minHeight: 120,

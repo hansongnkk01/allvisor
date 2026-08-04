@@ -35,17 +35,17 @@ export function formatDateTime(value: string | Date, locale = "ms-MY") {
   }).format(date);
 }
 
-/** Map niche → CSS theme token (clinic teal vs retail amber). */
+/** Legacy binary accent (care vs commerce). Prefer nicheThemeAttr for UI theme. */
 export function nicheAccent(niche: Niche): "clinic" | "retail" {
   const engine = getNicheDef(niche).engine;
   if (engine === "care" || engine === "hospitality") return "clinic";
   return "retail";
 }
 
-/** Prefer for data-niche attribute — keeps existing CSS themes. */
-export function nicheThemeAttr(niche: Niche | string | null | undefined): "clinic" | "retail" {
+/** data-niche theme token — one visual theme per niche id. */
+export function nicheThemeAttr(niche: Niche | string | null | undefined): string {
   if (!niche) return "clinic";
-  return nicheAccent(niche as Niche);
+  return String(niche);
 }
 
 export function generateInvoiceNumber(seq: number) {

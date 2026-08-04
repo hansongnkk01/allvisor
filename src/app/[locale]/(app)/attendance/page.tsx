@@ -9,8 +9,9 @@ import { formatDate } from "@/lib/utils";
 export default async function AttendancePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const t = await getTranslations("Tuition");
   const ctx = await requireCapability(locale, "attendance");
+  const isTuition = ctx.organization.niche === "tuition";
+  const t = await getTranslations(isTuition ? "Tuition" : "Gym");
   const supabase = await createClient();
 
   const [{ data: classes }, { data: customers }, { data: rows }] = await Promise.all([
