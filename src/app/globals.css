@@ -1128,9 +1128,48 @@ html[data-landing="true"] {
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.65) inset,
     0 18px 50px rgba(28, 27, 25, 0.1);
-  overflow: auto;
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+
+.home-demo__sizer {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.home-demo__stage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  will-change: transform;
+}
+
+.home-demo__grid {
+  width: 100%;
+  min-height: 0;
+  height: 100%;
+  align-items: stretch;
+}
+
+.home-demo__aside {
+  align-self: start;
+  z-index: 2;
+}
+
+.home-demo__main-scroll {
+  min-height: 0;
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+  padding-top: 1.5rem;
+}
+
+.home-demo__grid .app-main.home-demo__main-scroll {
+  padding-top: 1.5rem;
 }
 
 .home-hero__brand {
@@ -1193,31 +1232,6 @@ html[data-landing="true"] {
   border-radius: 999px;
   pointer-events: none;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
-}
-
-.home-demo__sizer {
-  width: 100%;
-  position: relative;
-}
-
-.home-demo__stage {
-  position: absolute;
-  top: 0;
-  left: 0;
-  will-change: transform;
-}
-
-.home-demo__grid {
-  min-height: 900px;
-  width: 100%;
-}
-
-.home-demo__viewport .home-demo__grid > aside.surface {
-  align-self: start;
-}
-
-.home-demo__grid .app-main {
-  padding-top: 1.5rem;
 }
 
 .home-band {

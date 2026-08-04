@@ -258,107 +258,270 @@ const DEMO_SALES = [
 ];
 
 const DEMO_TOP = [
-  { name: "Cable 2m", units: 38 },
-  { name: "Adapter USB-C", units: 22 },
-  { name: "Tape pack", units: 19 },
-  { name: "Power bank", units: 14 },
+  { name: "Paracetamol 500mg", units: 38 },
+  { name: "Saline 500ml", units: 22 },
+  { name: "Gloves M", units: 19 },
+  { name: "Alcohol swab", units: 14 },
 ];
 
-const LIST_ROWS: Record<string, Array<[string, string, string]>> = {
-  customers: [
-    ["PT-081", "Aina Rahman", "Active"],
-    ["PT-080", "Lim Wei", "Active"],
-    ["PT-079", "Siti Aminah", "New"],
-    ["PT-078", "Tan Mei Ling", "Active"],
-    ["PT-077", "Hafiz Omar", "Inactive"],
-  ],
-  appointments: [
-    ["09:00", "Nurul Aisyah · R1", "Confirmed"],
-    ["10:30", "Rajesh K. · R2", "Confirmed"],
-    ["11:15", "Walk-in", "Waiting"],
-    ["14:00", "Lim Wei · R1", "Booked"],
-    ["16:30", "Aina Rahman · R3", "Booked"],
-  ],
-  invoices: [
-    ["INV-1042", "Aina Rahman", "RM 85 · Paid"],
-    ["INV-1041", "Dr walk-in", "RM 120 · Unpaid"],
-    ["INV-1040", "Lim Wei", "RM 60 · Partial"],
-    ["INV-1039", "Siti Aminah", "RM 95 · Paid"],
-    ["INV-1038", "Tan Mei Ling", "RM 45 · Paid"],
-  ],
-  inventory: [
-    ["SKU-12", "Cable 2m", "5 left"],
-    ["SKU-07", "Adapter USB-C", "3 left"],
-    ["SKU-21", "Tape pack", "8 left"],
-    ["SKU-44", "Power bank", "2 left"],
-    ["SKU-09", "Mouse pad", "6 left"],
-  ],
-  pos: [
-    ["POS-8821", "Counter 1 · Cash", "RM 86.00"],
-    ["POS-8820", "Counter 2 · QR", "RM 42.50"],
-    ["POS-8819", "Counter 1 · Card", "RM 125.00"],
-    ["POS-8818", "Counter 2 · Cash", "RM 18.90"],
-  ],
-  cash: [
-    ["Open", "08:00", "RM 200.00"],
-    ["Sale", "POS-8821", "+ RM 86.00"],
-    ["Sale", "POS-8820", "+ RM 42.50"],
-    ["Float", "Top-up", "+ RM 50.00"],
-    ["Expected", "Close", "RM 378.50"],
-  ],
-  memberships: [
-    ["MEM-220", "Hafiz Omar", "Active"],
-    ["MEM-219", "Mei Ling", "Active"],
-    ["MEM-218", "Amir Razak", "Due soon"],
-    ["MEM-217", "Siti Noor", "Frozen"],
-  ],
-  classes: [
-    ["06:30", "HIIT · Studio A", "14/16"],
-    ["09:00", "Yoga · Studio B", "11/12"],
-    ["12:00", "Spin · Bike room", "8/10"],
-    ["19:00", "HIIT · Studio A", "12/16"],
-  ],
-  checkins: [
-    ["18:02", "Hafiz Omar", "Gate A"],
-    ["18:05", "Mei Ling", "Gate A"],
-    ["18:11", "Amir Razak", "Gate B"],
-    ["18:20", "Siti Noor", "Gate A"],
-  ],
-  receipts: [
-    ["RCP-441", "Counter 1", "RM 86.00"],
-    ["RCP-440", "Counter 2", "RM 42.50"],
-    ["RCP-439", "Counter 1", "RM 125.00"],
-  ],
-  categories: [
-    ["CAT-01", "Cables", "12 SKUs"],
-    ["CAT-02", "Adapters", "8 SKUs"],
-    ["CAT-03", "Accessories", "21 SKUs"],
-  ],
-  logistics: [
-    ["SHP-12", "Supplier A", "In transit"],
-    ["SHP-11", "Supplier B", "Received"],
-    ["SHP-10", "Returns", "Pending"],
-  ],
-  printers: [
-    ["PTR-1", "Front counter", "Online"],
-    ["PTR-2", "Back office", "Offline"],
-  ],
-  accounting: [
-    ["Income", "August", "RM 12,480"],
-    ["Expense", "August", "RM 4,210"],
-    ["Net", "August", "RM 8,270"],
-  ],
-  lhdn: [
-    ["INV-1042", "Submitted", "Accepted"],
-    ["INV-1040", "Pending", "Awaiting"],
-    ["INV-1038", "Submitted", "Accepted"],
-  ],
-  admin: [
-    ["Staff", "Dr. Amin", "Owner"],
-    ["Staff", "Nurse Farah", "Staff"],
-    ["Org", "TIN", "Set"],
-  ],
+type DemoTable = {
+  columns: string[];
+  rows: string[][];
+  hint?: string;
 };
+
+function demoTableFor(niche: PreviewNiche, view: string): DemoTable {
+  if (view === "customers") {
+    if (niche === "retail") {
+      return {
+        columns: ["Code", "Customer", "Phone", "Last purchase", "Status"],
+        rows: [
+          ["CU-4201", "Cafe Luna Sdn Bhd", "07-3321 8890", "4 Aug · RM 420", "Active"],
+          ["CU-4198", "Workshop 88", "012-778 2211", "3 Aug · RM 890", "Active"],
+          ["CU-4192", "Mei Hardware", "016-554 0091", "1 Aug · RM 156", "Active"],
+          ["CU-4180", "Walk-in cash", "—", "4 Aug · RM 86", "Walk-in"],
+          ["CU-4175", "Rina Trading", "019-220 4412", "28 Jul · RM 1,240", "Credit"],
+          ["CU-4168", "Kedai Bahagia", "013-990 1122", "20 Jul · RM 65", "Inactive"],
+        ],
+        hint: "Customer list with last purchase — demo data only.",
+      };
+    }
+    if (niche === "gym") {
+      return {
+        columns: ["Member ID", "Name", "Plan", "Check-ins (30d)", "Status"],
+        rows: [
+          ["MEM-220", "Hafiz Omar", "Monthly", "14", "Active"],
+          ["MEM-219", "Mei Ling", "Monthly", "11", "Active"],
+          ["MEM-218", "Amir Razak", "Quarterly", "6", "Due soon"],
+          ["MEM-217", "Siti Noor", "Monthly", "9", "Active"],
+          ["MEM-216", "Jason Tan", "PT pack", "3", "Frozen"],
+          ["MEM-214", "Aina Rahman", "Annual", "18", "Active"],
+          ["MEM-210", "Rajesh K.", "Monthly", "0", "Lapsed"],
+        ],
+        hint: "Members roster with plan status — demo data only.",
+      };
+    }
+    return {
+      columns: ["Patient ID", "Name", "Phone", "IC / Allergy", "Risk", "Status"],
+      rows: [
+        ["PT-081", "Aina Rahman", "012-345 6789", "900101-14-**** · Nuts", "High", "Active"],
+        ["PT-080", "Lim Wei", "016-778 2210", "880512-10-****", "Low", "Active"],
+        ["PT-079", "Siti Aminah", "019-441 2200", "950303-08-**** · Penicillin", "Medium", "New"],
+        ["PT-078", "Tan Mei Ling", "013-990 1188", "920720-14-****", "Low", "Active"],
+        ["PT-077", "Hafiz Omar", "017-220 3344", "870215-01-****", "Low", "Inactive"],
+        ["PT-076", "Nurul Aisyah", "011-567 8890", "010418-14-****", "Low", "Active"],
+        ["PT-075", "Rajesh K.", "014-332 1100", "860909-10-**** · Seafood", "Medium", "Active"],
+        ["PT-074", "Dr walk-in", "—", "—", "Low", "Walk-in"],
+      ],
+      hint: "Patient records with allergy & risk flags — demo data only.",
+    };
+  }
+
+  if (view === "appointments") {
+    return {
+      columns: ["Time", "Patient", "Room / Doctor", "Type", "Status"],
+      rows: [
+        ["09:00", "Nurul Aisyah", "R1 · Dr Amin", "Consult", "Confirmed"],
+        ["09:30", "Tan Mei Ling", "R2 · Dr Amin", "Follow-up", "Confirmed"],
+        ["10:30", "Rajesh K.", "R2 · Nurse Farah", "Wound care", "Confirmed"],
+        ["11:15", "Walk-in", "R1 · Open", "Consult", "Waiting"],
+        ["14:00", "Lim Wei", "R1 · Dr Amin", "Follow-up", "Booked"],
+        ["15:00", "Siti Aminah", "R3 · Dr Amin", "Lab review", "Booked"],
+        ["16:30", "Aina Rahman", "R3 · Dr Amin", "Consult", "Booked"],
+        ["17:00", "Hafiz Omar", "R1 · Nurse Farah", "Injection", "Booked"],
+      ],
+      hint: "Today’s clinic schedule by room — demo data only.",
+    };
+  }
+
+  if (view === "invoices") {
+    if (niche === "retail") {
+      return {
+        columns: ["Invoice", "Customer", "Date", "Total", "Status"],
+        rows: [
+          ["INV-331", "Wholesale Sdn Bhd", "4 Aug 2026", "RM 1,240.00", "Unpaid"],
+          ["INV-330", "Cafe Luna", "3 Aug 2026", "RM 420.00", "Paid"],
+          ["INV-329", "Workshop 88", "2 Aug 2026", "RM 890.00", "Partial"],
+          ["INV-328", "Retail walk-in", "2 Aug 2026", "RM 65.00", "Paid"],
+          ["INV-327", "Mei Hardware", "1 Aug 2026", "RM 156.00", "Paid"],
+          ["INV-326", "Rina Trading", "30 Jul 2026", "RM 2,100.00", "Unpaid"],
+        ],
+      };
+    }
+    if (niche === "gym") {
+      return {
+        columns: ["Invoice", "Member", "Item", "Total", "Status"],
+        rows: [
+          ["INV-771", "Hafiz Omar", "PT package (8)", "RM 450.00", "Paid"],
+          ["INV-770", "Mei Ling", "Monthly membership", "RM 129.00", "Paid"],
+          ["INV-769", "Amir Razak", "Monthly membership", "RM 129.00", "Due"],
+          ["INV-768", "Day pass", "Guest pass", "RM 35.00", "Paid"],
+          ["INV-767", "Jason Tan", "Monthly (frozen)", "RM 129.00", "On hold"],
+          ["INV-766", "Aina Rahman", "Annual plan", "RM 1,188.00", "Paid"],
+        ],
+      };
+    }
+    return {
+      columns: ["Invoice", "Patient", "Service", "Date", "Total", "Status"],
+      rows: [
+        ["INV-1042", "Aina Rahman", "Consult + meds", "4 Aug 2026", "RM 85.00", "Paid"],
+        ["INV-1041", "Dr walk-in", "Treatment", "4 Aug 2026", "RM 120.00", "Unpaid"],
+        ["INV-1040", "Lim Wei", "Follow-up", "3 Aug 2026", "RM 60.00", "Partial"],
+        ["INV-1039", "Siti Aminah", "Lab panel", "3 Aug 2026", "RM 95.00", "Paid"],
+        ["INV-1038", "Tan Mei Ling", "Procedure", "2 Aug 2026", "RM 45.00", "Paid"],
+        ["INV-1037", "Nurul Aisyah", "Consult", "2 Aug 2026", "RM 70.00", "Paid"],
+        ["INV-1036", "Rajesh K.", "Wound care + dressing", "1 Aug 2026", "RM 110.00", "Unpaid"],
+        ["INV-1035", "Hafiz Omar", "Injection", "31 Jul 2026", "RM 35.00", "Paid"],
+      ],
+      hint: "Billing list ready for MyInvois path — demo data only.",
+    };
+  }
+
+  if (view === "inventory") {
+    if (niche === "retail") {
+      return {
+        columns: ["SKU", "Product", "Category", "Qty", "Reorder", "Status"],
+        rows: [
+          ["SKU-12", "Cable 2m", "Cables", "5", "10", "Low"],
+          ["SKU-07", "Adapter USB-C", "Adapters", "3", "8", "Low"],
+          ["SKU-21", "Tape pack", "Accessories", "8", "12", "Low"],
+          ["SKU-44", "Power bank 10k", "Accessories", "2", "6", "Critical"],
+          ["SKU-09", "Mouse pad", "Accessories", "6", "10", "Low"],
+          ["SKU-31", "HDMI 1.5m", "Cables", "42", "15", "OK"],
+          ["SKU-18", "Multi plug", "Power", "19", "10", "OK"],
+        ],
+      };
+    }
+    return {
+      columns: ["SKU", "Item", "Category", "Qty", "Reorder at", "Status"],
+      rows: [
+        ["MED-12", "Paracetamol 500mg (100)", "Medicine", "18", "20", "Low"],
+        ["MED-07", "Saline 500ml", "Consumable", "6", "12", "Low"],
+        ["MED-21", "Gloves M (box)", "PPE", "4", "10", "Critical"],
+        ["MED-44", "Alcohol swab (box)", "Consumable", "9", "15", "Low"],
+        ["MED-09", "Syringe 3ml (pack)", "Consumable", "22", "15", "OK"],
+        ["MED-31", "Amoxicillin 500mg", "Medicine", "14", "10", "OK"],
+        ["MED-18", "Face mask (box)", "PPE", "3", "8", "Critical"],
+        ["MED-05", "Cotton roll", "Consumable", "11", "8", "OK"],
+      ],
+      hint: "Clinic stock with reorder alerts — demo data only.",
+    };
+  }
+
+  if (view === "admin") {
+    return {
+      columns: ["Type", "Name / Setting", "Role / Value", "Last updated", "Status"],
+      rows: [
+        ["Staff", "Dr. Amin", "Owner", "1 Aug 2026", "Active"],
+        ["Staff", "Nurse Farah", "Staff", "28 Jul 2026", "Active"],
+        ["Staff", "Reception Lina", "Staff", "15 Jul 2026", "Active"],
+        ["Org", "Business TIN", "C12345678901", "12 Jun 2026", "Set"],
+        ["Org", "Clinic hours", "08:00–18:00", "12 Jun 2026", "Set"],
+        ["Org", "Closed weekdays", "Sunday", "12 Jun 2026", "Set"],
+        ["Billing", "Subscription", "Pro · Monthly", "1 Aug 2026", "Active"],
+      ],
+      hint: "Staff & organisation settings — demo data only.",
+    };
+  }
+
+  if (view === "accounting") {
+    return {
+      columns: ["Date", "Entry", "Category", "Amount", "Type"],
+      rows: [
+        ["4 Aug", "Consult collections", "Income", "RM 1,280.00", "Income"],
+        ["4 Aug", "Pharmacy restock", "Inventory", "RM 420.00", "Expense"],
+        ["3 Aug", "Lab panel income", "Income", "RM 380.00", "Income"],
+        ["3 Aug", "Utilities (TNB)", "Ops", "RM 210.50", "Expense"],
+        ["2 Aug", "Procedure fees", "Income", "RM 540.00", "Income"],
+        ["1 Aug", "Staff salary advance", "Payroll", "RM 800.00", "Expense"],
+        ["31 Jul", "Month close — net", "Summary", "RM 8,270.00", "Net"],
+      ],
+      hint: "Ledger snapshot for August — demo data only.",
+    };
+  }
+
+  if (view === "lhdn") {
+    return {
+      columns: ["Invoice", "Patient / Buyer", "Submitted", "MyInvois", "UUID", "Status"],
+      rows: [
+        ["INV-1042", "Aina Rahman", "4 Aug 09:20", "Accepted", "a1b2…9f", "Accepted"],
+        ["INV-1040", "Lim Wei", "3 Aug 17:05", "Pending", "—", "Awaiting"],
+        ["INV-1039", "Siti Aminah", "3 Aug 12:40", "Accepted", "c3d4…1a", "Accepted"],
+        ["INV-1038", "Tan Mei Ling", "2 Aug 16:10", "Accepted", "e5f6…2b", "Accepted"],
+        ["INV-1036", "Rajesh K.", "1 Aug 11:00", "Rejected", "—", "Fix TIN"],
+        ["INV-1035", "Hafiz Omar", "31 Jul 15:22", "Accepted", "g7h8…3c", "Accepted"],
+      ],
+      hint: "e-Invoice submission queue — demo data only.",
+    };
+  }
+
+  // retail / gym extras
+  if (view === "pos") {
+    return {
+      columns: ["Ticket", "Counter", "Method", "Time", "Amount"],
+      rows: [
+        ["POS-8821", "Counter 1", "Cash", "10:12", "RM 86.00"],
+        ["POS-8820", "Counter 2", "QR", "11:05", "RM 42.50"],
+        ["POS-8819", "Counter 1", "Card", "12:40", "RM 125.00"],
+        ["POS-8818", "Counter 2", "Cash", "14:18", "RM 18.90"],
+        ["POS-8817", "Counter 1", "QR", "15:02", "RM 55.00"],
+      ],
+    };
+  }
+  if (view === "cash") {
+    return {
+      columns: ["Type", "Ref", "Time", "Amount", "Balance"],
+      rows: [
+        ["Open", "Drawer A", "08:00", "RM 200.00", "RM 200.00"],
+        ["Sale", "POS-8821", "10:12", "+ RM 86.00", "RM 286.00"],
+        ["Sale", "POS-8820", "11:05", "+ RM 42.50", "RM 328.50"],
+        ["Float", "Top-up", "12:00", "+ RM 50.00", "RM 378.50"],
+        ["Expected", "Close", "—", "—", "RM 378.50"],
+      ],
+    };
+  }
+  if (view === "memberships") {
+    return {
+      columns: ["Member", "Plan", "Start", "Renewal", "Status"],
+      rows: [
+        ["Hafiz Omar", "Monthly", "5 Jul 2026", "5 Aug 2026", "Active"],
+        ["Mei Ling", "Monthly", "12 Jul 2026", "12 Aug 2026", "Active"],
+        ["Amir Razak", "Quarterly", "1 Jun 2026", "1 Sep 2026", "Due soon"],
+        ["Jason Tan", "Monthly", "20 Jun 2026", "20 Jul 2026", "Frozen"],
+      ],
+    };
+  }
+  if (view === "classes") {
+    return {
+      columns: ["Time", "Class", "Coach", "Studio", "Booked"],
+      rows: [
+        ["06:30", "HIIT", "Coach Dan", "Studio A", "14/16"],
+        ["09:00", "Yoga", "Coach Mei", "Studio B", "11/12"],
+        ["12:00", "Spin", "Coach Amir", "Bike room", "8/10"],
+        ["19:00", "HIIT", "Coach Dan", "Studio A", "12/16"],
+      ],
+    };
+  }
+  if (view === "checkins") {
+    return {
+      columns: ["Time", "Member", "Gate", "Plan", "Status"],
+      rows: [
+        ["18:02", "Hafiz Omar", "Gate A", "Monthly", "In"],
+        ["18:05", "Mei Ling", "Gate A", "Monthly", "In"],
+        ["18:11", "Amir Razak", "Gate B", "Quarterly", "In"],
+        ["18:20", "Siti Noor", "Gate A", "Monthly", "In"],
+        ["18:27", "Guest pass", "Gate B", "Day", "In"],
+      ],
+    };
+  }
+
+  return {
+    columns: ["#", "Detail", "Status"],
+    rows: [
+      ["—", "Demo page", "Ready"],
+    ],
+  };
+}
 
 /** Full-size interactive replica of the real Allvisor app shell + dashboard. */
 export function HomeDashboardPreview({
@@ -384,8 +547,9 @@ export function HomeDashboardPreview({
   const demoAppts = useMemo(() => demoAppointments(now), [now]);
   const frameRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
+  const mainScrollRef = useRef<HTMLElement | null>(null);
   const [scale, setScale] = useState(1);
-  const [stageH, setStageH] = useState(900);
+  const [stageH, setStageH] = useState(800);
   const [asideH, setAsideH] = useState(720);
 
   useEffect(() => {
@@ -393,21 +557,26 @@ export function HomeDashboardPreview({
   }, [niche]);
 
   useEffect(() => {
+    mainScrollRef.current?.scrollTo({ top: 0 });
+  }, [view, niche]);
+
+  useEffect(() => {
     const frame = frameRef.current;
-    const stage = stageRef.current;
-    if (!frame || !stage) return;
+    if (!frame) return;
 
     const update = () => {
       const next = Math.min(1, frame.clientWidth / STAGE_W);
-      setScale(next > 0 ? next : 1);
-      setStageH(stage.scrollHeight || 900);
-      setAsideH(Math.max(640, frame.clientHeight / Math.max(next, 0.01) - 32));
+      const safe = next > 0 ? next : 1;
+      setScale(safe);
+      // Fill the frame height after scale — sidebar stays put, main scrolls inside.
+      const layoutH = frame.clientHeight / safe;
+      setStageH(layoutH);
+      setAsideH(Math.max(560, layoutH - 32));
     };
 
     update();
     const ro = new ResizeObserver(() => update());
     ro.observe(frame);
-    ro.observe(stage);
     return () => ro.disconnect();
   }, [niche, view]);
 
@@ -441,7 +610,7 @@ export function HomeDashboardPreview({
     openFromHref(path.startsWith("/") ? path : `/${path}`);
   }
 
-  const listRows = LIST_ROWS[view] || LIST_ROWS.customers;
+  const listTable = useMemo(() => demoTableFor(niche, view), [niche, view]);
 
   return (
     <div className="home-demo" data-niche={nicheThemeAttr(niche)}>
@@ -476,24 +645,23 @@ export function HomeDashboardPreview({
         onClick={onDemoClick}
       >
         <div className="home-demo__badge">{t("demoLive")}</div>
-        <div className="home-demo__sizer" style={{ height: stageH * scale }}>
+        <div className="home-demo__sizer" style={{ height: "100%" }}>
           <div
             ref={stageRef}
             className="home-demo__stage"
             style={{
               width: STAGE_W,
+              height: stageH,
               transform: `scale(${scale})`,
               transformOrigin: "top left",
             }}
           >
-            <div className="app-grid home-demo__grid">
+            <div className="app-grid home-demo__grid" style={{ height: stageH, minHeight: 0 }}>
           <aside
-            className="surface"
+            className="surface home-demo__aside"
             style={{
               margin: "1rem",
               padding: "1.25rem 1rem",
-              position: "sticky",
-              top: "1rem",
               height: asideH,
               display: "flex",
               flexDirection: "column",
@@ -557,7 +725,7 @@ export function HomeDashboardPreview({
             </div>
           </aside>
 
-          <main className="app-main">
+          <main ref={mainScrollRef} className="app-main home-demo__main-scroll">
             <div className="app-content">
               {view === "dashboard" ? (
                 <div className="stack" style={{ gap: "1.25rem" }}>
@@ -735,24 +903,33 @@ export function HomeDashboardPreview({
                     title={labelFor(view === "customers" ? "customers" : view)}
                     subtitle={orgName}
                   />
+                  {listTable.hint ? (
+                    <p className="muted" style={{ margin: 0, fontSize: "0.86rem" }}>
+                      {listTable.hint}
+                    </p>
+                  ) : null}
                   <div className="surface" style={{ padding: "1.25rem" }}>
                     <div className="table-wrap">
                       <table className="data">
                         <thead>
                           <tr>
-                            <th>#</th>
-                            <th>Detail</th>
-                            <th>Status</th>
+                            {listTable.columns.map((col) => (
+                              <th key={col}>{col}</th>
+                            ))}
                           </tr>
                         </thead>
                         <tbody>
-                          {listRows.map((row) => (
-                            <tr key={`${row[0]}-${row[1]}`}>
-                              <td>{row[0]}</td>
-                              <td>{row[1]}</td>
-                              <td>
-                                <span className="badge">{row[2]}</span>
-                              </td>
+                          {listTable.rows.map((row, idx) => (
+                            <tr key={`${view}-${idx}-${row[0]}`}>
+                              {row.map((cell, cellIdx) => (
+                                <td key={`${idx}-${cellIdx}`}>
+                                  {cellIdx === row.length - 1 ? (
+                                    <span className="badge">{cell}</span>
+                                  ) : (
+                                    cell
+                                  )}
+                                </td>
+                              ))}
                             </tr>
                           ))}
                         </tbody>
