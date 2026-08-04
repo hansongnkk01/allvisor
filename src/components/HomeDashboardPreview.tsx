@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import {
   LayoutDashboard,
@@ -68,6 +68,9 @@ import type { Niche } from "@/lib/types";
 export type PreviewNiche = Extract<Niche, "clinic" | "retail" | "gym">;
 
 const PRESETS: PreviewNiche[] = ["clinic", "retail", "gym"];
+
+/** Real desktop canvas width — scaled down to fit the hero frame. */
+const STAGE_W = 1280;
 
 const ORG: Record<PreviewNiche, string> = {
   clinic: "Klinik Harmoni",
@@ -379,10 +382,34 @@ export function HomeDashboardPreview({
   const sections = useMemo(() => getNavSectionsForNiche(niche), [niche]);
   const now = useMemo(() => new Date(), []);
   const demoAppts = useMemo(() => demoAppointments(now), [now]);
+  const frameRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+  const [stageH, setStageH] = useState(900);
+  const [asideH, setAsideH] = useState(720);
 
   useEffect(() => {
     setView("dashboard");
   }, [niche]);
+
+  useEffect(() => {
+    const frame = frameRef.current;
+    const stage = stageRef.current;
+    if (!frame || !stage) return;
+
+    const update = () => {
+      const next = Math.min(1, frame.clientWidth / STAGE_W);
+      setScale(next > 0 ? next : 1);
+      setStageH(stage.scrollHeight || 900);
+      setAsideH(Math.max(640, frame.clientHeight / Math.max(next, 0.01) - 32));
+    };
+
+    update();
+    const ro = new ResizeObserver(() => update());
+    ro.observe(frame);
+    ro.observe(stage);
+    return () => ro.disconnect();
+  }, [niche, view]);
 
   function go(delta: number) {
     onNicheChange(PRESETS[(index + delta + PRESETS.length) % PRESETS.length]);
@@ -442,9 +469,24 @@ export function HomeDashboardPreview({
         </button>
       </div>
 
-      <div className="home-demo__viewport" onClick={onDemoClick}>
+      <div
+        ref={frameRef}
+        className="home-demo__viewport"
+        style={{ ["--home-demo-scale" as string]: scale }}
+        onClick={onDemoClick}
+      >
         <div className="home-demo__badge">{t("demoLive")}</div>
-        <div className="app-grid home-demo__grid">
+        <div className="home-demo__sizer" style={{ height: stageH * scale }}>
+          <div
+            ref={stageRef}
+            className="home-demo__stage"
+            style={{
+              width: STAGE_W,
+              transform: `scale(${scale})`,
+              transformOrigin: "top left",
+            }}
+          >
+            <div className="app-grid home-demo__grid">
           <aside
             className="surface"
             style={{
@@ -452,8 +494,7 @@ export function HomeDashboardPreview({
               padding: "1.25rem 1rem",
               position: "sticky",
               top: "1rem",
-              height: "calc(100% - 2rem)",
-              minHeight: "720px",
+              height: asideH,
               display: "flex",
               flexDirection: "column",
               gap: "1.25rem",
@@ -722,6 +763,8 @@ export function HomeDashboardPreview({
               )}
             </div>
           </main>
+            </div>
+          </div>
         </div>
       </div>
     </div>

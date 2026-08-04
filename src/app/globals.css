@@ -1015,12 +1015,12 @@ html[data-landing="true"] {
 }
 
 .home-hero {
-  max-width: 1240px;
+  max-width: 1320px;
   margin: 0 auto;
   padding: clamp(2.5rem, 6vw, 4rem) var(--home-pad) clamp(2.5rem, 6vw, 3.75rem);
   display: grid;
-  grid-template-columns: minmax(280px, 0.82fr) minmax(0, 1.18fr);
-  gap: clamp(1.5rem, 3.5vw, 2.75rem);
+  grid-template-columns: minmax(260px, 0.62fr) minmax(0, 1.38fr);
+  gap: clamp(1.25rem, 3vw, 2.25rem);
   align-items: start;
 }
 
@@ -1143,9 +1143,12 @@ html[data-landing="true"] {
 }
 
 .home-demo__viewport {
+  --home-demo-scale: 1;
   position: relative;
   width: 100%;
-  height: min(720px, 78vh);
+  aspect-ratio: 16 / 10;
+  height: auto;
+  max-height: min(720px, 78vh);
   border-radius: 16px;
   border: 1px solid color-mix(in srgb, var(--ink) 18%, var(--line));
   background: var(--bg);
@@ -1159,8 +1162,8 @@ html[data-landing="true"] {
 
 .home-demo__badge {
   position: absolute;
-  top: 0.75rem;
-  right: 0.85rem;
+  top: 0.65rem;
+  right: 0.75rem;
   z-index: 5;
   font-size: 0.68rem;
   font-weight: 650;
@@ -1174,20 +1177,29 @@ html[data-landing="true"] {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
+.home-demo__sizer {
+  width: 100%;
+  position: relative;
+}
+
+.home-demo__stage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  will-change: transform;
+}
+
 .home-demo__grid {
-  min-height: 960px;
+  min-height: 900px;
+  width: 100%;
 }
 
 .home-demo__viewport .home-demo__grid > aside.surface {
-  position: sticky !important;
-  top: 1rem !important;
-  height: calc(min(720px, 78vh) - 2rem) !important;
-  min-height: 0 !important;
   align-self: start;
 }
 
 .home-demo__grid .app-main {
-  padding-top: 1.75rem;
+  padding-top: 1.5rem;
 }
 
 .home-band {
@@ -1385,13 +1397,13 @@ html[data-landing="true"] {
   }
 
   .home-demo__viewport {
-    height: min(640px, 70vh);
+    aspect-ratio: 16 / 10;
+    max-height: min(560px, 68vh);
   }
 
   .home-demo__grid {
     grid-template-columns: 1fr;
     min-height: 0;
-    margin-top: 0;
   }
 
   .home-demo__viewport .home-demo__grid > aside.surface {
@@ -1407,7 +1419,7 @@ html[data-landing="true"] {
 
   .home-demo__badge {
     top: 0.55rem;
-    right: 0.75rem;
+    margin-right: 0.65rem;
   }
 
   .home-proof__grid,
