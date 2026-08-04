@@ -29,7 +29,6 @@ import {
   Scale,
   PartyPopper,
   Sprout,
-  ArrowRight,
   type LucideIcon,
 } from "lucide-react";
 import type { Niche } from "@/lib/types";
@@ -128,21 +127,6 @@ const DESC_KEYS: Record<Niche, string> = {
   farm: "farmDesc",
 };
 
-const MOSAIC: Niche[] = [
-  "clinic",
-  "retail",
-  "gym",
-  "tuition",
-  "salon",
-  "fnb",
-  "workshop",
-  "pharmacy",
-  "electronics",
-  "hotel",
-  "vet",
-  "fashion",
-];
-
 function readCookieNiche(): string | undefined {
   if (typeof document === "undefined") return undefined;
   const match = document.cookie.match(/(?:^|;\s*)allvisor_niche=([^;]+)/);
@@ -150,7 +134,7 @@ function readCookieNiche(): string | undefined {
   return value && isNiche(value) ? value : undefined;
 }
 
-/** Homepage — brand + social proof + niche entry (not the long-form sales letter). */
+/** Homepage — minimal brand + proof + niche entry. */
 export function HomeClient() {
   const t = useTranslations("Home");
   const nichesT = useTranslations("Landing");
@@ -218,50 +202,29 @@ export function HomeClient() {
         </header>
 
         <section className="home-hero">
-          <div className="home-hero__copy home-reveal">
-            <p className="home-eyebrow">{t("heroEyebrow")}</p>
-            <p className="home-kicker">{brand("name")}</p>
-            <h1 className="home-hero__title display">{t("heroTitle")}</h1>
-            <p className="home-hero__lead">{t("heroSubtitle")}</p>
-            <div className="home-hero__cta">
-              <Link href="/start" className="btn btn-primary">
-                {t("ctaPlaybook")}
-              </Link>
-              <button
-                type="button"
-                className="btn btn-ghost"
-                onClick={() => nicheGridRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-              >
-                {t("ctaSeeNiches")}
-              </button>
-            </div>
-            <Link href="/register" className="home-hero__trial">
-              {t("ctaStartTrial")}
-              <ArrowRight size={16} />
+          <p className="home-hero__brand display">{brand("name")}</p>
+          <h1 className="home-hero__title">{t("heroTitle")}</h1>
+          <p className="home-hero__lead">{t("heroSubtitle")}</p>
+          <div className="home-hero__cta">
+            <Link href="/start" className="btn btn-primary">
+              {t("ctaPlaybook")}
             </Link>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => nicheGridRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            >
+              {t("ctaSeeNiches")}
+            </button>
           </div>
-
-          <div className="home-hero__visual home-reveal home-reveal--delay" aria-hidden>
-            <div className="home-mosaic">
-              {MOSAIC.map((niche) => {
-                const Icon = ICONS[niche];
-                return (
-                  <div key={niche} className="home-mosaic__cell" data-niche={nicheThemeAttr(niche)}>
-                    <span className="home-mosaic__icon">
-                      <Icon size={22} />
-                    </span>
-                    <span className="home-mosaic__label">{nichesT(TITLE_KEYS[niche] as "clinicTitle")}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <Link href="/register" className="home-hero__trial">
+            {t("ctaStartTrial")}
+          </Link>
         </section>
       </div>
 
-      <section className="home-section landing-chrome" data-niche={themeAttr}>
-        <div className="home-proof">
-          <p className="home-section__eyebrow">{t("proofTitle")}</p>
+      <section className="home-band home-band--proof">
+        <div className="home-band__inner landing-chrome" data-niche={themeAttr}>
           <div className="home-proof__grid">
             {(
               [
@@ -280,95 +243,83 @@ export function HomeClient() {
         </div>
       </section>
 
-      <section className="home-section landing-chrome" data-niche={themeAttr}>
-        <p className="home-section__eyebrow">{t("testimonialNote")}</p>
-        <div className="home-voices">
-          {(
-            [
-              ["quote1", "quote1By"],
-              ["quote2", "quote2By"],
-              ["quote3", "quote3By"],
-            ] as const
-          ).map(([q, by]) => (
-            <blockquote key={q} className="home-voice">
-              <p>{t(q)}</p>
-              <cite>{t(by)}</cite>
-            </blockquote>
-          ))}
-        </div>
-      </section>
-
-      <section className="home-section">
-        <div className="home-bridge">
-          <div>
-            <h2 className="home-bridge__title">{t("bridgeTitle")}</h2>
-            <p className="home-bridge__body">{t("bridgeBody")}</p>
+      <section className="home-band home-band--voices">
+        <div className="home-band__inner landing-chrome" data-niche={themeAttr}>
+          <p className="home-band__label">{t("testimonialNote")}</p>
+          <div className="home-voices">
+            {(
+              [
+                ["quote1", "quote1By"],
+                ["quote2", "quote2By"],
+              ] as const
+            ).map(([q, by]) => (
+              <blockquote key={q} className="home-voice">
+                <p>{t(q)}</p>
+                <cite>{t(by)}</cite>
+              </blockquote>
+            ))}
           </div>
-          <Link href="/start" className="btn btn-primary">
-            {t("ctaPlaybook")}
-          </Link>
         </div>
       </section>
 
-      <section ref={nicheGridRef} id="niches" className="home-section home-niches landing-niche-grid">
-        <div className="landing-chrome home-niches__head" data-niche={themeAttr}>
-          <h2 className="home-niches__title display">{t("chooseBusiness")}</h2>
-          <p className="home-niches__hint">{t("chooseBusinessHint")}</p>
-          <Link href="/start" className="home-niches__unsure">
-            {t("unsureBanner")}
-          </Link>
-        </div>
+      <section ref={nicheGridRef} id="niches" className="home-band home-band--niches landing-niche-grid">
+        <div className="home-band__inner">
+          <div className="landing-chrome home-niches__head" data-niche={themeAttr}>
+            <h2 className="home-niches__title">{t("chooseBusiness")}</h2>
+            <p className="home-niches__hint">{t("chooseBusinessHint")}</p>
+            <Link href="/start" className="home-niches__unsure">
+              {t("unsureBanner")}
+            </Link>
+          </div>
 
-        <div className="home-niches__groups">
-          {GROUPS.map((group) => {
-            const list = nichesInGroup(group.id);
-            if (!list.length) return null;
-            return (
-              <div key={group.id} className="home-niche-group">
-                <h3 className="landing-chrome home-niche-group__label" data-niche={themeAttr}>
-                  {nichesT(group.labelKey as "groupCare")}
-                </h3>
-                <div className="landing-niche-cards home-niche-group__grid">
-                  {list.map((niche) => {
-                    const Icon = ICONS[niche];
-                    const active = preview === niche;
-                    return (
-                      <Link
-                        key={niche}
-                        href={`/register?niche=${niche}`}
-                        className="landing-niche-card"
-                        data-niche={nicheThemeAttr(niche)}
-                        data-previewed={active ? "true" : undefined}
-                        onMouseEnter={() => enterNiche(niche)}
-                        onMouseLeave={leaveNiche}
-                        onFocus={() => enterNiche(niche)}
-                        onBlur={leaveNiche}
-                      >
-                        <div className="landing-niche-icon">
-                          <Icon size={20} />
-                        </div>
-                        <h4 className="landing-niche-title">
-                          {nichesT(TITLE_KEYS[niche] as "clinicTitle")}
-                        </h4>
-                        <p className="muted landing-niche-desc">
-                          {nichesT(DESC_KEYS[niche] as "clinicDesc")}
-                        </p>
-                      </Link>
-                    );
-                  })}
+          <div className="home-niches__groups">
+            {GROUPS.map((group) => {
+              const list = nichesInGroup(group.id);
+              if (!list.length) return null;
+              return (
+                <div key={group.id} className="home-niche-group">
+                  <h3 className="landing-chrome home-niche-group__label" data-niche={themeAttr}>
+                    {nichesT(group.labelKey as "groupCare")}
+                  </h3>
+                  <div className="landing-niche-cards home-niche-group__grid">
+                    {list.map((niche) => {
+                      const Icon = ICONS[niche];
+                      const active = preview === niche;
+                      return (
+                        <Link
+                          key={niche}
+                          href={`/register?niche=${niche}`}
+                          className="landing-niche-card"
+                          data-niche={nicheThemeAttr(niche)}
+                          data-previewed={active ? "true" : undefined}
+                          onMouseEnter={() => enterNiche(niche)}
+                          onMouseLeave={leaveNiche}
+                          onFocus={() => enterNiche(niche)}
+                          onBlur={leaveNiche}
+                        >
+                          <div className="landing-niche-icon">
+                            <Icon size={18} />
+                          </div>
+                          <h4 className="landing-niche-title">
+                            {nichesT(TITLE_KEYS[niche] as "clinicTitle")}
+                          </h4>
+                          <p className="muted landing-niche-desc">
+                            {nichesT(DESC_KEYS[niche] as "clinicDesc")}
+                          </p>
+                        </Link>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </section>
 
       <footer className="home-footer landing-chrome" data-niche={themeAttr}>
         <div className="home-footer__inner">
-          <div>
-            <div className="display home-footer__brand">{brand("name")}</div>
-            <p className="home-footer__tag">{brand("tagline")}</p>
-          </div>
+          <span className="home-footer__brand display">{brand("name")}</span>
           <div className="home-footer__cta">
             <Link href="/start" className="btn btn-primary">
               {t("footerOffer")}
