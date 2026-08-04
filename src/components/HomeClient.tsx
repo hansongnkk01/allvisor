@@ -29,6 +29,7 @@ import {
   Scale,
   PartyPopper,
   Sprout,
+  ArrowRight,
   type LucideIcon,
 } from "lucide-react";
 import type { Niche } from "@/lib/types";
@@ -127,6 +128,21 @@ const DESC_KEYS: Record<Niche, string> = {
   farm: "farmDesc",
 };
 
+const MOSAIC: Niche[] = [
+  "clinic",
+  "retail",
+  "gym",
+  "tuition",
+  "salon",
+  "fnb",
+  "workshop",
+  "pharmacy",
+  "electronics",
+  "hotel",
+  "vet",
+  "fashion",
+];
+
 function readCookieNiche(): string | undefined {
   if (typeof document === "undefined") return undefined;
   const match = document.cookie.match(/(?:^|;\s*)allvisor_niche=([^;]+)/);
@@ -137,7 +153,7 @@ function readCookieNiche(): string | undefined {
 /** Homepage — brand + social proof + niche entry (not the long-form sales letter). */
 export function HomeClient() {
   const t = useTranslations("Home");
-  const niches = useTranslations("Landing");
+  const nichesT = useTranslations("Landing");
   const brand = useTranslations("Brand");
   const [preview, setPreview] = useState<Niche | null>(null);
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -184,197 +200,135 @@ export function HomeClient() {
   }
 
   return (
-    <div className="landing-shell">
+    <div className="home-shell landing-shell">
       <div className="landing-chrome" data-niche={themeAttr}>
-        <header
-          className="row landing-header"
-          style={{
-            justifyContent: "space-between",
-            padding: "1.25rem clamp(1rem, 4vw, 3rem)",
-            gap: "0.75rem",
-            flexWrap: "wrap",
-          }}
-        >
-          <div className="display landing-brand" style={{ fontSize: "1.8rem" }}>
+        <header className="home-nav">
+          <Link href="/" className="home-nav__brand display">
             {brand("name")}
-          </div>
-          <div className="row" style={{ flexWrap: "wrap", gap: "0.5rem" }}>
-            <Link href="/start" className="btn btn-soft" style={{ padding: "0.55rem 1rem" }}>
+          </Link>
+          <nav className="home-nav__actions">
+            <Link href="/start" className="home-nav__link">
               {t("navOffer")}
             </Link>
             <LanguageSwitcher />
-            <Link href="/login" className="btn btn-ghost">
+            <Link href="/login" className="btn btn-ghost home-nav__login">
               {t("ctaLogin")}
             </Link>
-          </div>
+          </nav>
         </header>
 
-        <section
-          style={{
-            padding: "2.5rem clamp(1rem, 4vw, 3rem) 0",
-            maxWidth: 1100,
-            margin: "0 auto",
-          }}
-        >
-          <p className="muted landing-fade" style={{ marginBottom: "0.65rem", fontWeight: 600 }}>
-            {t("heroEyebrow")}
-          </p>
-          <h1
-            className="display landing-hero-title"
-            style={{
-              fontSize: "clamp(2.1rem, 5vw, 3.4rem)",
-              lineHeight: 1.08,
-              margin: "0 0 1rem",
-              maxWidth: 920,
-            }}
-          >
-            {t("heroTitle")}
-          </h1>
-          <p
-            className="muted landing-fade"
-            style={{
-              fontSize: "1.08rem",
-              maxWidth: 720,
-              lineHeight: 1.6,
-              marginBottom: "1.5rem",
-            }}
-          >
-            {t("heroSubtitle")}
-          </p>
-
-          <div className="row landing-fade" style={{ marginBottom: "2rem", flexWrap: "wrap", gap: "0.65rem" }}>
-            <Link href="/start" className="btn btn-primary">
-              {t("ctaPlaybook")}
-            </Link>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => nicheGridRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-            >
-              {t("ctaSeeNiches")}
-            </button>
-            <Link href="/register" className="btn btn-soft">
+        <section className="home-hero">
+          <div className="home-hero__copy home-reveal">
+            <p className="home-eyebrow">{t("heroEyebrow")}</p>
+            <p className="home-kicker">{brand("name")}</p>
+            <h1 className="home-hero__title display">{t("heroTitle")}</h1>
+            <p className="home-hero__lead">{t("heroSubtitle")}</p>
+            <div className="home-hero__cta">
+              <Link href="/start" className="btn btn-primary">
+                {t("ctaPlaybook")}
+              </Link>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() => nicheGridRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              >
+                {t("ctaSeeNiches")}
+              </button>
+            </div>
+            <Link href="/register" className="home-hero__trial">
               {t("ctaStartTrial")}
+              <ArrowRight size={16} />
             </Link>
           </div>
 
-          <div className="surface landing-fade" style={{ padding: "1.25rem 1.35rem", marginBottom: "1.75rem" }}>
-            <h2 className="page-title" style={{ marginBottom: "0.85rem", fontSize: "1.15rem" }}>
-              {t("proofTitle")}
-            </h2>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-                gap: "0.85rem",
-              }}
-            >
-              {[
+          <div className="home-hero__visual home-reveal home-reveal--delay" aria-hidden>
+            <div className="home-mosaic">
+              {MOSAIC.map((niche) => {
+                const Icon = ICONS[niche];
+                return (
+                  <div key={niche} className="home-mosaic__cell" data-niche={nicheThemeAttr(niche)}>
+                    <span className="home-mosaic__icon">
+                      <Icon size={22} />
+                    </span>
+                    <span className="home-mosaic__label">{nichesT(TITLE_KEYS[niche] as "clinicTitle")}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <section className="home-section landing-chrome" data-niche={themeAttr}>
+        <div className="home-proof">
+          <p className="home-section__eyebrow">{t("proofTitle")}</p>
+          <div className="home-proof__grid">
+            {(
+              [
                 ["proofNiches", "proofNichesHint"],
                 ["proofLhdn", "proofLhdnHint"],
                 ["proofBilingual", "proofBilingualHint"],
                 ["proofIsolation", "proofIsolationHint"],
-              ].map(([title, hint]) => (
-                <div key={title}>
-                  <div style={{ fontWeight: 700 }}>{t(title as "proofNiches")}</div>
-                  <div className="muted" style={{ fontSize: "0.88rem", marginTop: "0.2rem" }}>
-                    {t(hint as "proofNichesHint")}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <p className="muted landing-fade" style={{ fontSize: "0.82rem", marginBottom: "0.75rem" }}>
-            {t("testimonialNote")}
-          </p>
-          <div
-            className="landing-fade"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-              gap: "0.85rem",
-              marginBottom: "2rem",
-            }}
-          >
-            {(
-              [
-                ["quote1", "quote1By"],
-                ["quote2", "quote2By"],
-                ["quote3", "quote3By"],
               ] as const
-            ).map(([q, by]) => (
-              <div key={q} className="surface" style={{ padding: "1rem 1.1rem" }}>
-                <p style={{ margin: "0 0 0.65rem", lineHeight: 1.5 }}>{t(q)}</p>
-                <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
-                  {t(by)}
-                </p>
+            ).map(([title, hint]) => (
+              <div key={title} className="home-proof__item">
+                <div className="home-proof__value">{t(title)}</div>
+                <div className="home-proof__hint">{t(hint)}</div>
               </div>
             ))}
           </div>
+        </div>
+      </section>
 
-          <div className="surface landing-fade" style={{ padding: "1.2rem 1.35rem", marginBottom: "2rem" }}>
-            <h3 style={{ margin: "0 0 0.4rem" }}>{t("bridgeTitle")}</h3>
-            <p className="muted" style={{ margin: "0 0 0.85rem", lineHeight: 1.5 }}>
-              {t("bridgeBody")}
-            </p>
-            <Link href="/start" className="btn btn-primary">
-              {t("ctaPlaybook")}
-            </Link>
+      <section className="home-section landing-chrome" data-niche={themeAttr}>
+        <p className="home-section__eyebrow">{t("testimonialNote")}</p>
+        <div className="home-voices">
+          {(
+            [
+              ["quote1", "quote1By"],
+              ["quote2", "quote2By"],
+              ["quote3", "quote3By"],
+            ] as const
+          ).map(([q, by]) => (
+            <blockquote key={q} className="home-voice">
+              <p>{t(q)}</p>
+              <cite>{t(by)}</cite>
+            </blockquote>
+          ))}
+        </div>
+      </section>
+
+      <section className="home-section">
+        <div className="home-bridge">
+          <div>
+            <h2 className="home-bridge__title">{t("bridgeTitle")}</h2>
+            <p className="home-bridge__body">{t("bridgeBody")}</p>
           </div>
+          <Link href="/start" className="btn btn-primary">
+            {t("ctaPlaybook")}
+          </Link>
+        </div>
+      </section>
 
-          <h2 className="page-title landing-fade" style={{ marginBottom: "0.5rem" }}>
-            {t("chooseBusiness")}
-          </h2>
-          <p className="muted landing-fade" style={{ marginTop: 0, marginBottom: "0.85rem", maxWidth: 640 }}>
-            {t("chooseBusinessHint")}
-          </p>
-          <p className="landing-fade" style={{ marginBottom: "1.5rem" }}>
-            <Link href="/start" style={{ color: "var(--accent-ink)", fontWeight: 600 }}>
-              {t("unsureBanner")}
-            </Link>
-          </p>
-        </section>
-      </div>
+      <section ref={nicheGridRef} id="niches" className="home-section home-niches landing-niche-grid">
+        <div className="landing-chrome home-niches__head" data-niche={themeAttr}>
+          <h2 className="home-niches__title display">{t("chooseBusiness")}</h2>
+          <p className="home-niches__hint">{t("chooseBusinessHint")}</p>
+          <Link href="/start" className="home-niches__unsure">
+            {t("unsureBanner")}
+          </Link>
+        </div>
 
-      <section
-        ref={nicheGridRef}
-        id="niches"
-        className="landing-niche-grid"
-        style={{
-          padding: "0 clamp(1rem, 4vw, 3rem) 2rem",
-          maxWidth: 1100,
-          margin: "0 auto",
-        }}
-      >
-        <div className="stack" style={{ gap: "2rem" }}>
+        <div className="home-niches__groups">
           {GROUPS.map((group) => {
             const list = nichesInGroup(group.id);
             if (!list.length) return null;
             return (
-              <div key={group.id}>
-                <h3
-                  className="landing-chrome landing-group-label"
-                  data-niche={themeAttr}
-                  style={{
-                    margin: "0 0 0.85rem",
-                    fontSize: "0.95rem",
-                    letterSpacing: "0.04em",
-                    textTransform: "uppercase",
-                    color: "var(--muted)",
-                    fontWeight: 700,
-                  }}
-                >
-                  {niches(group.labelKey as "groupCare")}
+              <div key={group.id} className="home-niche-group">
+                <h3 className="landing-chrome home-niche-group__label" data-niche={themeAttr}>
+                  {nichesT(group.labelKey as "groupCare")}
                 </h3>
-                <div
-                  className="landing-niche-cards"
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-                    gap: "0.85rem",
-                  }}
-                >
+                <div className="landing-niche-cards home-niche-group__grid">
                   {list.map((niche) => {
                     const Icon = ICONS[niche];
                     const active = preview === niche;
@@ -382,7 +336,7 @@ export function HomeClient() {
                       <Link
                         key={niche}
                         href={`/register?niche=${niche}`}
-                        className="surface landing-niche-card"
+                        className="landing-niche-card"
                         data-niche={nicheThemeAttr(niche)}
                         data-previewed={active ? "true" : undefined}
                         onMouseEnter={() => enterNiche(niche)}
@@ -394,10 +348,10 @@ export function HomeClient() {
                           <Icon size={20} />
                         </div>
                         <h4 className="landing-niche-title">
-                          {niches(TITLE_KEYS[niche] as "clinicTitle")}
+                          {nichesT(TITLE_KEYS[niche] as "clinicTitle")}
                         </h4>
                         <p className="muted landing-niche-desc">
-                          {niches(DESC_KEYS[niche] as "clinicDesc")}
+                          {nichesT(DESC_KEYS[niche] as "clinicDesc")}
                         </p>
                       </Link>
                     );
@@ -409,27 +363,24 @@ export function HomeClient() {
         </div>
       </section>
 
-      <footer
-        className="landing-chrome"
-        data-niche={themeAttr}
-        style={{
-          padding: "0 clamp(1rem, 4vw, 3rem) 3.5rem",
-          maxWidth: 1100,
-          margin: "0 auto",
-        }}
-      >
-        <div className="row landing-fade" style={{ flexWrap: "wrap", gap: "0.75rem" }}>
-          <Link href="/start" className="btn btn-primary">
-            {t("footerOffer")}
-          </Link>
-          <Link href="/register" className="btn btn-ghost">
-            {t("footerTrial")}
-          </Link>
+      <footer className="home-footer landing-chrome" data-niche={themeAttr}>
+        <div className="home-footer__inner">
+          <div>
+            <div className="display home-footer__brand">{brand("name")}</div>
+            <p className="home-footer__tag">{brand("tagline")}</p>
+          </div>
+          <div className="home-footer__cta">
+            <Link href="/start" className="btn btn-primary">
+              {t("footerOffer")}
+            </Link>
+            <Link href="/register" className="btn btn-ghost">
+              {t("footerTrial")}
+            </Link>
+          </div>
         </div>
       </footer>
     </div>
   );
 }
 
-/** @deprecated Use HomeClient — kept for any stale imports */
 export const LandingClient = HomeClient;
