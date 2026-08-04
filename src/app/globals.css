@@ -1087,12 +1087,15 @@ html[data-landing="true"] {
 }
 
 .home-demo__tabs {
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  align-items: stretch;
   gap: 0.12rem;
   padding: 0.18rem;
   border-radius: 999px;
   background: color-mix(in srgb, var(--ink) 6%, var(--bg));
   border: 1px solid var(--line);
+  min-width: min(100%, 320px);
 }
 
 .home-demo__tab {
@@ -1102,13 +1105,18 @@ html[data-landing="true"] {
   font: inherit;
   font-size: 0.72rem;
   font-weight: 600;
-  padding: 0.28rem 0.65rem;
+  padding: 0.32rem 0.55rem;
   border-radius: 999px;
   cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.home-demo__tab[data-active="true"] {
+.home-demo__tab[data-active="true"],
+.home-demo__tab[data-slot="center"] {
   background: var(--bg-elevated);
   color: var(--ink);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);

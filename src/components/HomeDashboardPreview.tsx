@@ -70,8 +70,6 @@ import type { Niche } from "@/lib/types";
 
 export type PreviewNiche = Niche;
 
-const CAROUSEL_PAGE_SIZE = 3;
-
 /** Real desktop canvas width — scaled down to fit the hero frame. */
 const STAGE_W = 1280;
 
@@ -289,22 +287,22 @@ export function HomeDashboardPreview({
   const [scale, setScale] = useState(1);
   const [stageH, setStageH] = useState(800);
   const [asideH, setAsideH] = useState(720);
-  const totalCarouselPages = Math.ceil(NICHES.length / CAROUSEL_PAGE_SIZE);
-  const [carouselPage, setCarouselPage] = useState(() =>
-    Math.max(0, Math.floor(NICHES.indexOf(niche) / CAROUSEL_PAGE_SIZE))
-  );
-  const visibleNiches = NICHES.slice(
-    carouselPage * CAROUSEL_PAGE_SIZE,
-    carouselPage * CAROUSEL_PAGE_SIZE + CAROUSEL_PAGE_SIZE
-  );
+  const nicheRef = useRef(niche);
+  const carouselPausedRef = useRef(false);
+  const nicheIndex = Math.max(0, NICHES.indexOf(niche));
+  // Always show [prev | center(selected) | next] — white pill stays on the center slot.
+  const visibleNiches = [
+    NICHES[(nicheIndex - 1 + NICHES.length) % NICHES.length],
+    NICHES[nicheIndex],
+    NICHES[(nicheIndex + 1) % NICHES.length],
+  ];
 
   useEffect(() => {
-    setView("dashboard");
+    nicheRef.current = niche;
   }, [niche]);
 
   useEffect(() => {
-    const idx = NICHES.indexOf(niche);
-    if (idx >= 0) setCarouselPage(Math.floor(idx / CAROUSEL_PAGE_SIZE));
+    setView("dashboard");
   }, [niche]);
 
   useEffect(() => {
@@ -330,11 +328,18 @@ export function HomeDashboardPreview({
     return () => ro.disconnect();
   }, [niche, view]);
 
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (carouselPausedRef.current) return;
+      const idx = Math.max(0, NICHES.indexOf(nicheRef.current));
+      onNicheChange(NICHES[(idx + 1) % NICHES.length]);
+    }, 3000);
+    return () => window.clearInterval(timer);
+  }, [onNicheChange]);
+
   function shiftCarousel(delta: number) {
-    const nextPage = (carouselPage + delta + totalCarouselPages) % totalCarouselPages;
-    setCarouselPage(nextPage);
-    const first = NICHES[nextPage * CAROUSEL_PAGE_SIZE];
-    if (first) onNicheChange(first);
+    const next = NICHES[(nicheIndex + delta + NICHES.length) % NICHES.length];
+    onNicheChange(next);
   }
 
   function nicheLabel(id: Niche) {
@@ -369,19 +374,29 @@ export function HomeDashboardPreview({
 
   return (
     <div className="home-demo" data-niche={nicheThemeAttr(niche)}>
-      <div className="home-demo__carousel" aria-label={t("demoTabsLabel")}>
+      <div
+        className="home-demo__carousel"
+        aria-label={t("demoTabsLabel")}
+        onMouseEnter={() => {
+          carouselPausedRef.current = true;
+        }}
+        onMouseLeave={() => {
+          carouselPausedRef.current = false;
+        }}
+      >
         <button type="button" className="home-demo__arrow" aria-label={t("demoPrev")} onClick={() => shiftCarousel(-1)}>
           <ChevronLeft size={20} strokeWidth={2.75} />
         </button>
         <div className="home-demo__tabs" role="tablist">
-          {visibleNiches.map((id) => (
+          {visibleNiches.map((id, slot) => (
             <button
-              key={id}
+              key={`${id}-${slot}`}
               type="button"
               role="tab"
-              aria-selected={niche === id}
+              aria-selected={slot === 1}
               className="home-demo__tab"
-              data-active={niche === id ? "true" : "false"}
+              data-active={slot === 1 ? "true" : "false"}
+              data-slot={slot === 0 ? "prev" : slot === 1 ? "center" : "next"}
               onClick={() => onNicheChange(id)}
             >
               {nicheLabel(id)}
