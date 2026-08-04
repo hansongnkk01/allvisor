@@ -35,9 +35,12 @@
     "unsureBanner": "Unsure which niche fits? Read the full offer and free playbook first →",
     "footerOffer": "See the full Sell-ready offer",
     "footerTrial": "Or start free now",
+    "demoLive": "Demo preview",
+    "demoPrev": "Previous niche",
+    "demoNext": "Next niche",
+    "demoOps": "Operations",
     "demoTabsLabel": "Preview niche dashboards",
     "demoWelcome": "Welcome back",
-    "demoLive": "Live preview",
     "demoTab": {
       "clinic": "Clinic",
       "retail": "Retail",
@@ -88,6 +91,23 @@
         "kpi1": "Active members",
         "kpi2": "Classes today",
         "kpi3": "Fees due"
+      }
+    },
+    "demoAct": {
+      "clinic": {
+        "act1": "Patients",
+        "act2": "Appointments",
+        "act3": "Invoices"
+      },
+      "retail": {
+        "act1": "POS",
+        "act2": "Inventory",
+        "act3": "Cash drawer"
+      },
+      "gym": {
+        "act1": "Members",
+        "act2": "Classes",
+        "act3": "Check-ins"
       }
     },
     "demoTable": {

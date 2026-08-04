@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   LayoutDashboard,
@@ -10,12 +10,14 @@ import {
   ScanBarcode,
   Package,
   Dumbbell,
+  ChevronLeft,
+  ChevronRight,
   type LucideIcon,
 } from "lucide-react";
 import { nicheThemeAttr } from "@/lib/utils";
 import type { Niche } from "@/lib/types";
 
-type PreviewNiche = Extract<Niche, "clinic" | "retail" | "gym">;
+export type PreviewNiche = Extract<Niche, "clinic" | "retail" | "gym">;
 
 const PRESETS: PreviewNiche[] = ["clinic", "retail", "gym"];
 
@@ -66,53 +68,94 @@ const ROWS: Record<PreviewNiche, Array<{ a: string; b: string; c: string }>> = {
     { a: "INV-1042", b: "Aina Rahman", c: "Paid" },
     { a: "INV-1041", b: "Dr walk-in", c: "Unpaid" },
     { a: "INV-1040", b: "Lim Wei", c: "Partial" },
+    { a: "APT-091", b: "10:30 · Room 2", c: "Confirmed" },
   ],
   retail: [
     { a: "POS-8821", b: "Counter 1", c: "RM 86.00" },
     { a: "POS-8820", b: "Counter 2", c: "RM 42.50" },
     { a: "INV-331", b: "Wholesale", c: "Unpaid" },
+    { a: "STK-12", b: "SKU low alert", c: "5 left" },
   ],
   gym: [
     { a: "MEM-220", b: "Hafiz", c: "Active" },
     { a: "CLS-HIIT", b: "Tonight 7pm", c: "12 booked" },
     { a: "INV-771", b: "PT package", c: "Paid" },
+    { a: "CHK-084", b: "Gate A", c: "Checked in" },
   ],
 };
 
-/** Interactive product mock for homepage hero — stay calm, not noisy. */
-export function HomeDashboardPreview() {
+const ACTIONS: Record<PreviewNiche, Array<"act1" | "act2" | "act3">> = {
+  clinic: ["act1", "act2", "act3"],
+  retail: ["act1", "act2", "act3"],
+  gym: ["act1", "act2", "act3"],
+};
+
+/** Interactive product mock for homepage hero. */
+export function HomeDashboardPreview({
+  niche,
+  onNicheChange,
+}: {
+  niche: PreviewNiche;
+  onNicheChange: (niche: PreviewNiche) => void;
+}) {
   const t = useTranslations("Home");
-  const [niche, setNiche] = useState<PreviewNiche>("clinic");
   const [activeNav, setActiveNav] = useState(0);
+  const index = PRESETS.indexOf(niche);
 
   const nav = NAV[niche];
   const kpis = KPIS[niche];
   const rows = ROWS[niche];
-
+  const actions = ACTIONS[niche];
   const orgName = useMemo(() => t(`demoOrg.${niche}` as "demoOrg.clinic"), [niche, t]);
+
+  useEffect(() => {
+    setActiveNav(0);
+  }, [niche]);
+
+  function go(delta: number) {
+    const next = PRESETS[(index + delta + PRESETS.length) % PRESETS.length];
+    onNicheChange(next);
+  }
 
   return (
     <div className="home-demo" data-niche={nicheThemeAttr(niche)}>
-      <div className="home-demo__tabs" role="tablist" aria-label={t("demoTabsLabel")}>
-        {PRESETS.map((id) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={niche === id}
-            className="home-demo__tab"
-            data-active={niche === id ? "true" : "false"}
-            onClick={() => {
-              setNiche(id);
-              setActiveNav(0);
-            }}
-          >
-            {t(`demoTab.${id}` as "demoTab.clinic")}
-          </button>
-        ))}
+      <div className="home-demo__carousel" aria-label={t("demoTabsLabel")}>
+        <button
+          type="button"
+          className="home-demo__arrow"
+          aria-label={t("demoPrev")}
+          onClick={() => go(-1)}
+        >
+          <ChevronLeft size={20} strokeWidth={2.75} />
+        </button>
+
+        <div className="home-demo__tabs" role="tablist">
+          {PRESETS.map((id) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={niche === id}
+              className="home-demo__tab"
+              data-active={niche === id ? "true" : "false"}
+              onClick={() => onNicheChange(id)}
+            >
+              {t(`demoTab.${id}` as "demoTab.clinic")}
+            </button>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          className="home-demo__arrow"
+          aria-label={t("demoNext")}
+          onClick={() => go(1)}
+        >
+          <ChevronRight size={20} strokeWidth={2.75} />
+        </button>
       </div>
 
-      <div className="home-demo__frame" aria-hidden={false}>
+      <div className="home-demo__frame">
         <aside className="home-demo__side">
           <div className="home-demo__brand">
             <span className="home-demo__logo">A</span>
@@ -138,13 +181,16 @@ export function HomeDashboardPreview() {
               );
             })}
           </nav>
+          <div className="home-demo__side-foot">{t("demoOps")}</div>
         </aside>
 
         <div className="home-demo__main">
           <div className="home-demo__main-head">
             <div>
               <div className="home-demo__hello">{t("demoWelcome")}</div>
-              <div className="home-demo__subtitle">{t(`demoSubtitle.${niche}` as "demoSubtitle.clinic")}</div>
+              <div className="home-demo__subtitle">
+                {t(`demoSubtitle.${niche}` as "demoSubtitle.clinic")}
+              </div>
             </div>
             <span className="home-demo__pill">{t("demoLive")}</span>
           </div>
@@ -157,6 +203,14 @@ export function HomeDashboardPreview() {
                 </div>
                 <div className="home-demo__kpi-value">{kpi.value}</div>
               </div>
+            ))}
+          </div>
+
+          <div className="home-demo__actions">
+            {actions.map((key) => (
+              <span key={key} className="home-demo__action">
+                {t(`demoAct.${niche}.${key}` as "demoAct.clinic.act1")}
+              </span>
             ))}
           </div>
 

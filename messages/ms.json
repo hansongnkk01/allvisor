@@ -35,9 +35,12 @@
     "unsureBanner": "Tak sure niche mana? Baca tawaran penuh + playbook percuma dulu →",
     "footerOffer": "Lihat tawaran penuh",
     "footerTrial": "Atau mula percuma sekarang",
+    "demoLive": "Demo preview",
+    "demoPrev": "Niche sebelumnya",
+    "demoNext": "Niche seterusnya",
+    "demoOps": "Operasi",
     "demoTabsLabel": "Pratonton dashboard niche",
     "demoWelcome": "Selamat kembali",
-    "demoLive": "Pratonton langsung",
     "demoTab": {
       "clinic": "Klinik",
       "retail": "Runcit",
@@ -88,6 +91,23 @@
         "kpi1": "Ahli aktif",
         "kpi2": "Kelas hari ini",
         "kpi3": "Yuran tertunggak"
+      }
+    },
+    "demoAct": {
+      "clinic": {
+        "act1": "Pesakit",
+        "act2": "Temujanji",
+        "act3": "Invois"
+      },
+      "retail": {
+        "act1": "POS",
+        "act2": "Inventori",
+        "act3": "Laci tunai"
+      },
+      "gym": {
+        "act1": "Ahli",
+        "act2": "Kelas",
+        "act3": "Check-in"
       }
     },
     "demoTable": {

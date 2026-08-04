@@ -31,10 +31,9 @@ import {
   Sprout,
   type LucideIcon,
 } from "lucide-react";
-import { HomeDashboardPreview } from "@/components/HomeDashboardPreview";
+import { HomeDashboardPreview, type PreviewNiche } from "@/components/HomeDashboardPreview";
 import type { Niche } from "@/lib/types";
 import { nichesInGroup } from "@/lib/niche-capabilities";
-import { isNiche } from "@/lib/niches";
 import { nicheThemeAttr } from "@/lib/utils";
 
 type GroupId = "care" | "shop" | "hybrid" | "hospitality" | "specialty";
@@ -128,22 +127,17 @@ const DESC_KEYS: Record<Niche, string> = {
   farm: "farmDesc",
 };
 
-function readCookieNiche(): string | undefined {
-  if (typeof document === "undefined") return undefined;
-  const match = document.cookie.match(/(?:^|;\s*)allvisor_niche=([^;]+)/);
-  const value = match?.[1] ? decodeURIComponent(match[1]) : undefined;
-  return value && isNiche(value) ? value : undefined;
-}
-
 /** Homepage — minimal brand + proof + niche entry. */
 export function HomeClient() {
   const t = useTranslations("Home");
   const nichesT = useTranslations("Landing");
   const brand = useTranslations("Brand");
   const [preview, setPreview] = useState<Niche | null>(null);
+  const [demoNiche, setDemoNiche] = useState<PreviewNiche>("clinic");
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const nicheGridRef = useRef<HTMLElement | null>(null);
-  const themeAttr = preview ? nicheThemeAttr(preview) : undefined;
+  const pageNiche = (preview ?? demoNiche) as Niche;
+  const themeAttr = nicheThemeAttr(pageNiche);
 
   useEffect(() => {
     const html = document.documentElement;
@@ -153,17 +147,15 @@ export function HomeClient() {
       html.dataset.niche = nicheThemeAttr(preview);
       html.dataset.landingPreview = "true";
     } else {
-      const cookieNiche = readCookieNiche();
-      if (cookieNiche) html.dataset.niche = nicheThemeAttr(cookieNiche);
-      else delete html.dataset.niche;
-      delete html.dataset.landingPreview;
+      html.dataset.niche = nicheThemeAttr(demoNiche);
+      html.dataset.landingPreview = "true";
     }
 
     return () => {
       delete html.dataset.landing;
       delete html.dataset.landingPreview;
     };
-  }, [preview]);
+  }, [preview, demoNiche]);
 
   useEffect(() => {
     return () => {
@@ -224,7 +216,7 @@ export function HomeClient() {
             </Link>
           </div>
           <div className="home-hero__feature">
-            <HomeDashboardPreview />
+            <HomeDashboardPreview niche={demoNiche} onNicheChange={setDemoNiche} />
           </div>
         </section>
       </div>
