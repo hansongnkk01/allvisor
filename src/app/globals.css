@@ -1406,8 +1406,13 @@ html[data-landing="true"] {
   }
 
   .home-demo__viewport {
+    width: 100%;
     aspect-ratio: 16 / 10;
     max-height: min(560px, 68vh);
+  }
+
+  .home-demo__carousel {
+    width: 100%;
   }
 
   .home-demo__grid {
