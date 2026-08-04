@@ -838,13 +838,55 @@ html[data-landing="true"] {
   border-radius: var(--radius-btn);
 }
 
+/*
+ * Catalog grid: hard-reset theme tokens so cards do NOT inherit the hovered
+ * page preview (html[data-niche]). Each card then applies only its own data-niche.
+ */
+.landing-niche-cards {
+  color-scheme: light;
+  --bg: #f6f4f1;
+  --bg-top: #f8f6f3;
+  --bg-bottom: #efeae4;
+  --bg-glow: rgba(28, 27, 25, 0.05);
+  --bg-elevated: rgba(255, 255, 255, 0.9);
+  --input-bg: rgba(255, 255, 255, 0.9);
+  --ink: #1c1b19;
+  --muted: #6b6560;
+  --line: rgba(28, 27, 25, 0.12);
+  --accent: #57534e;
+  --accent-soft: rgba(28, 27, 25, 0.08);
+  --accent-ink: #292524;
+  --accent-hover: #44403c;
+  --accent-fg: #ffffff;
+  --danger: #b42318;
+  --success: #027a48;
+  --shadow: 0 16px 40px rgba(28, 27, 25, 0.08);
+  --radius: 16px;
+  --radius-btn: 999px;
+  --radius-control: 12px;
+  --radius-nav: 12px;
+  --surface-blur: 14px;
+  --surface-border: rgba(28, 27, 25, 0.12);
+  --btn-tracking: 0;
+  --btn-transform: none;
+  --brand-tracking: -0.03em;
+  --brand-transform: none;
+  --brand-size: 1.15rem;
+  --brand-weight: 600;
+  --font-display: var(--font-dm-sans);
+  --font-sans: var(--font-dm-sans);
+}
+
 /* Each card locks to its own data-niche tokens — never follow page preview */
 .landing-niche-card {
   padding: 1.15rem;
   display: block;
   color: var(--ink);
   background: var(--bg-elevated);
-  border-color: var(--surface-border, var(--line));
+  border: 1px solid var(--surface-border, var(--line));
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(var(--surface-blur));
   /* only lift on hover — no color/theme transitions */
   transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
 }
