@@ -967,6 +967,8 @@ html[data-landing="true"] {
 .home-shell {
   --home-max: 1120px;
   --home-pad: clamp(1.25rem, 4vw, 2.5rem);
+  --home-hero-max: min(1680px, 100%);
+  --home-hero-pad: clamp(1rem, 2.2vw, 1.75rem);
 }
 
 .home-nav {
@@ -977,7 +979,10 @@ html[data-landing="true"] {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 1rem var(--home-pad);
+  max-width: var(--home-hero-max);
+  margin: 0 auto;
+  width: 100%;
+  padding: 1rem var(--home-hero-pad);
   background: color-mix(in srgb, var(--bg) 88%, transparent);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid transparent;
@@ -1015,17 +1020,18 @@ html[data-landing="true"] {
 }
 
 .home-hero {
-  max-width: 1320px;
+  max-width: var(--home-hero-max);
   margin: 0 auto;
-  padding: clamp(2.5rem, 6vw, 4rem) var(--home-pad) clamp(2.5rem, 6vw, 3.75rem);
+  width: 100%;
+  padding: clamp(2.25rem, 5vw, 3.5rem) var(--home-hero-pad) clamp(2.25rem, 5vw, 3.25rem);
   display: grid;
-  grid-template-columns: minmax(260px, 0.62fr) minmax(0, 1.38fr);
-  gap: clamp(1.25rem, 3vw, 2.25rem);
+  grid-template-columns: minmax(240px, 26rem) minmax(0, 1fr);
+  gap: clamp(1rem, 2.2vw, 1.75rem);
   align-items: start;
 }
 
 .home-hero__copy {
-  max-width: 34rem;
+  max-width: 28rem;
   padding-top: 0.35rem;
 }
 
@@ -1148,7 +1154,7 @@ html[data-landing="true"] {
   width: 100%;
   aspect-ratio: 16 / 10;
   height: auto;
-  max-height: min(720px, 78vh);
+  max-height: min(820px, 84vh);
   border-radius: 16px;
   border: 1px solid color-mix(in srgb, var(--ink) 18%, var(--line));
   background: var(--bg);
