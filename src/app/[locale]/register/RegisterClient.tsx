@@ -7,12 +7,12 @@ import { Link, useRouter } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { isNiche } from "@/lib/niches";
 import type { Niche } from "@/lib/types";
+import { BrandLogo } from "@/components/BrandLogo";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { NichePicker } from "@/components/NichePicker";
 
 export default function RegisterClient() {
   const t = useTranslations("Auth");
-  const brand = useTranslations("Brand");
   const locale = useLocale();
   const router = useRouter();
   const params = useSearchParams();
@@ -39,8 +39,8 @@ export default function RegisterClient() {
     >
       <div className="surface" style={{ width: "100%", maxWidth: 640, padding: "1.75rem" }}>
         <div className="row" style={{ justifyContent: "space-between", marginBottom: "1.25rem" }}>
-          <div className="display" style={{ fontSize: "1.6rem" }}>
-            {brand("name")}
+          <div aria-label="Allvisor">
+            <BrandLogo size="auth" />
           </div>
           <LanguageSwitcher />
         </div>

@@ -61,6 +61,7 @@ import { NavigationProgress } from "./NavigationProgress";
 import { ExitAdminZoneButton } from "./ExitAdminZoneButton";
 import { ClinicLogoMark, type LogoShape } from "@/components/ClinicLogoMark";
 import { signOutAction } from "@/app/actions";
+import { BrandLogo } from "@/components/BrandLogo";
 import { cn, nicheThemeAttr } from "@/lib/utils";
 
 const icons: Record<string, ReactNode> = {
@@ -186,7 +187,6 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   const t = useTranslations("Nav");
-  const tBrand = useTranslations("Brand");
   const locale = useLocale();
   const pathname = usePathname();
   const canSeeAdminZone =
@@ -241,7 +241,7 @@ export function AppShell({
               alt={orgName}
             />
             <div className="brand-lockup__text">
-              <div className="brand-lockup__product">{tBrand("name")}</div>
+              <BrandLogo size="lockup" />
               <div className="brand-lockup__org" title={orgName}>
                 {orgName}
               </div>

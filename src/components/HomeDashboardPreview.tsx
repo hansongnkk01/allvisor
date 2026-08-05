@@ -58,6 +58,7 @@ import {
   DashboardTopSellers,
 } from "@/components/DashboardLists";
 import { DayHourTimetable } from "@/components/DayHourTimetable";
+import { BrandLogo } from "@/components/BrandLogo";
 import { ClinicLogoMark } from "@/components/ClinicLogoMark";
 import { getNavSectionsForNiche, hasCapability, vocabLabels } from "@/lib/niches";
 import { NAV_HREF } from "@/lib/niche-capabilities";
@@ -285,7 +286,6 @@ export function HomeDashboardPreview({
   const t = useTranslations("Home");
   const tNav = useTranslations("Nav");
   const tDash = useTranslations("Dashboard");
-  const tBrand = useTranslations("Brand");
   const tLanding = useTranslations("Landing");
   const locale = useLocale();
   const [view, setView] = useState("dashboard");
@@ -604,7 +604,7 @@ export function HomeDashboardPreview({
             <div className="brand-lockup">
               <ClinicLogoMark url={null} shape="round" size={42} alt={orgName} />
               <div className="brand-lockup__text">
-                <div className="brand-lockup__product">{tBrand("name")}</div>
+                <BrandLogo size="lockup" />
                 <div className="brand-lockup__org" title={orgName}>
                   {orgName}
                 </div>

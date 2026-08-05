@@ -31,6 +31,7 @@ import {
   Sprout,
   type LucideIcon,
 } from "lucide-react";
+import { BrandLogo } from "@/components/BrandLogo";
 import { CollaboratorsMarquee } from "@/components/CollaboratorsMarquee";
 import { HomeDashboardPreview } from "@/components/HomeDashboardPreview";
 import type { Niche } from "@/lib/types";
@@ -132,7 +133,6 @@ const DESC_KEYS: Record<Niche, string> = {
 export function HomeClient() {
   const t = useTranslations("Home");
   const nichesT = useTranslations("Landing");
-  const brand = useTranslations("Brand");
   const [preview, setPreview] = useState<Niche | null>(null);
   const [demoNiche, setDemoNiche] = useState<Niche>("clinic");
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -184,8 +184,8 @@ export function HomeClient() {
     <div className="home-shell landing-shell">
       <div className="landing-chrome" data-niche={themeAttr}>
         <header className="home-nav">
-          <Link href="/" className="home-nav__brand display">
-            {brand("name")}
+          <Link href="/" className="home-nav__brand" aria-label="Allvisor">
+            <BrandLogo size="nav" priority />
           </Link>
           <nav className="home-nav__actions">
             <Link href="/start" className="home-nav__link">
@@ -200,7 +200,9 @@ export function HomeClient() {
 
         <section className="home-hero">
           <div className="home-hero__copy">
-            <p className="home-hero__brand display">{brand("name")}</p>
+            <div className="home-hero__brand">
+              <BrandLogo size="hero" priority />
+            </div>
             <h1 className="home-hero__title">{t("heroTitle")}</h1>
             <p className="home-hero__lead">{t("heroSubtitle")}</p>
             <div className="home-hero__cta">
@@ -415,7 +417,9 @@ export function HomeClient() {
 
       <footer className="home-footer landing-chrome" data-niche={themeAttr}>
         <div className="home-footer__inner">
-          <span className="home-footer__brand display">{brand("name")}</span>
+          <span className="home-footer__brand" aria-label="Allvisor">
+            <BrandLogo size="footer" />
+          </span>
           <div className="home-footer__cta">
             <Link href="/start" className="btn btn-primary">
               {t("footerOffer")}

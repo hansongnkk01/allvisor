@@ -4,11 +4,11 @@ import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { BrandLogo } from "@/components/BrandLogo";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 export default function LoginPage() {
   const t = useTranslations("Auth");
-  const brand = useTranslations("Brand");
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -24,12 +24,8 @@ export default function LoginPage() {
     >
       <div className="surface" style={{ width: "100%", maxWidth: 420, padding: "1.75rem" }}>
         <div className="row" style={{ justifyContent: "space-between", marginBottom: "1.25rem" }}>
-          <Link
-            href="/"
-            className="display"
-            style={{ fontSize: "1.6rem", textDecoration: "none", color: "inherit" }}
-          >
-            {brand("name")}
+          <Link href="/" aria-label="Allvisor" style={{ textDecoration: "none" }}>
+            <BrandLogo size="auth" />
           </Link>
           <LanguageSwitcher />
         </div>

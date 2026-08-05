@@ -1,5 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
+import { BrandLogo } from "@/components/BrandLogo";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 export default async function StartThankYouPage({
@@ -13,7 +14,6 @@ export default async function StartThankYouPage({
   const sp = await searchParams;
   setRequestLocale(locale);
   const t = await getTranslations("StartLanding");
-  const brand = await getTranslations("Brand");
 
   const regQ = new URLSearchParams();
   if (sp.name) regQ.set("name", sp.name);
@@ -30,8 +30,8 @@ export default async function StartThankYouPage({
           borderBottom: "1px solid var(--line)",
         }}
       >
-        <Link href="/" className="display" style={{ fontSize: "1.55rem" }}>
-          {brand("name")}
+        <Link href="/" aria-label="Allvisor" style={{ textDecoration: "none" }}>
+          <BrandLogo size="nav" />
         </Link>
         <div className="row" style={{ gap: "0.5rem" }}>
           <LanguageSwitcher />

@@ -840,15 +840,8 @@ html[data-niche="home"] body {
     linear-gradient(180deg, var(--bg-top) 0%, var(--bg) 42%, var(--bg-bottom) 100%);
 }
 
-html[data-niche="home"] .home-hero__brand {
-  background: linear-gradient(115deg, var(--accent-ink) 0%, var(--accent) 48%, var(--home-ai, #2563eb) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
 html[data-niche="home"] .home-nav__brand {
-  color: var(--accent-ink);
+  text-decoration: none;
 }
 
 html[data-niche="home"] .btn-primary {
@@ -1055,11 +1048,9 @@ html[data-landing="true"] {
 }
 
 .home-nav__brand {
-  font-size: 1.35rem;
-  letter-spacing: -0.04em;
+  display: inline-flex;
+  align-items: center;
   text-decoration: none;
-  color: var(--ink);
-  text-transform: none;
 }
 
 .home-nav__actions {
@@ -1312,11 +1303,12 @@ html[data-landing="true"] {
 }
 
 .home-hero__brand {
-  margin: 0 0 1rem;
-  font-size: clamp(2.2rem, 4.5vw, 3rem);
-  letter-spacing: -0.045em;
-  text-transform: none;
-  color: var(--ink);
+  margin: 0 0 1.15rem;
+}
+
+.home-footer__brand {
+  display: inline-flex;
+  align-items: center;
 }
 
 .home-hero__title {
@@ -2069,6 +2061,61 @@ a {
 }
 
 /* Sidebar + invoice: one tight brand unit (logo + text) */
+/* Official wordmark — dark plate so cyan “V” reads on light pages */
+.brand-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  background: #050505;
+  border-radius: 10px;
+  padding: 0.35rem 0.7rem;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.brand-logo img {
+  display: block;
+  width: auto;
+  height: 28px;
+  max-width: min(220px, 48vw);
+  object-fit: contain;
+}
+
+.brand-logo--nav img {
+  height: 28px;
+}
+
+.brand-logo--hero {
+  padding: 0.55rem 1rem;
+  border-radius: 14px;
+  box-shadow: 0 10px 28px rgba(6, 182, 212, 0.18);
+}
+
+.brand-logo--hero img {
+  height: clamp(40px, 5.5vw, 52px);
+  max-width: min(340px, 85vw);
+}
+
+.brand-logo--lockup {
+  padding: 0.28rem 0.5rem;
+  border-radius: 8px;
+  background: #050505;
+}
+
+.brand-logo--lockup img {
+  height: 20px;
+  max-width: 140px;
+}
+
+.brand-logo--auth img {
+  height: 32px;
+}
+
+.brand-logo--footer img {
+  height: 30px;
+}
+
 .brand-lockup {
   display: flex;
   align-items: center;
@@ -2076,6 +2123,10 @@ a {
   min-width: 0;
   padding-bottom: 1rem;
   border-bottom: 1px solid var(--line);
+}
+
+.brand-lockup .brand-logo {
+  margin-bottom: 0.15rem;
 }
 
 .brand-lockup__text {
