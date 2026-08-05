@@ -31,6 +31,7 @@ import {
   Sprout,
   type LucideIcon,
 } from "lucide-react";
+import { CollaboratorsMarquee } from "@/components/CollaboratorsMarquee";
 import { HomeDashboardPreview } from "@/components/HomeDashboardPreview";
 import type { Niche } from "@/lib/types";
 import { nichesInGroup } from "@/lib/niche-capabilities";
@@ -221,8 +222,11 @@ export function HomeClient() {
         </section>
       </div>
 
+      <CollaboratorsMarquee />
+
       <section className="home-band home-band--proof">
         <div className="home-band__inner landing-chrome" data-niche={themeAttr}>
+          <p className="home-band__label">{t("proofTitle")}</p>
           <div className="home-proof__grid">
             {(
               [
@@ -263,6 +267,7 @@ export function HomeClient() {
       <section ref={nicheGridRef} id="niches" className="home-band home-band--niches landing-niche-grid">
         <div className="home-band__inner">
           <div className="landing-chrome home-niches__head" data-niche={themeAttr}>
+            <p className="home-band__label">{t("nichesLabel")}</p>
             <h2 className="home-niches__title">{t("chooseBusiness")}</h2>
             <p className="home-niches__hint">{t("chooseBusinessHint")}</p>
             <Link href="/start" className="home-niches__unsure">
