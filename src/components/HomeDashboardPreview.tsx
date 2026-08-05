@@ -480,11 +480,6 @@ export function HomeDashboardPreview({
     }
   }
 
-  function openFromHref(href: string) {
-    const pathOnly = href.split("?")[0].split("#")[0];
-    setView(hrefToView(pathOnly));
-  }
-
   /** Keep demo frontend-only: trap links/forms (including portaled modals); never leave the homepage. */
   useEffect(() => {
     const isDemoUi = (target: HTMLElement) => {
