@@ -37,6 +37,7 @@ import {
   WorkshopJobsDemo,
   WorkshopVehiclesDemo,
 } from "@/components/HomeDemoWorkshopPages";
+import { VetPetsDemo } from "@/components/HomeDemoVetPages";
 import { InvoicesWorkspace } from "@/components/InvoicesWorkspace";
 import { PageHeader } from "@/components/PageHeader";
 import { PatientsList } from "@/components/PatientsList";
@@ -1184,6 +1185,9 @@ export function HomeDemoPage({ view, niche, orgName, entityTitle, scheduleLabel 
     // Workshop niche — exact real-page layouts
     if (view === "jobs") return <WorkshopJobsDemo />;
     if (view === "vehicles") return <WorkshopVehiclesDemo />;
+
+    // Vet niche — exact real-page layouts
+    if (view === "pets") return <VetPetsDemo />;
 
     const moduleConfig = demoNicheModule(view, niche);
     if (moduleConfig) {
