@@ -7,10 +7,13 @@ export function PrintInvoiceButton({
   label,
   invoiceId,
   style,
+  demoMode = false,
 }: {
   label: string;
   invoiceId?: string;
   style?: CSSProperties;
+  /** Homepage demo — local print UI only, no server log. */
+  demoMode?: boolean;
 }) {
   return (
     <button
@@ -18,7 +21,7 @@ export function PrintInvoiceButton({
       className="btn btn-primary"
       style={style}
       onClick={() => {
-        if (invoiceId) {
+        if (invoiceId && !demoMode) {
           void logInvoicePrintAction(invoiceId);
         }
         const body = document.body;

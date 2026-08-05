@@ -23,12 +23,15 @@ export function ActionForm({
   onSuccess,
   className,
   style,
+  skipRefresh = false,
 }: {
   action: (formData: FormData) => Promise<ActionResult | void>;
   children: React.ReactNode;
   onSuccess?: () => void;
   className?: string;
   style?: React.CSSProperties;
+  /** Homepage demo — do not call router.refresh after success. */
+  skipRefresh?: boolean;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -55,7 +58,7 @@ export function ActionForm({
               setConflicts(result.conflicts || []);
               return;
             }
-            router.refresh();
+            if (!skipRefresh) router.refresh();
             onSuccess?.();
           } catch (err) {
             const raw = err instanceof Error ? err.message : "Something went wrong";

@@ -562,6 +562,7 @@ export function AppointmentBoard({
         ? createPortal(
             <div
               ref={floatRef}
+              className={demoMode ? "home-demo-portal" : undefined}
               style={{
                 position: "fixed",
                 left: floatLeft,

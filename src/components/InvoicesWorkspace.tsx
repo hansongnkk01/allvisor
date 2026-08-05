@@ -341,7 +341,7 @@ export function InvoicesWorkspace({
     previewId && mounted
       ? createPortal(
           <div
-            className="modal-backdrop"
+            className={demoMode ? "modal-backdrop home-demo-portal" : "modal-backdrop"}
             onClick={() => requestClosePreview()}
             role="presentation"
           >
@@ -504,13 +504,13 @@ export function InvoicesWorkspace({
                     style={{ cursor: "pointer" }}
                     onClick={() => {
                       setPreviewId(inv.id);
-                      router.replace(`/invoices?preview=${inv.id}`);
+                      if (!demoMode) router.replace(`/invoices?preview=${inv.id}`);
                     }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
                         setPreviewId(inv.id);
-                        router.replace(`/invoices?preview=${inv.id}`);
+                        if (!demoMode) router.replace(`/invoices?preview=${inv.id}`);
                       }
                     }}
                     tabIndex={0}
@@ -743,6 +743,7 @@ function InvoicePreviewBody({
           <PrintInvoiceButton
             label={labels.print}
             invoiceId={invoice.id}
+            demoMode={demoMode}
             style={{
               height: 40,
               padding: "0 0.9rem",
@@ -946,6 +947,7 @@ function InvoicePreviewBody({
           action={demoMode ? async () => ({ success: true }) : updateInvoiceStatusAction}
           className="row"
           onSuccess={() => onSubmitted()}
+          skipRefresh={demoMode}
         >
           <input type="hidden" name="invoice_id" value={invoice.id} />
           <select name="status" className="select" style={{ width: 160 }} defaultValue={invoice.status}>

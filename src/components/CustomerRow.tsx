@@ -55,6 +55,7 @@ export function CustomerRow({
           <ActionForm
             action={demoMode ? async () => ({ success: true }) : upsertCustomerAction}
             onSuccess={() => setEditing(false)}
+            skipRefresh={demoMode}
             className="stack"
             style={{ padding: "0.5rem 0" }}
           >

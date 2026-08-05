@@ -653,7 +653,14 @@ export function PosWorkspace({
             type="button"
             className="btn btn-primary"
             style={{ width: "100%", marginTop: ".5rem" }}
-            onClick={() => router.push(`/invoices?preview=${lastInvoiceId}`)}
+            onClick={() => {
+              if (demoMode) {
+                setOkMsg(labels.success);
+                setLastInvoiceId("");
+                return;
+              }
+              router.push(`/invoices?preview=${lastInvoiceId}`);
+            }}
           >
             Print receipt
           </button>

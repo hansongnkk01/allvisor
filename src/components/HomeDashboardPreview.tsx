@@ -59,7 +59,6 @@ import {
 } from "@/components/DashboardLists";
 import { DayHourTimetable } from "@/components/DayHourTimetable";
 import { ClinicLogoMark } from "@/components/ClinicLogoMark";
-import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { getNavSectionsForNiche, hasCapability, vocabLabels } from "@/lib/niches";
 import { NAV_HREF } from "@/lib/niche-capabilities";
 import { formatCurrency, nicheThemeAttr } from "@/lib/utils";
@@ -482,20 +481,54 @@ export function HomeDashboardPreview({
   }
 
   function openFromHref(href: string) {
-    setView(hrefToView(href));
+    const pathOnly = href.split("?")[0].split("#")[0];
+    setView(hrefToView(pathOnly));
   }
 
-  function onDemoClick(e: React.MouseEvent) {
-    const anchor = (e.target as HTMLElement).closest("a");
-    if (!anchor) return;
-    const href = anchor.getAttribute("href");
-    if (!href) return;
-    e.preventDefault();
-    e.stopPropagation();
-    // strip locale prefix if present
-    const path = href.replace(/^\/(en|ms)(?=\/|$)/, "") || "/dashboard";
-    openFromHref(path.startsWith("/") ? path : `/${path}`);
-  }
+  /** Keep demo frontend-only: trap links/forms (including portaled modals); never leave the homepage. */
+  useEffect(() => {
+    const isDemoUi = (target: HTMLElement) => {
+      const frame = frameRef.current;
+      if (frame?.contains(target)) return true;
+      // Portals opened from the demo (invoice preview, booking float)
+      return Boolean(target.closest(".home-demo-portal, .invoice-print-modal"));
+    };
+
+    const onClickCapture = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target || !frameRef.current) return;
+      if (!isDemoUi(target)) return;
+
+      const anchor = target.closest("a");
+      if (!anchor) return;
+      const href = anchor.getAttribute("href");
+      e.preventDefault();
+      e.stopPropagation();
+      if (!href || href.startsWith("#") || href.startsWith("javascript:")) return;
+      if (href.startsWith("http://") || href.startsWith("https://") || href.startsWith("mailto:")) return;
+      const path = href.replace(/^\/(en|ms)(?=\/|$)/, "") || "/dashboard";
+      const pathOnly = (path.startsWith("/") ? path : `/${path}`).split("?")[0].split("#")[0];
+      setView(hrefToView(pathOnly));
+    };
+
+    const onSubmitCapture = (e: Event) => {
+      const form = e.target as HTMLFormElement | null;
+      if (!form || !frameRef.current) return;
+      if (!isDemoUi(form)) return;
+      const actionAttr = form.getAttribute("action");
+      if (actionAttr && actionAttr !== "#" && !actionAttr.startsWith("javascript:")) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+
+    document.addEventListener("click", onClickCapture, true);
+    document.addEventListener("submit", onSubmitCapture, true);
+    return () => {
+      document.removeEventListener("click", onClickCapture, true);
+      document.removeEventListener("submit", onSubmitCapture, true);
+    };
+  }, []);
 
   return (
     <div
@@ -545,8 +578,8 @@ export function HomeDashboardPreview({
       <div
         ref={frameRef}
         className="home-demo__viewport"
+        data-demo-frontend="true"
         style={{ ["--home-demo-scale" as string]: scale }}
-        onClick={onDemoClick}
       >
         <div className="home-demo__badge">{t("demoLive")}</div>
         <div className="home-demo__sizer" style={{ height: "100%" }}>
@@ -636,7 +669,14 @@ export function HomeDashboardPreview({
             </nav>
 
             <div className="stack" style={{ gap: "0.75rem" }}>
-              <LanguageSwitcher />
+              <div className="row" style={{ gap: "0.35rem" }} aria-hidden="true">
+                <button type="button" className="btn btn-soft" style={{ padding: "0.4rem 0.75rem", fontSize: "0.8rem" }} disabled>
+                  EN
+                </button>
+                <button type="button" className="btn btn-ghost" style={{ padding: "0.4rem 0.75rem", fontSize: "0.8rem" }} disabled>
+                  MS
+                </button>
+              </div>
               <button type="button" className="btn btn-ghost" style={{ width: "100%" }} disabled>
                 <LogOut size={16} />
                 {tNav("logout")}
