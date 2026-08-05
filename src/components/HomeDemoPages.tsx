@@ -10,6 +10,14 @@ import {
 import { AppointmentBoard } from "@/components/AppointmentBoard";
 import { ConfirmProvider } from "@/components/ConfirmDialog";
 import { DemoCensor, DemoCensorField } from "@/components/DemoCensor";
+import {
+  CashExactDemo,
+  CategoriesExactDemo,
+  DemoActivityBlock,
+  LogisticsExactDemo,
+  PrintersExactDemo,
+  ReceiptsExactDemo,
+} from "@/components/HomeDemoExactPages";
 import { InvoicesWorkspace } from "@/components/InvoicesWorkspace";
 import { PageHeader } from "@/components/PageHeader";
 import { PatientsList } from "@/components/PatientsList";
@@ -18,7 +26,6 @@ import {
   demoAccounting,
   demoAppointments,
   demoBranches,
-  demoCashSession,
   demoCustomers,
   demoHeldTickets,
   demoInvoicePreview,
@@ -148,6 +155,7 @@ function CustomersDemo({ niche, orgName, entityTitle }: { niche: Niche; orgName:
   const tc = useTranslations("Common");
   const locale = useLocale();
   const vocab = getNicheVocab(niche);
+  const V = vocabLabels(niche, locale);
   const isTuition = niche === "tuition";
   const isClinic = vocab.showAllergies;
   const customers = useMemo(() => demoCustomers(niche), [niche]);
@@ -310,9 +318,50 @@ function CustomersDemo({ niche, orgName, entityTitle }: { niche: Niche; orgName:
           </div>
         </div>
       ) : null}
-      <p className="muted" style={{ fontSize: "0.8rem", margin: 0 }}>
-        {locale.startsWith("ms") ? "Demo · data contoh" : "Demo · sample data"} · {orgName}
-      </p>
+
+      <div className="fluid-grid">
+        <div className="surface history-zone" style={{ padding: "1.25rem" }}>
+          <h3 style={{ marginTop: 0 }}>{V.deletedTitle}</h3>
+          <p className="muted">{V.deletedHint}</p>
+          <div className="table-wrap">
+            <table className="data">
+              <thead>
+                <tr>
+                  <th>{t("name")}</th>
+                  <th>{t("deletedBy")}</th>
+                  <th>{t("deletedAt")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td colSpan={3} className="muted">
+                    —
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <DemoActivityBlock
+          title={V.activityTitle}
+          logs={[
+            {
+              id: "ca1",
+              actor_name: "Reception Lina",
+              summary: `Registered ${V.entity}: ${customers[0]?.name || "Customer"}`,
+              action: "customer.create",
+              created_at: customers[0]?.created_at || new Date().toISOString(),
+            },
+            {
+              id: "ca2",
+              actor_name: "Admin",
+              summary: `Updated ${V.entity}: ${customers[1]?.name || "Customer"}`,
+              action: "customer.update",
+              created_at: customers[1]?.created_at || new Date().toISOString(),
+            },
+          ]}
+        />
+      </div>
     </div>
   );
 }
@@ -402,7 +451,7 @@ function InvoicesDemo({ niche, orgName }: { niche: Niche; orgName: string }) {
 
   return (
     <div className="stack" style={{ gap: "1.25rem" }}>
-      <PageHeader title={t("title")} subtitle={orgName} />
+      <PageHeader title={t("title")} />
       <InvoicesWorkspace
         demoMode
         invoices={invoices}
@@ -478,8 +527,34 @@ function InvoicesDemo({ niche, orgName }: { niche: Niche; orgName: string }) {
           planLocked: false,
         }}
       />
+      <DemoActivityBlock
+        title={t("activity")}
+        logs={[
+          {
+            id: "ia1",
+            actor_name: "Reception Lina",
+            summary: "Printed invoice",
+            action: "invoice.print",
+            created_at: isoDaysAgo(1, 21, 39),
+          },
+          {
+            id: "ia2",
+            actor_name: "Reception Lina",
+            summary: `POS sale ${invoices[0]?.invoice_number || "INV-1042"} · Item A × 1`,
+            action: "pos.checkout",
+            created_at: isoDaysAgo(1, 19, 28),
+          },
+        ]}
+      />
     </div>
   );
+}
+
+function isoDaysAgo(days: number, hour = 10, minute = 0) {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  d.setHours(hour, minute, 0, 0);
+  return d.toISOString();
 }
 
 function PosDemo({ niche, orgName }: { niche: Niche; orgName: string }) {
@@ -493,7 +568,7 @@ function PosDemo({ niche, orgName }: { niche: Niche; orgName: string }) {
 
   return (
     <div className="stack" style={{ gap: "1.25rem" }}>
-      <PageHeader title={t("title")} subtitle={orgName} />
+      <PageHeader title={t("title")} subtitle={t("subtitle")} />
       <PosWorkspace
         demoMode
         products={products}
@@ -581,6 +656,29 @@ function InventoryDemo({ niche, orgName }: { niche: Niche; orgName: string }) {
       </div>
       <div className="surface" style={{ padding: "1.25rem" }}>
         <h3 style={{ marginTop: 0 }}>{t("frequentlyUsed")}</h3>
+        <p className="muted">{t("frequentlyUsedHint")}</p>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+            gap: "0.65rem",
+          }}
+        >
+          {rows.slice(0, 4).map((r) => (
+            <div key={r.id} className="surface" style={{ padding: "0.85rem", margin: 0, boxShadow: "none" }}>
+              <strong style={{ display: "block" }}>{r.name}</strong>
+              <div className="muted" style={{ fontSize: "0.8rem" }}>
+                {r.sku || "—"}
+              </div>
+              <div style={{ marginTop: 6, fontSize: "0.85rem" }}>
+                {t("onHand")} {r.quantity} · {t("usedTimes")} {8 + Number(r.id.replace(/\D/g, "") || 1)}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="surface" style={{ padding: "1.25rem" }}>
+        <h3 style={{ marginTop: 0 }}>Stock</h3>
         <div className="table-wrap">
           <table className="data">
             <thead>
@@ -608,133 +706,22 @@ function InventoryDemo({ niche, orgName }: { niche: Niche; orgName: string }) {
           </table>
         </div>
       </div>
+      <DemoActivityBlock
+        title={t("activity")}
+        logs={[
+          {
+            id: "inv-a1",
+            actor_name: "Reception Lina",
+            summary: `Adjusted stock: ${rows[0]?.name || "Item"}`,
+            action: "inventory.adjust",
+            created_at: isoDaysAgo(0, 14, 10),
+          },
+        ]}
+      />
     </div>
   );
 }
 
-function CashDemo({ orgName }: { orgName: string }) {
-  const t = useTranslations("RetailPages");
-  const session = demoCashSession();
-  const expected =
-    session.openingFloat +
-    session.movements.reduce(
-      (s, m) => s + (m.type === "out" ? -m.amount : m.amount),
-      0
-    );
-
-  return (
-    <div className="stack" style={{ gap: "1.25rem" }}>
-      <PageHeader title={t("cashTitle")} subtitle={t("cashSubtitle")} />
-      <div className="surface" style={{ padding: "1.25rem" }}>
-        <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
-          <div>
-            <h3 style={{ margin: 0 }}>Open session</h3>
-            <p className="muted">Opened by Reception Lina · {orgName}</p>
-          </div>
-          <div style={{ textAlign: "right" }}>
-            <div className="muted">Expected cash</div>
-            <strong style={{ fontSize: "1.5rem" }}>{formatCurrency(expected)}</strong>
-          </div>
-        </div>
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1rem" }}>
-        <div className="surface" style={{ padding: "1.25rem" }}>
-          <h3 style={{ marginTop: 0 }}>Cash in / out</h3>
-          <DemoNoopForm className="stack">
-            <select className="select" disabled>
-              <option>Cash in</option>
-              <option>Cash out</option>
-            </select>
-            <input className="input" type="number" placeholder="Amount" readOnly />
-            <input className="input" placeholder="Reason / note" readOnly />
-            <button className="btn btn-primary" type="submit">
-              Record movement
-            </button>
-          </DemoNoopForm>
-        </div>
-        <div className="surface" style={{ padding: "1.25rem" }}>
-          <h3 style={{ marginTop: 0 }}>Close & reconcile</h3>
-          <DemoNoopForm className="stack">
-            <div className="field">
-              <label>Counted cash</label>
-              <input className="input" type="number" readOnly />
-            </div>
-            <textarea className="input" placeholder="Closing notes" readOnly />
-            <button className="btn btn-ghost" type="submit">
-              Close session
-            </button>
-          </DemoNoopForm>
-        </div>
-      </div>
-      <div className="surface" style={{ padding: "1.25rem" }}>
-        <h3 style={{ marginTop: 0 }}>Current movements</h3>
-        <div className="table-wrap">
-          <table className="data">
-            <thead>
-              <tr>
-                <th>Time</th>
-                <th>Type</th>
-                <th>Note</th>
-                <th>Staff</th>
-                <th>Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {session.movements.map((m) => (
-                <tr key={m.id}>
-                  <td>{formatDateTime(m.at)}</td>
-                  <td>{m.type}</td>
-                  <td>{m.note}</td>
-                  <td>Reception Lina</td>
-                  <td>{formatCurrency(m.amount)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      <div className="surface" style={{ padding: "1.25rem" }}>
-        <h3 style={{ marginTop: 0 }}>Session history</h3>
-        <div className="table-wrap">
-          <table className="data">
-            <thead>
-              <tr>
-                <th>Opened</th>
-                <th>Staff</th>
-                <th>Status</th>
-                <th>Expected</th>
-                <th>Counted</th>
-                <th>Variance</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>{formatDateTime(session.movements[0]?.at)}</td>
-                <td>Reception Lina</td>
-                <td>
-                  <span className="badge">open</span>
-                </td>
-                <td>{formatCurrency(expected)}</td>
-                <td>—</td>
-                <td>—</td>
-              </tr>
-              <tr>
-                <td>{formatDateTime(new Date(Date.now() - 86400000).toISOString())}</td>
-                <td>Admin</td>
-                <td>
-                  <span className="badge">closed</span>
-                </td>
-                <td>{formatCurrency(520)}</td>
-                <td>{formatCurrency(515)}</td>
-                <td>{formatCurrency(-5)}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function AccountingDemo({ niche, orgName }: { niche: Niche; orgName: string }) {
   const t = useTranslations("Accounting");
@@ -866,6 +853,18 @@ function AccountingDemo({ niche, orgName }: { niche: Niche; orgName: string }) {
           amount: "Amount",
         }}
       />
+      <DemoActivityBlock
+        title={t("activity")}
+        logs={[
+          {
+            id: "acc-a1",
+            actor_name: "Admin",
+            summary: "Recorded cash in RM 85.00",
+            action: "accounting.income",
+            created_at: isoDaysAgo(0, 10, 20),
+          },
+        ]}
+      />
     </div>
   );
 }
@@ -938,6 +937,25 @@ function LhdnDemo({ niche, orgName }: { niche: Niche; orgName: string }) {
           </table>
         </div>
       </div>
+      <DemoActivityBlock
+        title={t("activity")}
+        logs={[
+          {
+            id: "lhdn-a1",
+            actor_name: "Admin",
+            summary: "Saved LHDN settings",
+            action: "lhdn.settings",
+            created_at: isoDaysAgo(0, 11, 0),
+          },
+          {
+            id: "lhdn-a2",
+            actor_name: "Admin",
+            summary: "Submitted INV-1042 to MyInvois",
+            action: "lhdn.submit",
+            created_at: isoDaysAgo(1, 17, 5),
+          },
+        ]}
+      />
     </div>
   );
 }
@@ -1120,7 +1138,11 @@ export function HomeDemoPage({ view, niche, orgName, entityTitle, scheduleLabel 
     if (view === "invoices") return <InvoicesDemo niche={niche} orgName={orgName} />;
     if (view === "inventory") return <InventoryDemo niche={niche} orgName={orgName} />;
     if (view === "pos") return <PosDemo niche={niche} orgName={orgName} />;
-    if (view === "cash") return <CashDemo orgName={orgName} />;
+    if (view === "cash") return <CashExactDemo />;
+    if (view === "categories") return <CategoriesExactDemo niche={niche} />;
+    if (view === "receipts") return <ReceiptsExactDemo niche={niche} orgName={orgName} />;
+    if (view === "logistics") return <LogisticsExactDemo />;
+    if (view === "printers") return <PrintersExactDemo />;
     if (view === "admin") return <AdminDemo niche={niche} orgName={orgName} />;
     if (view === "accounting") return <AccountingDemo niche={niche} orgName={orgName} />;
     if (view === "lhdn") return <LhdnDemo niche={niche} orgName={orgName} />;
