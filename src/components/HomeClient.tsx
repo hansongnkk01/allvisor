@@ -137,8 +137,8 @@ export function HomeClient() {
   const [demoNiche, setDemoNiche] = useState<Niche>("clinic");
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const nicheGridRef = useRef<HTMLElement | null>(null);
-  const pageNiche = (preview ?? demoNiche) as Niche;
-  const themeAttr = nicheThemeAttr(pageNiche);
+  /** Page chrome: brand "home" by default; niche grid hover only. Demo carousel never drives this. */
+  const themeAttr = preview ? nicheThemeAttr(preview) : "home";
 
   useEffect(() => {
     const html = document.documentElement;
@@ -148,15 +148,18 @@ export function HomeClient() {
       html.dataset.niche = nicheThemeAttr(preview);
       html.dataset.landingPreview = "true";
     } else {
-      html.dataset.niche = nicheThemeAttr(demoNiche);
-      html.dataset.landingPreview = "true";
+      html.dataset.niche = "home";
+      delete html.dataset.landingPreview;
     }
 
     return () => {
       delete html.dataset.landing;
       delete html.dataset.landingPreview;
+      if (html.dataset.niche === "home") {
+        delete html.dataset.niche;
+      }
     };
-  }, [preview, demoNiche]);
+  }, [preview]);
 
   useEffect(() => {
     return () => {

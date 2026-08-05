@@ -133,6 +133,32 @@
 
 /* —— Unique theme packs (color + design tokens) —— */
 
+/* Home / marketing — brand shell (independent of demo carousel) */
+[data-niche="home"] {
+  --bg: #f1efe9;
+  --bg-top: #f7f5ef;
+  --bg-bottom: #e4e0d6;
+  --bg-glow: rgba(30, 58, 95, 0.08);
+  --bg-elevated: rgba(255, 255, 255, 0.82);
+  --input-bg: rgba(255, 255, 255, 0.9);
+  --ink: #141a22;
+  --muted: #5c6570;
+  --line: rgba(20, 26, 34, 0.12);
+  --accent: #1e3a5f;
+  --accent-soft: rgba(30, 58, 95, 0.12);
+  --accent-ink: #152a45;
+  --accent-hover: #162d4a;
+  --accent-fg: #ffffff;
+  --radius: 16px;
+  --radius-btn: 999px;
+  --radius-control: 12px;
+  --surface-blur: 14px;
+  --font-display: var(--font-fraunces);
+  --font-sans: var(--font-dm-sans);
+  --brand-tracking: -0.035em;
+  --brand-weight: 600;
+}
+
 /* Clinic — calm clinical (baseline soft) */
 [data-niche="clinic"] {
   --accent: #0f766e;
