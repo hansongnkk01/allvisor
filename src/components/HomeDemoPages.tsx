@@ -29,6 +29,10 @@ import {
   GymClassesDemo,
   GymMembershipsDemo,
 } from "@/components/HomeDemoGymPages";
+import {
+  OpticalEyeRxDemo,
+  OpticalLabOrdersDemo,
+} from "@/components/HomeDemoOpticalPages";
 import { InvoicesWorkspace } from "@/components/InvoicesWorkspace";
 import { PageHeader } from "@/components/PageHeader";
 import { PatientsList } from "@/components/PatientsList";
@@ -1168,6 +1172,10 @@ export function HomeDemoPage({ view, niche, orgName, entityTitle, scheduleLabel 
     if (view === "memberships") return <GymMembershipsDemo />;
     if (view === "checkins") return <GymCheckinsDemo />;
     if (view === "classes" && niche === "gym") return <GymClassesDemo />;
+
+    // Optical niche — exact real-page layouts
+    if (view === "eyeRx") return <OpticalEyeRxDemo />;
+    if (view === "labOrders") return <OpticalLabOrdersDemo />;
 
     const moduleConfig = demoNicheModule(view, niche);
     if (moduleConfig) {
