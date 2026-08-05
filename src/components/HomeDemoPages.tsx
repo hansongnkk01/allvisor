@@ -42,6 +42,7 @@ import { SalonCommissionsDemo } from "@/components/HomeDemoSalonPages";
 import { PharmacyBatchesDemo } from "@/components/HomeDemoPharmacyPages";
 import { PhysioPackagesDemo } from "@/components/HomeDemoPhysioPages";
 import { LabResultsDemo } from "@/components/HomeDemoLabPages";
+import { FnbTablesDemo } from "@/components/HomeDemoFnbPages";
 import { InvoicesWorkspace } from "@/components/InvoicesWorkspace";
 import { PageHeader } from "@/components/PageHeader";
 import { PatientsList } from "@/components/PatientsList";
@@ -1204,6 +1205,9 @@ export function HomeDemoPage({ view, niche, orgName, entityTitle, scheduleLabel 
 
     // Lab niche — exact real-page layouts
     if (view === "labResults") return <LabResultsDemo />;
+
+    // F&B niche — exact real-page layouts
+    if (view === "tables") return <FnbTablesDemo />;
 
     const moduleConfig = demoNicheModule(view, niche);
     if (moduleConfig) {
