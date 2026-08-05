@@ -48,6 +48,15 @@ import { PropertyListingsDemo } from "@/components/HomeDemoPropertyPages";
 import { CourierShipmentsDemo } from "@/components/HomeDemoCourierPages";
 import { ContractorProjectsDemo } from "@/components/HomeDemoContractorPages";
 import { ManufacturingWorkOrdersDemo } from "@/components/HomeDemoManufacturingPages";
+import {
+  ElectronicsSerialsDemo,
+  EventsPlansDemo,
+  FarmPlotsDemo,
+  FashionVariantsDemo,
+  LaundryTicketsDemo,
+  LegalMattersDemo,
+  WholesalePriceTiersDemo,
+} from "@/components/HomeDemoRemainingNichePages";
 import { InvoicesWorkspace } from "@/components/InvoicesWorkspace";
 import { PageHeader } from "@/components/PageHeader";
 import { PatientsList } from "@/components/PatientsList";
@@ -1228,6 +1237,15 @@ export function HomeDemoPage({ view, niche, orgName, entityTitle, scheduleLabel 
 
     // Manufacturing niche — exact real-page layouts
     if (view === "workOrders") return <ManufacturingWorkOrdersDemo />;
+
+    // Remaining specialty / shop niche modules — exact NicheModulePage layouts
+    if (view === "matters") return <LegalMattersDemo />;
+    if (view === "events") return <EventsPlansDemo />;
+    if (view === "plots") return <FarmPlotsDemo />;
+    if (view === "laundry") return <LaundryTicketsDemo />;
+    if (view === "variants") return <FashionVariantsDemo />;
+    if (view === "serials") return <ElectronicsSerialsDemo />;
+    if (view === "priceTiers") return <WholesalePriceTiersDemo />;
 
     const moduleConfig = demoNicheModule(view, niche);
     if (moduleConfig) {
