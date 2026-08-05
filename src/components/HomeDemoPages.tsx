@@ -33,6 +33,10 @@ import {
   OpticalEyeRxDemo,
   OpticalLabOrdersDemo,
 } from "@/components/HomeDemoOpticalPages";
+import {
+  WorkshopJobsDemo,
+  WorkshopVehiclesDemo,
+} from "@/components/HomeDemoWorkshopPages";
 import { InvoicesWorkspace } from "@/components/InvoicesWorkspace";
 import { PageHeader } from "@/components/PageHeader";
 import { PatientsList } from "@/components/PatientsList";
@@ -1176,6 +1180,10 @@ export function HomeDemoPage({ view, niche, orgName, entityTitle, scheduleLabel 
     // Optical niche — exact real-page layouts
     if (view === "eyeRx") return <OpticalEyeRxDemo />;
     if (view === "labOrders") return <OpticalLabOrdersDemo />;
+
+    // Workshop niche — exact real-page layouts
+    if (view === "jobs") return <WorkshopJobsDemo />;
+    if (view === "vehicles") return <WorkshopVehiclesDemo />;
 
     const moduleConfig = demoNicheModule(view, niche);
     if (moduleConfig) {
