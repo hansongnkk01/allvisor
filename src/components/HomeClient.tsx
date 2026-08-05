@@ -245,14 +245,65 @@ export function HomeClient() {
         </div>
       </section>
 
+      <section className="home-band home-band--flow">
+        <div className="home-band__inner landing-chrome" data-niche={themeAttr}>
+          <p className="home-band__label">{t("flowLabel")}</p>
+          <h2 className="home-section__title">{t("flowTitle")}</h2>
+          <ol className="home-flow">
+            {(
+              [
+                ["flow1Title", "flow1Body"],
+                ["flow2Title", "flow2Body"],
+                ["flow3Title", "flow3Body"],
+              ] as const
+            ).map(([title, body], i) => (
+              <li key={title} className="home-flow__step">
+                <span className="home-flow__num" aria-hidden>
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <div>
+                  <h3 className="home-flow__title">{t(title)}</h3>
+                  <p className="home-flow__body">{t(body)}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      <section className="home-band home-band--stack">
+        <div className="home-band__inner landing-chrome" data-niche={themeAttr}>
+          <p className="home-band__label">{t("stackLabel")}</p>
+          <h2 className="home-section__title">{t("stackTitle")}</h2>
+          <dl className="home-stack">
+            {(
+              [
+                ["stack1F", "stack1B"],
+                ["stack2F", "stack2B"],
+                ["stack3F", "stack3B"],
+                ["stack4F", "stack4B"],
+                ["stack5F", "stack5B"],
+              ] as const
+            ).map(([feature, benefit]) => (
+              <div key={feature} className="home-stack__row">
+                <dt>{t(feature)}</dt>
+                <dd>{t(benefit)}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </section>
+
       <section className="home-band home-band--voices">
         <div className="home-band__inner landing-chrome" data-niche={themeAttr}>
           <p className="home-band__label">{t("testimonialNote")}</p>
+          <h2 className="home-section__title">{t("voicesTitle")}</h2>
           <div className="home-voices">
             {(
               [
                 ["quote1", "quote1By"],
                 ["quote2", "quote2By"],
+                ["quote3", "quote3By"],
               ] as const
             ).map(([q, by]) => (
               <blockquote key={q} className="home-voice">
@@ -316,6 +367,45 @@ export function HomeClient() {
                 </div>
               );
             })}
+          </div>
+        </div>
+      </section>
+
+      <section className="home-band home-band--faq">
+        <div className="home-band__inner landing-chrome" data-niche={themeAttr}>
+          <p className="home-band__label">{t("faqLabel")}</p>
+          <h2 className="home-section__title">{t("faqTitle")}</h2>
+          <div className="home-faq">
+            {(
+              [
+                ["faq1Q", "faq1A"],
+                ["faq2Q", "faq2A"],
+                ["faq3Q", "faq3A"],
+                ["faq4Q", "faq4A"],
+              ] as const
+            ).map(([q, a]) => (
+              <details key={q} className="home-faq__item">
+                <summary>{t(q)}</summary>
+                <p>{t(a)}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="home-band home-band--bridge">
+        <div className="home-band__inner landing-chrome home-bridge" data-niche={themeAttr}>
+          <div className="home-bridge__copy">
+            <h2 className="home-section__title">{t("bridgeTitle")}</h2>
+            <p className="home-bridge__body">{t("bridgeBody")}</p>
+          </div>
+          <div className="home-bridge__cta">
+            <Link href="/start" className="btn btn-primary">
+              {t("bridgeCta")}
+            </Link>
+            <Link href="/register" className="btn btn-ghost">
+              {t("bridgeTrial")}
+            </Link>
           </div>
         </div>
       </section>

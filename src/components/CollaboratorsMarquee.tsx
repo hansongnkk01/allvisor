@@ -10,7 +10,7 @@ export const HOME_COLLABORATORS = [
 
 export function CollaboratorsMarquee() {
   const t = useTranslations("Home");
-  const loop = [...HOME_COLLABORATORS, ...HOME_COLLABORATORS, ...HOME_COLLABORATORS, ...HOME_COLLABORATORS];
+  const loop = Array.from({ length: 6 }, () => HOME_COLLABORATORS).flat();
 
   return (
     <section className="home-band home-band--partners" aria-label={t("partnersTitle")}>
