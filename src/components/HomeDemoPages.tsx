@@ -46,6 +46,7 @@ import { FnbTablesDemo } from "@/components/HomeDemoFnbPages";
 import { HotelRoomsDemo } from "@/components/HomeDemoHotelPages";
 import { PropertyListingsDemo } from "@/components/HomeDemoPropertyPages";
 import { CourierShipmentsDemo } from "@/components/HomeDemoCourierPages";
+import { ContractorProjectsDemo } from "@/components/HomeDemoContractorPages";
 import { InvoicesWorkspace } from "@/components/InvoicesWorkspace";
 import { PageHeader } from "@/components/PageHeader";
 import { PatientsList } from "@/components/PatientsList";
@@ -1220,6 +1221,9 @@ export function HomeDemoPage({ view, niche, orgName, entityTitle, scheduleLabel 
 
     // Courier niche — exact real-page layouts
     if (view === "shipments") return <CourierShipmentsDemo />;
+
+    // Contractor niche — exact real-page layouts
+    if (view === "projects") return <ContractorProjectsDemo />;
 
     const moduleConfig = demoNicheModule(view, niche);
     if (moduleConfig) {
