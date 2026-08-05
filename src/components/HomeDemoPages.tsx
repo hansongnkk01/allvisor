@@ -40,6 +40,7 @@ import {
 import { VetPetsDemo } from "@/components/HomeDemoVetPages";
 import { SalonCommissionsDemo } from "@/components/HomeDemoSalonPages";
 import { PharmacyBatchesDemo } from "@/components/HomeDemoPharmacyPages";
+import { PhysioPackagesDemo } from "@/components/HomeDemoPhysioPages";
 import { InvoicesWorkspace } from "@/components/InvoicesWorkspace";
 import { PageHeader } from "@/components/PageHeader";
 import { PatientsList } from "@/components/PatientsList";
@@ -1196,6 +1197,9 @@ export function HomeDemoPage({ view, niche, orgName, entityTitle, scheduleLabel 
 
     // Pharmacy niche — exact real-page layouts
     if (view === "batches") return <PharmacyBatchesDemo />;
+
+    // Physio niche — exact real-page layouts
+    if (view === "packages") return <PhysioPackagesDemo />;
 
     const moduleConfig = demoNicheModule(view, niche);
     if (moduleConfig) {
