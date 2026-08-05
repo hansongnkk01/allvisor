@@ -200,9 +200,9 @@ export function HomeClient() {
 
         <section className="home-hero">
           <div className="home-hero__copy">
-            <div className="home-hero__brand">
+            <p className="home-hero__brand">
               <BrandLogo size="hero" priority />
-            </div>
+            </p>
             <h1 className="home-hero__title">{t("heroTitle")}</h1>
             <p className="home-hero__lead">{t("heroSubtitle")}</p>
             <div className="home-hero__cta">

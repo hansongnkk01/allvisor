@@ -22,8 +22,8 @@ export function StartLandingClient() {
           borderBottom: "1px solid var(--line)",
         }}
       >
-        <Link href="/" aria-label="Allvisor" style={{ textDecoration: "none" }}>
-          <BrandLogo size="nav" />
+        <Link href="/" aria-label="Allvisor" style={{ display: "inline-flex", alignItems: "center" }}>
+          <BrandLogo size="nav" priority />
         </Link>
         <div className="row" style={{ flexWrap: "wrap", gap: "0.5rem" }}>
           <Link href="/" className="btn btn-ghost" style={{ padding: "0.5rem 0.9rem" }}>

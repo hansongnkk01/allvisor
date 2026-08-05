@@ -604,7 +604,9 @@ export function HomeDashboardPreview({
             <div className="brand-lockup">
               <ClinicLogoMark url={null} shape="round" size={42} alt={orgName} />
               <div className="brand-lockup__text">
-                <BrandLogo size="lockup" />
+                <div className="brand-lockup__product" aria-label="Allvisor">
+                  <BrandLogo size="sidebar" />
+                </div>
                 <div className="brand-lockup__org" title={orgName}>
                   {orgName}
                 </div>

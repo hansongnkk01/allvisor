@@ -1,34 +1,36 @@
 import { cn } from "@/lib/utils";
 
-type BrandLogoProps = {
-  /** Visual size preset */
-  size?: "nav" | "hero" | "lockup" | "auth" | "footer";
+export const BRAND_LOGO_SRC = "/brand/allvisor-logo.png";
+
+type BrandLogoSize = "nav" | "hero" | "auth" | "sidebar" | "footer";
+
+const SIZE_CLASS: Record<BrandLogoSize, string> = {
+  nav: "brand-logo--nav",
+  hero: "brand-logo--hero",
+  auth: "brand-logo--auth",
+  sidebar: "brand-logo--sidebar",
+  footer: "brand-logo--footer",
+};
+
+/** Allvisor wordmark logo — use for UI brand lockups (not body copy). */
+export function BrandLogo({
+  size = "nav",
+  className,
+  priority = false,
+}: {
+  size?: BrandLogoSize;
   className?: string;
-  /** When true, wraps link-friendly inline (default) */
   priority?: boolean;
-};
-
-const HEIGHT: Record<NonNullable<BrandLogoProps["size"]>, number> = {
-  nav: 28,
-  hero: 52,
-  lockup: 22,
-  auth: 32,
-  footer: 30,
-};
-
-/** Official Allvisor wordmark — use instead of text "Allvisor" in brand UI. */
-export function BrandLogo({ size = "nav", className, priority }: BrandLogoProps) {
-  const h = HEIGHT[size];
+}) {
   return (
-    <span className={cn("brand-logo", `brand-logo--${size}`, className)} data-brand-logo="">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/brand/allvisor-logo.png"
-        alt="Allvisor"
-        height={h}
-        decoding="async"
-        {...(priority ? { fetchPriority: "high" as const } : {})}
-      />
-    </span>
+    // eslint-disable-next-line @next/next/no-img-element -- static public brand asset
+    <img
+      src={BRAND_LOGO_SRC}
+      alt="Allvisor"
+      className={cn("brand-logo", SIZE_CLASS[size], className)}
+      decoding="async"
+      loading={priority ? "eager" : "lazy"}
+      draggable={false}
+    />
   );
 }
