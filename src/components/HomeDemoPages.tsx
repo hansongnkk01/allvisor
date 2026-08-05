@@ -71,12 +71,10 @@ import {
   demoInvoices,
   demoInventoryRows,
   demoLhdnSubmissions,
-  demoNicheModule,
   demoProductCategories,
   demoProducts,
   demoServiceCategories,
   demoTeam,
-  type NicheModuleConfig,
 } from "@/lib/demo-dashboard-data";
 import { getNicheVocab, vocabLabels } from "@/lib/niches";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
@@ -109,83 +107,6 @@ function DemoNoopForm({
     >
       {children}
     </form>
-  );
-}
-
-function NicheModuleDemo({ config, orgName }: { config: NicheModuleConfig; orgName: string }) {
-  return (
-    <div className="stack" style={{ gap: "1.25rem" }}>
-      <PageHeader title={config.title} subtitle={config.subtitle || orgName} />
-      {config.fields.length ? (
-        <div className="surface" style={{ padding: "1.25rem" }}>
-          <h3 style={{ marginTop: 0 }}>Add</h3>
-          <DemoNoopForm className="stack">
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-                gap: "0.75rem",
-              }}
-            >
-              {config.fields.map((f) => (
-                <div className="field" key={f.name}>
-                  <label>{f.label}</label>
-                  {f.type === "select" ? (
-                    <select className="select" defaultValue={f.defaultValue ?? ""} disabled>
-                      <option value="">—</option>
-                      {(f.options || []).map((o) => (
-                        <option key={o} value={o}>
-                          {o}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      className="input"
-                      type={f.type || "text"}
-                      defaultValue={f.defaultValue ?? ""}
-                      readOnly
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
-            <button type="submit" className="btn btn-primary">
-              Save
-            </button>
-          </DemoNoopForm>
-        </div>
-      ) : null}
-      <div className="surface" style={{ padding: "1.25rem" }}>
-        <div className="table-wrap">
-          <table className="data">
-            <thead>
-              <tr>
-                {config.columns.map((c) => (
-                  <th key={c}>{c}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {config.rows.map((row, i) => (
-                <tr key={i}>
-                  {row.map((cell, j) => (
-                    <td key={j}>{cell}</td>
-                  ))}
-                </tr>
-              ))}
-              {!config.rows.length ? (
-                <tr>
-                  <td colSpan={config.columns.length} className="muted">
-                    No records yet.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -1186,7 +1107,7 @@ export function HomeDemoPage({ view, niche, orgName, entityTitle, scheduleLabel 
     if (view === "accounting") return <AccountingDemo niche={niche} orgName={orgName} />;
     if (view === "lhdn") return <LhdnDemo niche={niche} orgName={orgName} />;
 
-    // Tuition niche — exact real-page layouts (not NicheModuleDemo)
+    // Tuition niche — exact real-page layouts
     if (view === "subjects") return <TuitionSubjectsDemo />;
     if (view === "assessments") return <TuitionAssessmentsDemo />;
     if (view === "classes" && niche === "tuition") return <TuitionClassesDemo />;
@@ -1246,11 +1167,6 @@ export function HomeDemoPage({ view, niche, orgName, entityTitle, scheduleLabel 
     if (view === "variants") return <FashionVariantsDemo />;
     if (view === "serials") return <ElectronicsSerialsDemo />;
     if (view === "priceTiers") return <WholesalePriceTiersDemo />;
-
-    const moduleConfig = demoNicheModule(view, niche);
-    if (moduleConfig) {
-      return <NicheModuleDemo config={moduleConfig} orgName={orgName} />;
-    }
 
     return (
       <div className="surface" style={{ padding: "1.25rem" }}>
