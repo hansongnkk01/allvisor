@@ -24,6 +24,11 @@ import {
   TuitionClassesDemo,
   TuitionSubjectsDemo,
 } from "@/components/HomeDemoTuitionPages";
+import {
+  GymCheckinsDemo,
+  GymClassesDemo,
+  GymMembershipsDemo,
+} from "@/components/HomeDemoGymPages";
 import { InvoicesWorkspace } from "@/components/InvoicesWorkspace";
 import { PageHeader } from "@/components/PageHeader";
 import { PatientsList } from "@/components/PatientsList";
@@ -1158,6 +1163,11 @@ export function HomeDemoPage({ view, niche, orgName, entityTitle, scheduleLabel 
     if (view === "assessments") return <TuitionAssessmentsDemo />;
     if (view === "classes" && niche === "tuition") return <TuitionClassesDemo />;
     if (view === "attendance" && niche === "tuition") return <TuitionAttendanceDemo />;
+
+    // Gym niche — exact real-page layouts
+    if (view === "memberships") return <GymMembershipsDemo />;
+    if (view === "checkins") return <GymCheckinsDemo />;
+    if (view === "classes" && niche === "gym") return <GymClassesDemo />;
 
     const moduleConfig = demoNicheModule(view, niche);
     if (moduleConfig) {
