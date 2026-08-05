@@ -18,6 +18,12 @@ import {
   PrintersExactDemo,
   ReceiptsExactDemo,
 } from "@/components/HomeDemoExactPages";
+import {
+  TuitionAssessmentsDemo,
+  TuitionAttendanceDemo,
+  TuitionClassesDemo,
+  TuitionSubjectsDemo,
+} from "@/components/HomeDemoTuitionPages";
 import { InvoicesWorkspace } from "@/components/InvoicesWorkspace";
 import { PageHeader } from "@/components/PageHeader";
 import { PatientsList } from "@/components/PatientsList";
@@ -1146,6 +1152,12 @@ export function HomeDemoPage({ view, niche, orgName, entityTitle, scheduleLabel 
     if (view === "admin") return <AdminDemo niche={niche} orgName={orgName} />;
     if (view === "accounting") return <AccountingDemo niche={niche} orgName={orgName} />;
     if (view === "lhdn") return <LhdnDemo niche={niche} orgName={orgName} />;
+
+    // Tuition niche — exact real-page layouts (not NicheModuleDemo)
+    if (view === "subjects") return <TuitionSubjectsDemo />;
+    if (view === "assessments") return <TuitionAssessmentsDemo />;
+    if (view === "classes" && niche === "tuition") return <TuitionClassesDemo />;
+    if (view === "attendance" && niche === "tuition") return <TuitionAttendanceDemo />;
 
     const moduleConfig = demoNicheModule(view, niche);
     if (moduleConfig) {
