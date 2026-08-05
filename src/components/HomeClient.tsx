@@ -185,7 +185,7 @@ export function HomeClient() {
       <div className="landing-chrome" data-niche={themeAttr}>
         <header className="home-nav">
           <Link href="/" className="home-nav__brand" aria-label="Allvisor">
-            <BrandLogo size="nav" priority />
+            <BrandLogo size="nav" />
           </Link>
           <nav className="home-nav__actions">
             <Link href="/start" className="home-nav__link">
@@ -201,7 +201,7 @@ export function HomeClient() {
         <section className="home-hero">
           <div className="home-hero__copy">
             <p className="home-hero__brand">
-              <BrandLogo size="hero" priority />
+              <BrandLogo size="hero" />
             </p>
             <h1 className="home-hero__title">{t("heroTitle")}</h1>
             <p className="home-hero__lead">{t("heroSubtitle")}</p>

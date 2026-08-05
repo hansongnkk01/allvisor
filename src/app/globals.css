@@ -840,10 +840,6 @@ html[data-niche="home"] body {
     linear-gradient(180deg, var(--bg-top) 0%, var(--bg) 42%, var(--bg-bottom) 100%);
 }
 
-html[data-niche="home"] .home-nav__brand {
-  display: inline-flex;
-  align-items: center;
-}
 
 html[data-niche="home"] .btn-primary {
   background: linear-gradient(135deg, var(--accent) 0%, var(--home-ai, #2563eb) 100%);
@@ -1048,22 +1044,13 @@ html[data-landing="true"] {
   border-bottom: 1px solid transparent;
 }
 
-.home-nav__brand {
-  display: inline-flex;
-  align-items: center;
-  text-decoration: none;
-  line-height: 0;
-}
-
 .brand-logo {
   display: block;
   width: auto;
   height: auto;
   max-width: 100%;
   object-fit: contain;
-  object-position: left center;
   user-select: none;
-  pointer-events: none;
 }
 
 .brand-logo--nav {
@@ -1076,28 +1063,26 @@ html[data-landing="true"] {
   width: auto;
 }
 
-.brand-logo--auth {
-  height: 2rem;
-  width: auto;
-}
-
-.brand-logo--sidebar {
-  height: 1.35rem;
-  width: auto;
-  max-width: 8.5rem;
-}
-
 .brand-logo--footer {
   height: 1.7rem;
   width: auto;
 }
 
-/* Dark niche shells: lift dark wordmark so it stays readable */
-[data-niche="gym"] .brand-logo,
-[data-niche="electronics"] .brand-logo,
-[data-niche="manufacturing"] .brand-logo,
-[data-niche="events"] .brand-logo {
-  filter: brightness(0) invert(1);
+.brand-logo--lockup {
+  height: 1.35rem;
+  width: auto;
+}
+
+.brand-logo--auth {
+  height: 2.1rem;
+  width: auto;
+}
+
+.home-nav__brand {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  line-height: 0;
 }
 
 .home-nav__actions {
@@ -1351,12 +1336,6 @@ html[data-landing="true"] {
 
 .home-hero__brand {
   margin: 0 0 1rem;
-  line-height: 0;
-}
-
-.home-footer__brand {
-  display: inline-flex;
-  align-items: center;
   line-height: 0;
 }
 
@@ -1956,6 +1935,11 @@ html[data-niche="home"] .home-band--partners {
   flex-wrap: wrap;
 }
 
+.home-footer__brand {
+  display: inline-flex;
+  align-items: center;
+  line-height: 0;
+}
 
 .home-footer__cta {
   display: flex;
@@ -2125,14 +2109,9 @@ a {
 }
 
 .brand-lockup__product {
+  line-height: 0;
   display: flex;
   align-items: center;
-  line-height: 0;
-  min-width: 0;
-}
-
-.brand-lockup__product .brand-logo {
-  max-width: 100%;
 }
 
 .brand-lockup__org {

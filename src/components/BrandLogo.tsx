@@ -1,35 +1,31 @@
-import { cn } from "@/lib/utils";
+/** Allvisor wordmark / mark from public/brand. */
+export const BRAND_LOGO_SRC = "/brand/allvisor-logo.svg";
 
-export const BRAND_LOGO_SRC = "/brand/allvisor-logo.png";
-
-type BrandLogoSize = "nav" | "hero" | "auth" | "sidebar" | "footer";
+type BrandLogoSize = "nav" | "hero" | "footer" | "lockup" | "auth";
 
 const SIZE_CLASS: Record<BrandLogoSize, string> = {
   nav: "brand-logo--nav",
   hero: "brand-logo--hero",
-  auth: "brand-logo--auth",
-  sidebar: "brand-logo--sidebar",
   footer: "brand-logo--footer",
+  lockup: "brand-logo--lockup",
+  auth: "brand-logo--auth",
 };
 
-/** Allvisor wordmark logo — use for UI brand lockups (not body copy). */
 export function BrandLogo({
   size = "nav",
   className,
-  priority = false,
+  alt = "Allvisor",
 }: {
   size?: BrandLogoSize;
   className?: string;
-  priority?: boolean;
+  alt?: string;
 }) {
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- static public brand asset
+    // eslint-disable-next-line @next/next/no-img-element
     <img
       src={BRAND_LOGO_SRC}
-      alt="Allvisor"
-      className={cn("brand-logo", SIZE_CLASS[size], className)}
-      decoding="async"
-      loading={priority ? "eager" : "lazy"}
+      alt={alt}
+      className={["brand-logo", SIZE_CLASS[size], className].filter(Boolean).join(" ")}
       draggable={false}
     />
   );

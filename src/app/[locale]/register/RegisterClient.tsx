@@ -39,9 +39,9 @@ export default function RegisterClient() {
     >
       <div className="surface" style={{ width: "100%", maxWidth: 640, padding: "1.75rem" }}>
         <div className="row" style={{ justifyContent: "space-between", marginBottom: "1.25rem" }}>
-          <Link href="/" aria-label="Allvisor" style={{ display: "inline-flex", alignItems: "center" }}>
-            <BrandLogo size="auth" priority />
-          </Link>
+          <div aria-label="Allvisor" style={{ display: "inline-flex", alignItems: "center" }}>
+            <BrandLogo size="auth" />
+          </div>
           <LanguageSwitcher />
         </div>
         <h1 style={{ marginTop: 0 }}>{t("registerTitle")}</h1>

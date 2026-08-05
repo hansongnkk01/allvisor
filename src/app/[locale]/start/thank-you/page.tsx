@@ -31,7 +31,7 @@ export default async function StartThankYouPage({
         }}
       >
         <Link href="/" aria-label="Allvisor" style={{ display: "inline-flex", alignItems: "center" }}>
-          <BrandLogo size="nav" priority />
+          <BrandLogo size="nav" />
         </Link>
         <div className="row" style={{ gap: "0.5rem" }}>
           <LanguageSwitcher />

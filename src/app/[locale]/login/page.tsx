@@ -24,12 +24,8 @@ export default function LoginPage() {
     >
       <div className="surface" style={{ width: "100%", maxWidth: 420, padding: "1.75rem" }}>
         <div className="row" style={{ justifyContent: "space-between", marginBottom: "1.25rem" }}>
-          <Link
-            href="/"
-            aria-label="Allvisor"
-            style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}
-          >
-            <BrandLogo size="auth" priority />
+          <Link href="/" aria-label="Allvisor" style={{ display: "inline-flex", alignItems: "center" }}>
+            <BrandLogo size="auth" />
           </Link>
           <LanguageSwitcher />
         </div>

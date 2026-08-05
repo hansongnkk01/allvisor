@@ -2,8 +2,8 @@
 
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { BrandLogo } from "@/components/BrandLogo";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { BrandLogo } from "@/components/BrandLogo";
 import { HvcoForm } from "@/components/HvcoForm";
 
 /** Long-form Sell Like Crazy landing — sells the next step (HVCO + trial). */
@@ -23,7 +23,7 @@ export function StartLandingClient() {
         }}
       >
         <Link href="/" aria-label="Allvisor" style={{ display: "inline-flex", alignItems: "center" }}>
-          <BrandLogo size="nav" priority />
+          <BrandLogo size="nav" />
         </Link>
         <div className="row" style={{ flexWrap: "wrap", gap: "0.5rem" }}>
           <Link href="/" className="btn btn-ghost" style={{ padding: "0.5rem 0.9rem" }}>
