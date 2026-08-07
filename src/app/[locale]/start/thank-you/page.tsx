@@ -49,9 +49,9 @@ export default async function StartThankYouPage({
           {t("thanksBody")}
         </p>
         <div className="stack" style={{ gap: "0.75rem" }}>
-          <a href="/hvco/allvisor-sme-ops-playbook.md" className="btn btn-primary" download>
-            {t("thanksDownload")}
-          </a>
+          <Link href="/start/playbook" className="btn btn-primary">
+            {t("thanksRead")}
+          </Link>
           <Link href={registerHref} className="btn btn-soft">
             {t("thanksNext")}
           </Link>
