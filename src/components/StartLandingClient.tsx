@@ -6,25 +6,45 @@ import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { BrandLogo } from "@/components/BrandLogo";
 import { HvcoForm } from "@/components/HvcoForm";
 import { Reveal } from "@/components/Reveal";
-import { Check, FileText, ListChecks, Table2, ArrowRight, ShieldCheck } from "lucide-react";
+import {
+  Check,
+  FileText,
+  ListChecks,
+  Table2,
+  ArrowRight,
+  ShieldCheck,
+  Gift,
+  Clock,
+  X,
+} from "lucide-react";
 
 /**
  * Pricing is placeholder while the real plans are decided. Swap the amounts and
  * the plan copy before this goes in front of paying prospects.
  */
 const PLANS = [
-  { id: "management", price: "99", featured: false, features: 5 },
-  { id: "growth", price: "199", featured: true, features: 6 },
-  { id: "full", price: "349", featured: false, features: 6 },
+  { id: "management", price: "99", perDay: "3.30", featured: false, features: 5 },
+  { id: "growth", price: "199", perDay: "6.60", featured: true, features: 6 },
+  { id: "full", price: "349", perDay: "11.60", featured: false, features: 6 },
 ] as const;
+
+/**
+ * Scarcity has to be real or it costs more trust than it buys. Set this to the
+ * number of founding businesses the launch price will actually be honoured for,
+ * and remove the block entirely if you are not running a limited offer.
+ */
+const FOUNDING_SEATS_LEFT = 30;
 
 /** Placeholder social proof. Replace with real, named customers before launch. */
 const VOICES = ["v1", "v2", "v3"] as const;
 
 const AGITATE = [1, 2, 3, 4, 5] as const;
+const TRIED = [1, 2, 3] as const;
 const EDU = [1, 2, 3, 4] as const;
 const BULLETS = [1, 2, 3, 4, 5, 6] as const;
+const CREDS = [1, 2, 3, 4] as const;
 const STACK = [1, 2, 3, 4, 5] as const;
+const BONUSES = [1, 2, 3] as const;
 const FAQS = [1, 2, 3, 4, 5, 6] as const;
 
 export function StartLandingClient() {
@@ -109,6 +129,23 @@ export function StartLandingClient() {
           <p className="sl-p sl-p--tight">{t("agitateClose")}</p>
         </Reveal>
 
+        {/* Naming the failed attempts before offering another one. */}
+        <Reveal>
+          <h2 className="sl-h2">{t("triedTitle")}</h2>
+          <div className="sl-tried">
+            {TRIED.map((n) => (
+              <div key={n} className="sl-tried__item">
+                <h3>
+                  <X size={15} aria-hidden />
+                  {t(`tried${n}T` as "tried1T")}
+                </h3>
+                <p>{t(`tried${n}B` as "tried1B")}</p>
+              </div>
+            ))}
+          </div>
+          <p className="sl-p sl-p--tight">{t("triedClose")}</p>
+        </Reveal>
+
         <Reveal>
           <h2 className="sl-h2">{t("eduTitle")}</h2>
           <div className="sl-edu">
@@ -175,6 +212,20 @@ export function StartLandingClient() {
           </div>
         </Reveal>
 
+        {/* Scepticism spikes the moment you claim a solution, so proof goes here. */}
+        <Reveal>
+          <h2 className="sl-h2">{t("credTitle")}</h2>
+          <p className="sl-p">{t("credLead")}</p>
+          <div className="sl-creds">
+            {CREDS.map((n) => (
+              <div key={n} className="sl-cred">
+                <span className="sl-cred__num">{t(`cred${n}N` as "cred1N")}</span>
+                <span className="sl-cred__label">{t(`cred${n}L` as "cred1L")}</span>
+              </div>
+            ))}
+          </div>
+        </Reveal>
+
         <Reveal>
           <h2 className="sl-h2">{t("stackTitle")}</h2>
           <div className="sl-stack">
@@ -185,6 +236,42 @@ export function StartLandingClient() {
               </div>
             ))}
           </div>
+        </Reveal>
+
+        <Reveal>
+          <h2 className="sl-h2">{t("proofTitle")}</h2>
+          <p className="sl-note">{t("proofNote")}</p>
+          <div className="sl-voices">
+            {VOICES.map((v) => (
+              <blockquote key={v} className="sl-voice" data-placeholder="true">
+                <p>{t(`${v}Quote` as "v1Quote")}</p>
+                <cite>
+                  <strong>{t(`${v}Name` as "v1Name")}</strong>
+                  {t(`${v}Biz` as "v1Biz")}
+                </cite>
+              </blockquote>
+            ))}
+          </div>
+        </Reveal>
+
+        <Reveal>
+          <section className="sl-bonus">
+            <p className="sl-kicker">{t("bonusKicker")}</p>
+            <h2 className="sl-h2 sl-h2--big">{t("bonusTitle")}</h2>
+            <p className="sl-lead">{t("bonusLead")}</p>
+            <div className="sl-bonus__grid">
+              {BONUSES.map((n) => (
+                <div key={n} className="sl-bonus__card">
+                  <span className="sl-bonus__icon" aria-hidden>
+                    <Gift size={17} />
+                  </span>
+                  <h3>{t(`bonus${n}T` as "bonus1T")}</h3>
+                  <p>{t(`bonus${n}B` as "bonus1B")}</p>
+                  <span className="sl-bonus__value">{t(`bonus${n}V` as "bonus1V")}</span>
+                </div>
+              ))}
+            </div>
+          </section>
         </Reveal>
 
         <Reveal>
@@ -212,6 +299,9 @@ export function StartLandingClient() {
                     {plan.price}
                     <span className="sl-plan__per">{t("pricePer")}</span>
                   </p>
+                  <p className="sl-plan__perday">
+                    {t("perDay", { amount: plan.perDay })}
+                  </p>
                   <ul className="sl-plan__list">
                     {Array.from({ length: plan.features }, (_, i) => i + 1).map((i) => (
                       <li key={i}>
@@ -230,12 +320,26 @@ export function StartLandingClient() {
           </section>
         </Reveal>
 
+        {/* Only honest while the founding price is genuinely capped. */}
+        <Reveal>
+          <aside className="sl-scarcity">
+            <span className="sl-scarcity__icon" aria-hidden>
+              <Clock size={18} />
+            </span>
+            <div>
+              <h3>{t("scarcityTitle", { seats: FOUNDING_SEATS_LEFT })}</h3>
+              <p>{t("scarcityBody")}</p>
+            </div>
+          </aside>
+        </Reveal>
+
         <Reveal>
           <section className="sl-risk">
             <span className="sl-risk__icon" aria-hidden>
               <ShieldCheck size={22} />
             </span>
             <div>
+              <p className="sl-risk__name">{t("guaranteeName")}</p>
               <h2>{t("riskTitle")}</h2>
               <p>{t("riskBody")}</p>
               <ul>
@@ -245,22 +349,6 @@ export function StartLandingClient() {
               </ul>
             </div>
           </section>
-        </Reveal>
-
-        <Reveal>
-          <h2 className="sl-h2">{t("proofTitle")}</h2>
-          <p className="sl-note">{t("proofNote")}</p>
-          <div className="sl-voices">
-            {VOICES.map((v) => (
-              <blockquote key={v} className="sl-voice" data-placeholder="true">
-                <p>{t(`${v}Quote` as "v1Quote")}</p>
-                <cite>
-                  <strong>{t(`${v}Name` as "v1Name")}</strong>
-                  {t(`${v}Biz` as "v1Biz")}
-                </cite>
-              </blockquote>
-            ))}
-          </div>
         </Reveal>
 
         <Reveal>
@@ -293,8 +381,10 @@ export function StartLandingClient() {
                 </Link>
               </div>
             </div>
+            {/* Reminder, warning, command, deadline — in that order. */}
             <p className="sl-ps">
-              <strong>{t("psLabel")}</strong> {t("psBody")}
+              <strong>{t("psLabel")}</strong> {t("psReminder")} {t("psWarning")}{" "}
+              {t("psCommand")} {t("psDeadline", { seats: FOUNDING_SEATS_LEFT })}
             </p>
           </section>
         </Reveal>
