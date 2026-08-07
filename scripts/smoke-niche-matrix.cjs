@@ -1,8 +1,32 @@
 #!/usr/bin/env node
 /**
- * Self-contained niche capability smoke test.
- * Expectations mirror src/lib/niche-capabilities.ts — update both when changing niches.
+ * Niche capability and dashboard card smoke test.
+ *
+ * The capability table below is written by hand so a niche change has to be made
+ * deliberately in two places. Everything after it is read straight from the real
+ * sources, so the dashboard registry, loaders, demo data, translations, sidebar
+ * routes and owner guards cannot drift apart without failing here.
  */
+
+const fs = require("fs");
+const path = require("path");
+
+const ROOT = path.join(__dirname, "..");
+
+/** @param {string} rel */
+function readSource(rel) {
+  return fs.readFileSync(path.join(ROOT, rel), "utf8");
+}
+
+/** @param {string} rel */
+function sourceExists(rel) {
+  return fs.existsSync(path.join(ROOT, rel));
+}
+
+/** @param {string} text */
+function quotedValues(text) {
+  return [...text.matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+}
 
 /** @type {Record<string, readonly string[]>} */
 const NICHE_CAPABILITIES = {
@@ -236,8 +260,311 @@ for (const { niche, mustHave, mustNotHave } of SMOKE_ASSERTIONS) {
   }
 }
 
+/** @param {string} message */
+function fail(message) {
+  console.error(`FAIL: ${message}`);
+  failed = true;
+}
+
+// ---------------------------------------------------------------------------
+// Source parsing
+// ---------------------------------------------------------------------------
+
+/**
+ * Reads NICHE_DEFINITIONS so the table above is checked against the real thing.
+ * @returns {Record<string, { capabilities: string[]; navKeys: string[] }>}
+ */
+function parseNicheDefinitions() {
+  const src = readSource("src/lib/niche-capabilities.ts");
+  const startIdx = src.indexOf("export const NICHE_DEFINITIONS");
+  if (startIdx < 0) throw new Error("NICHE_DEFINITIONS not found");
+  const body = src.slice(startIdx);
+
+  const careAdminMatch = src.match(/const CARE_ADMIN: NavSectionDef = \{[\s\S]*?keys: \[([^\]]*)\]/);
+  const careAdminKeys = careAdminMatch ? quotedValues(careAdminMatch[1]) : [];
+
+  /** @type {Record<string, { capabilities: string[]; navKeys: string[] }>} */
+  const out = {};
+  const entryRe = /^ {2}(\w+): \{$([\s\S]*?)^ {2}\},$/gm;
+  let match;
+  while ((match = entryRe.exec(body))) {
+    const [, niche, entry] = match;
+    const capMatch = entry.match(/capabilities: \[([\s\S]*?)\]/);
+    const navKeys = [...entry.matchAll(/keys: \[([^\]]*)\]/g)].flatMap((m) => quotedValues(m[1]));
+    if (entry.includes("CARE_ADMIN")) navKeys.push(...careAdminKeys);
+    out[niche] = {
+      capabilities: capMatch ? quotedValues(capMatch[1]) : [],
+      navKeys,
+    };
+  }
+  return out;
+}
+
+/** @returns {Array<{ id: string; audience: string; requires: string[]; span: string; opsBrain: boolean; group: string }>} */
+function parseDashboardCards() {
+  const src = readSource("src/lib/dashboard-cards.ts");
+  const groups = [
+    ["admin", /const ADMIN_CARDS: DashboardCardDef\[\] = \[([\s\S]*?)\n\];/],
+    ["adminNiche", /const ADMIN_NICHE_CARDS: DashboardCardDef\[\] = \[([\s\S]*?)\n\];/],
+    ["staff", /const STAFF_CARDS: DashboardCardDef\[\] = \[([\s\S]*?)\n\];/],
+  ];
+
+  /** @type {Array<{ id: string; audience: string; requires: string[]; span: string; opsBrain: boolean; group: string }>} */
+  const cards = [];
+  for (const [group, re] of groups) {
+    const block = src.match(re);
+    if (!block) throw new Error(`Card group ${group} not found in dashboard-cards.ts`);
+    const lineRe =
+      /\{ id: "([^"]+)", audience: "([^"]+)", requires: \[([^\]]*)\], span: "([^"]+)"(, opsBrain: true)? \}/g;
+    let card;
+    while ((card = lineRe.exec(block[1]))) {
+      cards.push({
+        id: card[1],
+        audience: card[2],
+        requires: quotedValues(card[3]),
+        span: card[4],
+        opsBrain: Boolean(card[5]),
+        group,
+      });
+    }
+  }
+  return cards;
+}
+
+/** @param {string} rel @param {string} declaration */
+function parseRecordKeys(rel, declaration) {
+  const src = readSource(rel);
+  const start = src.indexOf(declaration);
+  if (start < 0) throw new Error(`${declaration} not found in ${rel}`);
+  const body = src.slice(start + declaration.length);
+  return [...body.matchAll(/^ {2}([A-Za-z][A-Za-z0-9]*):/gm)].map((m) => m[1]);
+}
+
+function parseNavHref() {
+  const src = readSource("src/lib/niche-capabilities.ts");
+  const block = src.match(/export const NAV_HREF: Record<string, string> = \{([\s\S]*?)\n\};/);
+  if (!block) throw new Error("NAV_HREF not found");
+  /** @type {Record<string, string>} */
+  const out = {};
+  for (const entry of block[1].matchAll(/^ {2}(\w+): "([^"]+)",$/gm)) {
+    out[entry[1]] = entry[2];
+  }
+  return out;
+}
+
+const definitions = parseNicheDefinitions();
+const cards = parseDashboardCards();
+const navHref = parseNavHref();
+const ownerNavKeys = quotedValues(
+  (readSource("src/lib/niche-capabilities.ts").match(/export const OWNER_NAV_KEYS = \[([^\]]*)\]/) ||
+    [])[1] || ""
+);
+
+const niches = Object.keys(NICHE_CAPABILITIES);
+
+/** @param {string} niche @param {string} audience */
+function cardsFor(niche, audience) {
+  return cards.filter(
+    (card) =>
+      card.audience === audience &&
+      !card.opsBrain &&
+      card.requires.every((cap) => hasCapability(niche, cap))
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 1. The hand-written table above still matches the real definitions
+// ---------------------------------------------------------------------------
+
+for (const niche of niches) {
+  const real = definitions[niche];
+  if (!real) {
+    fail(`niche "${niche}" is in the smoke table but not in NICHE_DEFINITIONS`);
+    continue;
+  }
+  const expected = [...NICHE_CAPABILITIES[niche]].sort().join(",");
+  const actual = [...real.capabilities].sort().join(",");
+  if (expected !== actual) {
+    fail(`capabilities drifted for "${niche}"\n  smoke: ${expected}\n  source: ${actual}`);
+  }
+}
+for (const niche of Object.keys(definitions)) {
+  if (!NICHE_CAPABILITIES[niche]) {
+    fail(`niche "${niche}" exists in NICHE_DEFINITIONS but not in the smoke table`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 2. No card can leak into a niche that has no business showing it
+// ---------------------------------------------------------------------------
+
+for (const card of cards) {
+  // Universal admin cards and the not-yet-rendered Ops Brain cards are deliberately ungated.
+  if (card.group === "admin" || card.opsBrain) continue;
+  if (card.requires.length === 0) {
+    fail(`card "${card.id}" declares no capability, so it would render for every niche`);
+  }
+}
+
+const seenCardIds = new Set();
+for (const card of cards) {
+  if (seenCardIds.has(card.id)) fail(`duplicate card id "${card.id}"`);
+  seenCardIds.add(card.id);
+}
+
+for (const niche of niches) {
+  for (const audience of ["admin", "staff"]) {
+    for (const card of cardsFor(niche, audience)) {
+      for (const cap of card.requires) {
+        if (!hasCapability(niche, cap)) {
+          fail(`card "${card.id}" renders for "${niche}" without capability "${cap}"`);
+        }
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 3. Every niche and audience gets a dashboard worth opening
+// ---------------------------------------------------------------------------
+
+const MIN_ADMIN_CARDS = 8;
+
+for (const niche of niches) {
+  const staffCards = cardsFor(niche, "staff");
+  if (staffCards.length < 1) {
+    fail(`niche "${niche}" has no staff dashboard cards`);
+  }
+
+  const adminCards = cardsFor(niche, "admin");
+  if (adminCards.length < MIN_ADMIN_CARDS) {
+    fail(
+      `niche "${niche}" has ${adminCards.length} admin cards, below the minimum of ${MIN_ADMIN_CARDS}`
+    );
+  }
+  if (!adminCards.some((card) => card.group === "adminNiche")) {
+    fail(`niche "${niche}" has no niche-specific admin oversight card`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 4. Every declared card has a renderer, a live builder and demo data
+// ---------------------------------------------------------------------------
+
+const adminComponents = parseRecordKeys(
+  "src/components/dashboards/AdminCards.tsx",
+  "export const ADMIN_CARD_COMPONENTS: Record<string, React.FC<AdminCardProps>> = {"
+);
+const staffLiveBuilders = parseRecordKeys(
+  "src/lib/load-niche-cards.ts",
+  "const BUILDERS: Record<string, Builder> = {"
+);
+const staffDemoBuilders = parseRecordKeys(
+  "src/lib/demo-niche-cards.ts",
+  "const DEMO_CARDS: Record<string, (now: Date) => DemoCard> = {"
+);
+const adminLiveBuilders = parseRecordKeys(
+  "src/lib/load-admin-niche-cards.ts",
+  "const BUILDERS: Record<string, Builder> = {"
+);
+const adminDemoBuilders = parseRecordKeys(
+  "src/lib/demo-admin-niche-cards.ts",
+  "const DEMO_CARDS: Record<string, () => DemoCard> = {"
+);
+
+for (const card of cards) {
+  if (card.opsBrain) continue;
+  if (card.group === "admin") {
+    if (!adminComponents.includes(card.id)) {
+      fail(`admin card "${card.id}" has no component in ADMIN_CARD_COMPONENTS`);
+    }
+    continue;
+  }
+  const live = card.group === "adminNiche" ? adminLiveBuilders : staffLiveBuilders;
+  const demo = card.group === "adminNiche" ? adminDemoBuilders : staffDemoBuilders;
+  if (!live.includes(card.id)) fail(`card "${card.id}" has no live data builder`);
+  if (!demo.includes(card.id)) fail(`card "${card.id}" has no demo data builder`);
+}
+
+// ---------------------------------------------------------------------------
+// 5. Both locales can label every card
+// ---------------------------------------------------------------------------
+
+for (const locale of ["en", "ms"]) {
+  const messages = JSON.parse(readSource(`messages/${locale}.json`));
+  const dashCards = messages.DashCards || {};
+  for (const card of cards) {
+    if (card.opsBrain || card.group === "admin") continue;
+    const entry = dashCards[card.id];
+    if (!entry || !entry.title || !entry.empty) {
+      fail(`messages/${locale}.json is missing DashCards.${card.id} title or empty text`);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 6. No dead sidebar links
+// ---------------------------------------------------------------------------
+
+const navKeys = new Set([
+  ...Object.values(definitions).flatMap((def) => def.navKeys),
+  ...ownerNavKeys,
+]);
+
+for (const key of navKeys) {
+  const href = navHref[key];
+  if (!href) {
+    fail(`nav key "${key}" has no route in NAV_HREF`);
+    continue;
+  }
+  const candidates = [
+    `src/app/[locale]/(app)${href}/page.tsx`,
+    `src/app/[locale]${href}/page.tsx`,
+  ];
+  if (!candidates.some(sourceExists)) {
+    fail(`nav key "${key}" points at "${href}" but no page exists`);
+  }
+}
+
+for (const key of ownerNavKeys) {
+  for (const niche of niches) {
+    if (definitions[niche].navKeys.includes(key)) {
+      fail(`owner-only nav key "${key}" is in the staff sidebar for "${niche}"`);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 7. Owner-only routes are guarded on the server
+// ---------------------------------------------------------------------------
+
+const GUARDED_ROUTES = [...ownerNavKeys.map((key) => navHref[key]), "/admin-dashboard"];
+
+for (const href of GUARDED_ROUTES) {
+  if (!href) continue;
+  const rel = `src/app/[locale]/(app)${href}/page.tsx`;
+  if (!sourceExists(rel)) {
+    fail(`owner route "${href}" has no page to guard`);
+    continue;
+  }
+  const src = readSource(rel);
+  if (!src.includes("requireOwner") && !src.includes("canAccessOwnerArea")) {
+    fail(`owner route "${href}" is not guarded by requireOwner or canAccessOwnerArea`);
+  }
+}
+
+const guard = readSource("src/lib/require-owner.ts");
+if (!guard.includes("/staff-dashboard")) {
+  fail("requireOwner does not redirect rejected users to /staff-dashboard");
+}
+
 if (failed) {
   process.exit(1);
 }
 
-console.log("OK niche capability matrix (" + SMOKE_ASSERTIONS.length + " niches checked)");
+const adminCardCount = cards.filter((c) => c.audience === "admin").length;
+const staffCardCount = cards.filter((c) => c.audience === "staff").length;
+console.log(
+  `OK niche matrix: ${niches.length} niches, ${adminCardCount} admin cards, ` +
+    `${staffCardCount} staff cards, ${navKeys.size} nav keys checked`
+);
