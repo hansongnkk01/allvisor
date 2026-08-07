@@ -5,6 +5,10 @@
     {
       "path": "/api/cron/staff-scores",
       "schedule": "0 17 * * *"
+    },
+    {
+      "path": "/api/cron/lead-emails",
+      "schedule": "0 2 * * *"
     }
   ]
 }
