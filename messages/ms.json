@@ -1315,6 +1315,8 @@
     "staffName": "Nama",
     "staffEmail": "Emel staf",
     "staffUsername": "Username (email daftar)",
+    "staffPassword": "Kata laluan (akaun baharu sahaja)",
+    "staffPasswordHint": "Kalau orang ini sudah ada akaun Allvisor, biarkan kata laluan kosong dan kami akan sambungkan akaun sedia ada. Kalau belum ada, isi kata laluan sekurang-kurangnya 6 aksara dan akaun akan terus dicipta untuknya.",
     "addMemberHint": "Masukkan email akaun Allvisor yang sudah berdaftar untuk tambah sebagai staff / supervisor / manager / co-admin. Satu akaun satu kedai. Owner tidak boleh dikick.",
     "staffPassword": "Kata laluan (pengguna baru sahaja)",
     "staffRole": "Peranan",

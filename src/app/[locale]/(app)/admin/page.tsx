@@ -814,6 +814,8 @@ export default async function AdminPage({
                 hint: V.addMemberHint,
                 username: t("staffUsername"),
                 name: t("staffName"),
+                password: t("staffPassword"),
+                passwordHint: t("staffPasswordHint"),
                 role: t("staffRole"),
                 jobTitle: t("jobTitle"),
                 jobTitlePlaceholder: V.staffHint,

@@ -42,6 +42,8 @@ export function TeamMembersSection({
     hint: string;
     username: string;
     name: string;
+    password: string;
+    passwordHint: string;
     role: string;
     jobTitle: string;
     jobTitlePlaceholder?: string;
@@ -98,6 +100,17 @@ export function TeamMembersSection({
                 <input name="full_name" className="input" placeholder="Optional" />
               </div>
               <div className="field">
+                <label>{labels.password}</label>
+                <input
+                  name="password"
+                  type="password"
+                  minLength={6}
+                  className="input"
+                  placeholder="••••••"
+                  autoComplete="new-password"
+                />
+              </div>
+              <div className="field">
                 <label>{labels.role}</label>
                 <select name="role" className="select" defaultValue={assignableRoles[0]}>
                   {assignableRoles.map((role) => (
@@ -116,6 +129,9 @@ export function TeamMembersSection({
                 />
               </div>
             </div>
+            <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
+              {labels.passwordHint}
+            </p>
             <button type="submit" className="btn btn-primary">
               {labels.add}
             </button>

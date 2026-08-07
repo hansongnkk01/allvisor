@@ -1267,6 +1267,8 @@
     "staffName": "Name",
     "staffEmail": "Staff email",
     "staffUsername": "Username (registered email)",
+    "staffPassword": "Password (new account only)",
+    "staffPasswordHint": "If this person already has an Allvisor account, leave the password empty and we will link it. If they do not have one yet, set a password of at least 6 characters and the account is created for them right away.",
     "addMemberHint": "Enter a registered Allvisor email to add them as staff / supervisor / manager / co-admin. One account can only join one shop. Owner cannot be kicked.",
     "addMemberHintTuition": "Enter a registered Allvisor email to add them as staff / supervisor / manager / co-admin. One account can only join one tuition centre. Owner cannot be kicked.",
     "staffPassword": "Password (new users only)",

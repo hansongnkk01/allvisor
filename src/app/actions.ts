@@ -2073,7 +2073,7 @@ export async function addStaffAction(formData: FormData) {
     } else {
       return {
         error:
-          "No Allvisor account found for this username. Ask them to register first, then add their username here.",
+          "No Allvisor account found for this username. Set a password here to create the account, or ask them to register first.",
       };
     }
   }
@@ -2414,6 +2414,7 @@ export async function addBranchStaffAction(formData: FormData) {
     .trim()
     .toLowerCase();
   const fullName = String(formData.get("full_name") || "").trim();
+  const password = String(formData.get("password") || "");
   const role = String(formData.get("role") || "staff") as MembershipRole;
   const jobTitle = String(formData.get("job_title") || "").trim() || null;
   if (!email) return { error: "Username (registered email) required" };
@@ -2450,18 +2451,35 @@ export async function addBranchStaffAction(formData: FormData) {
   } else {
     const { data: listed } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
     const found = listed?.users?.find((u) => (u.email || "").toLowerCase() === email);
-    if (!found) {
+    if (found) {
+      userId = found.id;
+      await admin.from("profiles").upsert({
+        id: found.id,
+        email,
+        full_name: fullName || found.user_metadata?.full_name || null,
+      });
+    } else if (password && password.length >= 6) {
+      const { data: created, error: createError } = await admin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: { full_name: fullName, account_type: "allvisor-staff" },
+      });
+      if (createError || !created.user) {
+        return { error: createError?.message || "Failed to create staff user" };
+      }
+      userId = created.user.id;
+      await admin.from("profiles").upsert({
+        id: created.user.id,
+        email,
+        full_name: fullName || null,
+      });
+    } else {
       return {
         error:
-          "No Allvisor account found for this username. Ask them to register first, then add their username here.",
+          "No Allvisor account found for this username. Set a password here to create the account, or ask them to register first.",
       };
     }
-    userId = found.id;
-    await admin.from("profiles").upsert({
-      id: found.id,
-      email,
-      full_name: fullName || found.user_metadata?.full_name || null,
-    });
   }
 
   if (!userId) return { error: "Could not resolve staff user" };
