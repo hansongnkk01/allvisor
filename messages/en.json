@@ -5,6 +5,7 @@
   },
   "Home": {
     "ctaLogin": "Log in",
+    "ctaSignupOwner": "Sign up as owner",
     "ctaPlaybook": "Get the free playbook",
     "ctaSeeNiches": "Choose your niche",
     "ctaStartTrial": "Start free trial",
@@ -77,6 +78,9 @@
     "demoNext": "Next niche",
     "demoOps": "Operations",
     "demoTabsLabel": "Preview niche dashboards",
+    "demoAudienceLabel": "Preview owner or staff view",
+    "demoStaffView": "Staff view",
+    "demoOwnerView": "Owner view",
     "demoWelcome": "Welcome back",
     "demoTab": {
       "clinic": "Clinic",

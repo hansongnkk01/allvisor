@@ -47,20 +47,30 @@ import {
   ScanBarcode,
   ChevronLeft,
   ChevronRight,
+  UsersRound,
+  TrendingUp,
+  PiggyBank,
+  Megaphone,
 } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { ClinicLogoMark } from "@/components/ClinicLogoMark";
 import { StaffDashboardView } from "@/components/dashboards/StaffDashboardView";
+import { AdminDashboardView } from "@/components/dashboards/AdminDashboardView";
 import { getNavSectionsForNiche, vocabLabels } from "@/lib/niches";
-import { NAV_HREF } from "@/lib/niche-capabilities";
+import { NAV_HREF, OWNER_NAV_KEYS, navHrefFor } from "@/lib/niche-capabilities";
 import { buildDemoDashboard } from "@/lib/demo-dashboard";
 import { nicheThemeAttr } from "@/lib/utils";
 import { HomeDemoPage } from "@/components/HomeDemoPages";
+import { HomeDemoOwnerPage } from "@/components/HomeDemoOwnerPages";
 import { NICHES } from "@/lib/niches";
 import { DEMO_ORG, LANDING_TITLE_KEY } from "@/lib/demo-orgs";
-import type { Niche } from "@/lib/types";
+import type { Audience, Niche } from "@/lib/types";
 
 export type PreviewNiche = Niche;
+
+function isOwnerView(view: string) {
+  return (OWNER_NAV_KEYS as readonly string[]).includes(view);
+}
 
 const AUTO_NEXT_MS = 3000;
 const CAROUSEL_TRANSITION_MS = 420;
@@ -116,6 +126,10 @@ const icons: Record<string, ReactNode> = {
   matters: <Scale size={18} />,
   events: <PartyPopper size={18} />,
   plots: <Sprout size={18} />,
+  team: <UsersRound size={18} />,
+  performance: <TrendingUp size={18} />,
+  cashflow: <PiggyBank size={18} />,
+  marketing: <Megaphone size={18} />,
 };
 
 function SectionLabel({ children, first }: { children: ReactNode; first?: boolean }) {
@@ -153,6 +167,7 @@ const HREF_SEGMENT_TO_VIEW: Record<string, string> = Object.fromEntries(
 
 function hrefToView(href: string): string {
   const clean = href.replace(/\/$/, "") || "/dashboard";
+  if (clean.endsWith("-dashboard")) return "dashboard";
   if (clean === "/dashboard" || clean.endsWith("/dashboard")) return "dashboard";
   const parts = clean.split("/").filter(Boolean);
   const seg = parts[parts.length - 1] || "dashboard";
@@ -172,13 +187,14 @@ export function HomeDashboardPreview({
   const tLanding = useTranslations("Landing");
   const locale = useLocale();
   const [view, setView] = useState("dashboard");
+  const [audience, setAudience] = useState<Audience>("staff");
   const orgName = DEMO_ORG[niche];
   const V = vocabLabels(niche, locale);
-  const sections = useMemo(() => getNavSectionsForNiche(niche), [niche]);
+  const sections = useMemo(() => getNavSectionsForNiche(niche, audience), [niche, audience]);
   const now = useMemo(() => new Date(), []);
   const demoData = useMemo(
-    () => buildDemoDashboard({ niche, audience: "staff", now, locale }),
-    [niche, now, locale]
+    () => buildDemoDashboard({ niche, audience, now, locale }),
+    [niche, audience, now, locale]
   );
   const frameRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -211,7 +227,7 @@ export function HomeDashboardPreview({
 
   useEffect(() => {
     setView("dashboard");
-  }, [niche]);
+  }, [niche, audience]);
 
   useEffect(() => {
     if (phase !== "idle") return;
@@ -455,6 +471,31 @@ export function HomeDashboardPreview({
       </div>
 
       <div
+        className="row home-demo__audience"
+        role="tablist"
+        aria-label={t("demoAudienceLabel")}
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={audience === "staff"}
+          className={audience === "staff" ? "btn btn-soft" : "btn btn-ghost"}
+          onClick={() => setAudience("staff")}
+        >
+          {t("demoStaffView")}
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={audience === "admin"}
+          className={audience === "admin" ? "btn btn-soft" : "btn btn-ghost"}
+          onClick={() => setAudience("admin")}
+        >
+          {t("demoOwnerView")}
+        </button>
+      </div>
+
+      <div
         ref={frameRef}
         className="home-demo__viewport"
         data-demo-frontend="true"
@@ -513,7 +554,7 @@ export function HomeDashboardPreview({
                   <div key={section.id} className="stack" style={{ gap: "0.35rem" }}>
                     <SectionLabel first={sectionIndex === 0}>{tNav(section.labelKey)}</SectionLabel>
                     {section.keys.map((key) => {
-                      const href = NAV_HREF[key] || `/dashboard`;
+                      const href = navHrefFor(key, audience) || NAV_HREF[key] || `/dashboard`;
                       const active = view === hrefToView(href) || (view === "dashboard" && key === "dashboard");
                       return (
                         <button
@@ -568,7 +609,18 @@ export function HomeDashboardPreview({
           <main ref={mainScrollRef} className="app-main home-demo__main-scroll">
             <div className="app-content">
               {view === "dashboard" ? (
-                <StaffDashboardView data={demoData} />
+                audience === "admin" ? (
+                  <AdminDashboardView data={demoData} />
+                ) : (
+                  <StaffDashboardView data={demoData} />
+                )
+              ) : isOwnerView(view) && demoData.adminInsights ? (
+                <HomeDemoOwnerPage
+                  view={view}
+                  niche={niche}
+                  insights={demoData.adminInsights}
+                  now={now}
+                />
               ) : (
                 <HomeDemoPage
                   view={view}

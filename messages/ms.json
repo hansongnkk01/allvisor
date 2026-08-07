@@ -5,6 +5,7 @@
   },
   "Home": {
     "ctaLogin": "Log masuk",
+    "ctaSignupOwner": "Daftar sebagai pemilik",
     "ctaPlaybook": "Dapatkan playbook percuma",
     "ctaSeeNiches": "Pilih niche anda",
     "ctaStartTrial": "Mula trial percuma",
@@ -77,6 +78,9 @@
     "demoNext": "Niche seterusnya",
     "demoOps": "Operasi",
     "demoTabsLabel": "Pratonton dashboard niche",
+    "demoAudienceLabel": "Pratonton paparan pemilik atau staf",
+    "demoStaffView": "Paparan staf",
+    "demoOwnerView": "Paparan pemilik",
     "demoWelcome": "Selamat kembali",
     "demoTab": {
       "clinic": "Klinik",

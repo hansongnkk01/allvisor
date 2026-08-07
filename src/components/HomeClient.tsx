@@ -195,6 +195,9 @@ export function HomeClient() {
             <Link href="/login" className="btn btn-ghost home-nav__login">
               {t("ctaLogin")}
             </Link>
+            <Link href="/register" className="btn btn-soft home-nav__login">
+              {t("ctaSignupOwner")}
+            </Link>
           </nav>
         </header>
 
