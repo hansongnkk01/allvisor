@@ -30,10 +30,10 @@ export default function LoginPage() {
         <p className="muted">{t("chooseEntryHint")}</p>
 
         <div className="stack" style={{ gap: "0.75rem", marginTop: "1.25rem" }}>
-          <Link href="/login/admin" className="btn btn-primary" style={{ width: "100%" }}>
+          <Link href="/admin/login" className="btn btn-primary" style={{ width: "100%" }}>
             {t("loginAsAdmin")}
           </Link>
-          <Link href="/login/staff" className="btn btn-soft" style={{ width: "100%" }}>
+          <Link href="/staff/login" className="btn btn-soft" style={{ width: "100%" }}>
             {t("loginAsStaff")}
           </Link>
         </div>

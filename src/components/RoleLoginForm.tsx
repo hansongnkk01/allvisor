@@ -100,7 +100,7 @@ export function RoleLoginForm({ audience }: { audience: Audience }) {
 
         <p className="muted" style={{ marginTop: "0.5rem" }}>
           <Link
-            href={isAdmin ? "/login/staff" : "/login/admin"}
+            href={isAdmin ? "/staff/login" : "/admin/login"}
             style={{ color: "var(--accent-ink)", fontWeight: 600 }}
           >
             {isAdmin ? t("switchToStaffLogin") : t("switchToAdminLogin")}

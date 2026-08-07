@@ -29,6 +29,7 @@ import {
   Scale,
   PartyPopper,
   Sprout,
+  ChevronDown,
   type LucideIcon,
 } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
@@ -132,6 +133,7 @@ const DESC_KEYS: Record<Niche, string> = {
 /** Homepage — minimal brand + proof + niche entry. */
 export function HomeClient() {
   const t = useTranslations("Home");
+  const tAuth = useTranslations("Auth");
   const nichesT = useTranslations("Landing");
   const [preview, setPreview] = useState<Niche | null>(null);
   const [demoNiche, setDemoNiche] = useState<Niche>("clinic");
@@ -192,9 +194,20 @@ export function HomeClient() {
               {t("navOffer")}
             </Link>
             <LanguageSwitcher />
-            <Link href="/login" className="btn btn-ghost home-nav__login">
-              {t("ctaLogin")}
-            </Link>
+            <div className="home-nav__menu">
+              <Link href="/login" className="btn btn-ghost home-nav__login">
+                {t("ctaLogin")}
+                <ChevronDown size={15} aria-hidden />
+              </Link>
+              <div className="home-nav__dropdown" role="menu">
+                <Link href="/staff/login" className="home-nav__dropdown-item" role="menuitem">
+                  {tAuth("loginAsStaff")}
+                </Link>
+                <Link href="/admin/login" className="home-nav__dropdown-item" role="menuitem">
+                  {tAuth("loginAsAdmin")}
+                </Link>
+              </div>
+            </div>
             <Link href="/register" className="btn btn-soft home-nav__login">
               {t("ctaSignupOwner")}
             </Link>

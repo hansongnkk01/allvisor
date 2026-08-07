@@ -570,7 +570,7 @@ export function HomeDashboardPreview({
                         </button>
                       );
                     })}
-                    {section.id === "admin" ? (
+                    {section.id === "admin" && audience === "staff" ? (
                       <button
                         type="button"
                         className="btn btn-ghost"
@@ -582,7 +582,7 @@ export function HomeDashboardPreview({
                         }}
                         onClick={() => setView("dashboard")}
                       >
-                        {tNav("exitAdminZone")}
+                        {tNav("exitManagerZone")}
                       </button>
                     ) : null}
                   </div>

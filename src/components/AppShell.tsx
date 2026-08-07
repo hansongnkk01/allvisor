@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import {
   LayoutDashboard,
@@ -50,6 +50,8 @@ import {
   TrendingUp,
   PiggyBank,
   Megaphone,
+  Menu,
+  X,
 } from "lucide-react";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import {
@@ -122,11 +124,13 @@ function NavItem({
   active,
   label,
   icon,
+  onNavigate,
 }: {
   href: string;
   active: boolean;
   label: string;
   icon: ReactNode;
+  onNavigate?: () => void;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -138,6 +142,7 @@ function NavItem({
       onClick={(e) => {
         if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
         e.preventDefault();
+        onNavigate?.();
         startTransition(() => {
           router.push(href);
         });
@@ -199,6 +204,7 @@ export function AppShell({
   const t = useTranslations("Nav");
   const locale = useLocale();
   const pathname = usePathname();
+  const [menuOpen, setMenuOpen] = useState(false);
   const canSeeAdminZone =
     role === "owner" ||
     role === "admin" ||
@@ -228,9 +234,37 @@ export function AppShell({
   return (
     <div data-niche={nicheThemeAttr(niche)} className="min-h-screen">
       <NavigationProgress />
-      <div className="app-grid">
+
+      {/* Narrow screens get a compact bar instead of a full-height sidebar eating the page. */}
+      <header className="app-topbar">
+        <button
+          type="button"
+          className="app-topbar__menu"
+          onClick={() => setMenuOpen(true)}
+          aria-label={t("openMenu")}
+          aria-expanded={menuOpen}
+        >
+          <Menu size={20} />
+        </button>
+        <div className="app-topbar__brand">
+          <ClinicLogoMark url={orgLogoUrl} shape={orgLogoShape} size={28} alt={orgName} />
+          <span className="app-topbar__org" title={orgName}>
+            {orgName}
+          </span>
+        </div>
+      </header>
+
+      <div className="app-grid" data-menu-open={menuOpen ? "true" : "false"}>
+        {menuOpen ? (
+          <button
+            type="button"
+            className="app-drawer-backdrop"
+            aria-label={t("closeMenu")}
+            onClick={() => setMenuOpen(false)}
+          />
+        ) : null}
         <aside
-          className="surface"
+          className="surface app-aside"
           style={{
             margin: "1rem",
             padding: "1.25rem 1rem",
@@ -243,6 +277,15 @@ export function AppShell({
             overflow: "hidden",
           }}
         >
+          <button
+            type="button"
+            className="app-aside__close"
+            aria-label={t("closeMenu")}
+            onClick={() => setMenuOpen(false)}
+          >
+            <X size={18} />
+          </button>
+
           <div className="brand-lockup">
             <ClinicLogoMark
               url={orgLogoUrl}
@@ -290,12 +333,15 @@ export function AppShell({
                         active={active}
                         label={labelFor(key)}
                         icon={icons[key]}
+                        onNavigate={() => setMenuOpen(false)}
                       />
                     );
                   })}
                   {section.id === "admin" && adminZoneUnlocked ? (
                     <div style={{ marginTop: "0.35rem" }}>
-                      <ExitAdminZoneButton label={t("exitAdminZone")} />
+                      <ExitAdminZoneButton
+                        label={audience === "admin" ? t("exitAdminZone") : t("exitManagerZone")}
+                      />
                     </div>
                   ) : null}
                 </div>
