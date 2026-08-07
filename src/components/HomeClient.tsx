@@ -35,6 +35,12 @@ import {
 import { BrandLogo } from "@/components/BrandLogo";
 import { CollaboratorsMarquee } from "@/components/CollaboratorsMarquee";
 import { HomeDashboardPreview } from "@/components/HomeDashboardPreview";
+import {
+  HomeAiBand,
+  HomeAssuranceBand,
+  HomeCompareBand,
+} from "@/components/HomeSections";
+import { Reveal } from "@/components/Reveal";
 import type { Niche } from "@/lib/types";
 import { nichesInGroup } from "@/lib/niche-capabilities";
 import { nicheThemeAttr } from "@/lib/utils";
@@ -195,16 +201,21 @@ export function HomeClient() {
             </Link>
             <LanguageSwitcher />
             <div className="home-nav__menu">
-              <Link href="/login" className="btn btn-ghost home-nav__login">
+              {/* Only a trigger: the two links below are the real destinations. */}
+              <button
+                type="button"
+                className="btn btn-ghost home-nav__login"
+                aria-haspopup="menu"
+              >
                 {t("ctaLogin")}
                 <ChevronDown size={15} aria-hidden />
-              </Link>
+              </button>
               <div className="home-nav__dropdown" role="menu">
                 <Link href="/staff/login" className="home-nav__dropdown-item" role="menuitem">
-                  {tAuth("loginAsStaff")}
+                  {tAuth("asStaff")}
                 </Link>
                 <Link href="/admin/login" className="home-nav__dropdown-item" role="menuitem">
-                  {tAuth("loginAsAdmin")}
+                  {tAuth("asAdmin")}
                 </Link>
               </div>
             </div>
@@ -218,6 +229,10 @@ export function HomeClient() {
           <div className="home-hero__copy">
             <p className="home-hero__brand">
               <BrandLogo size="hero" />
+            </p>
+            <p className="home-hero__badge">
+              <span className="home-hero__badge-dot" aria-hidden />
+              {t("heroBadge")}
             </p>
             <h1 className="home-hero__title">{t("heroTitle")}</h1>
             <p className="home-hero__lead">{t("heroSubtitle")}</p>
@@ -236,6 +251,11 @@ export function HomeClient() {
             <Link href="/register" className="home-hero__trial">
               {t("ctaStartTrial")}
             </Link>
+            <ul className="home-hero__chips">
+              {(["heroChip1", "heroChip2", "heroChip3", "heroChip4"] as const).map((key) => (
+                <li key={key}>{t(key)}</li>
+              ))}
+            </ul>
           </div>
           <div className="home-hero__feature">
             <HomeDashboardPreview niche={demoNiche} onNicheChange={setDemoNiche} />
@@ -248,7 +268,7 @@ export function HomeClient() {
       <section className="home-band home-band--proof">
         <div className="home-band__inner landing-chrome" data-niche={themeAttr}>
           <p className="home-band__label">{t("proofTitle")}</p>
-          <div className="home-proof__grid">
+          <Reveal className="home-proof__grid">
             {(
               [
                 ["proofNiches", "proofNichesHint"],
@@ -262,9 +282,11 @@ export function HomeClient() {
                 <div className="home-proof__hint">{t(hint)}</div>
               </div>
             ))}
-          </div>
+          </Reveal>
         </div>
       </section>
+
+      <HomeAiBand />
 
       <section className="home-band home-band--flow">
         <div className="home-band__inner landing-chrome" data-niche={themeAttr}>
@@ -314,6 +336,8 @@ export function HomeClient() {
           </dl>
         </div>
       </section>
+
+      <HomeCompareBand />
 
       <section className="home-band home-band--voices">
         <div className="home-band__inner landing-chrome" data-niche={themeAttr}>
@@ -392,6 +416,8 @@ export function HomeClient() {
         </div>
       </section>
 
+      <HomeAssuranceBand />
+
       <section className="home-band home-band--faq">
         <div className="home-band__inner landing-chrome" data-niche={themeAttr}>
           <p className="home-band__label">{t("faqLabel")}</p>
@@ -403,6 +429,8 @@ export function HomeClient() {
                 ["faq2Q", "faq2A"],
                 ["faq3Q", "faq3A"],
                 ["faq4Q", "faq4A"],
+                ["faq5Q", "faq5A"],
+                ["faq6Q", "faq6A"],
               ] as const
             ).map(([q, a]) => (
               <details key={q} className="home-faq__item">
@@ -446,6 +474,16 @@ export function HomeClient() {
           </div>
         </div>
       </footer>
+
+      {/* Phone-only: the trial stays one thumb away no matter how far they scroll. */}
+      <div className="home-sticky-cta landing-chrome" data-niche={themeAttr}>
+        <Link href="/register" className="btn btn-primary">
+          {t("ctaStartTrial")}
+        </Link>
+        <Link href="/start" className="btn btn-ghost">
+          {t("navOffer")}
+        </Link>
+      </div>
     </div>
   );
 }

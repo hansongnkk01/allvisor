@@ -133,7 +133,9 @@ export function DashboardAiPanel({
   title: string;
 }) {
   const [tips, setTips] = useState(() => buildInsights(data));
-  const [updatedAt, setUpdatedAt] = useState(() => new Date());
+  // Stays null through SSR: the server and the browser format clock time
+  // differently, and rendering it on both sides breaks hydration.
+  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
 
   useEffect(() => {
     setTips(buildInsights(data));
@@ -176,8 +178,10 @@ export function DashboardAiPanel({
         })}
       </div>
       <p className="muted" style={{ fontSize: "0.75rem", marginTop: 10, marginBottom: 0 }}>
-        Tips from current dashboard ·{" "}
-        {updatedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+        Tips from current dashboard
+        {updatedAt
+          ? ` · ${updatedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+          : null}
       </p>
     </aside>
   );

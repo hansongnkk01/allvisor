@@ -3333,12 +3333,8 @@ export async function unlockAdminAction(formData: FormData) {
   return unlockSectionAction(formData);
 }
 
-/** Lock Admin / Accounting / LHDN again so staff cannot open them. */
-export async function lockAdminZoneAction() {
-  const ctx = await getOrgContext();
-  if (!ctx) return { error: "Not authenticated" };
+async function clearAdminZoneCookies(orgId: string) {
   const jar = await cookies();
-  const orgId = ctx.organization.id;
   const clear = {
     ...ADMIN_ZONE_COOKIE,
     maxAge: 0,
@@ -3348,6 +3344,13 @@ export async function lockAdminZoneAction() {
     jar.set(sectionCookieName(orgId, s), "", clear);
   }
   jar.set(legacyAdminCookieName(orgId), "", clear);
+}
+
+/** Lock Admin / Accounting / LHDN again so staff cannot open them. */
+export async function lockAdminZoneAction() {
+  const ctx = await getOrgContext();
+  if (!ctx) return { error: "Not authenticated" };
+  await clearAdminZoneCookies(ctx.organization.id);
   revalidateApp("/admin", "/accounting", "/lhdn", "/dashboard");
   revalidateAppLayout();
   return { success: true };
@@ -4154,6 +4157,11 @@ export async function recalculateStaffScoresAction() {
 }
 
 export async function signOutAction() {
+  // Signing out always leaves the manager zone, so the next person on this
+  // device starts locked out of Admin / Accounting / LHDN.
+  const ctx = await getOrgContext();
+  if (ctx) await clearAdminZoneCookies(ctx.organization.id);
+
   const supabase = await createClient();
   await supabase.auth.signOut();
   const { redirect } = await import("next/navigation");
