@@ -5,6 +5,12 @@ import { ConfirmProvider } from "@/components/ConfirmDialog";
 import { isAdminZoneUnlocked } from "@/app/actions";
 import { audienceForRole } from "@/lib/roles";
 import { setRequestLocale } from "next-intl/server";
+import { VerifyAccountGate } from "@/components/VerifyAccountGate";
+import {
+  expectedVerificationCode,
+  getVerificationState,
+} from "@/lib/membership-verification";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function AppLayout({
   children,
@@ -16,6 +22,28 @@ export default async function AppLayout({
   const { locale } = await params;
   setRequestLocale(locale);
   const ctx = await requireOrg(locale);
+
+  // Gate the whole app, not just the dashboard, so nothing leaks before confirming.
+  const supabase = await createClient();
+  const verification = await getVerificationState({
+    supabase,
+    membershipId: ctx.membership.id,
+    role: ctx.membership.role,
+  });
+  if (verification.required) {
+    return (
+      <VerifyAccountGate
+        email={ctx.profile.email}
+        orgName={ctx.organization.name}
+        devCode={
+          process.env.STAFF_VERIFICATION_CODE
+            ? null
+            : expectedVerificationCode(verification.storedCode)
+        }
+      />
+    );
+  }
+
   const adminZoneUnlocked = await isAdminZoneUnlocked();
 
   return (

@@ -4091,6 +4091,47 @@ export async function importMigrationDataAction(
   return { success: true, inserted, skipped, errors: errors.slice(0, 20) };
 }
 
+/**
+ * Staff confirm their account with a code before any dashboard opens. RLS keeps
+ * members from editing their own row, so the write goes through the service role.
+ */
+export async function verifyMembershipAction(formData: FormData) {
+  const { supabase, membership } = await requireMember();
+  const { expectedVerificationCode, getVerificationState, roleNeedsVerification } =
+    await import("@/lib/membership-verification");
+
+  if (!roleNeedsVerification(membership.role)) return { success: true };
+
+  const state = await getVerificationState({
+    supabase,
+    membershipId: membership.id,
+    role: membership.role,
+  });
+  if (!state.required) return { success: true };
+
+  const code = String(formData.get("code") || "").trim();
+  if (!code) return { error: "codeRequired" };
+  if (code !== expectedVerificationCode(state.storedCode)) return { error: "codeWrong" };
+
+  const admin = await getServiceAdmin();
+  const client = admin || supabase;
+  const { error } = await client
+    .from("memberships")
+    .update({ verified_at: new Date().toISOString(), verification_code: null })
+    .eq("id", membership.id);
+  if (error) return { error: error.message };
+
+  await logActivity({
+    action: "staff.verified",
+    summary: "Confirmed their account with the emailed code",
+    entityType: "membership",
+    entityId: membership.id,
+  });
+
+  revalidateAppLayout();
+  return { success: true };
+}
+
 /** Owner-triggered rescore, used when the nightly cron has not run yet. */
 export async function recalculateStaffScoresAction() {
   const { supabase, organization, membership } = await requireMember();

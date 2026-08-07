@@ -283,6 +283,18 @@
     "careZone": "Care",
     "studioZone": "Studio"
   },
+  "Verify": {
+    "title": "Confirm your account",
+    "subtitle": "{org} added you as a team member. Enter the code sent to {email} to open your dashboard.",
+    "yourEmail": "your email",
+    "codeLabel": "Confirmation code",
+    "confirm": "Confirm and open dashboard",
+    "checking": "Checking…",
+    "codeRequired": "Please enter the code.",
+    "codeWrong": "That code is not correct. Check your email and try again.",
+    "devHint": "While email delivery is still being set up, use this code:",
+    "signOut": "Sign out"
+  },
   "Owner": {
     "teamTitle": "Team",
     "teamSubtitle": "Who works here and what they have been doing.",

@@ -283,6 +283,18 @@
     "careZone": "Penjagaan",
     "studioZone": "Studio"
   },
+  "Verify": {
+    "title": "Sahkan akaun anda",
+    "subtitle": "{org} telah menambah anda sebagai ahli pasukan. Masukkan kod yang dihantar ke {email} untuk membuka dashboard anda.",
+    "yourEmail": "emel anda",
+    "codeLabel": "Kod pengesahan",
+    "confirm": "Sahkan dan buka dashboard",
+    "checking": "Menyemak…",
+    "codeRequired": "Sila masukkan kod.",
+    "codeWrong": "Kod itu tidak betul. Semak emel anda dan cuba lagi.",
+    "devHint": "Sementara penghantaran emel masih disediakan, guna kod ini:",
+    "signOut": "Log keluar"
+  },
   "Owner": {
     "teamTitle": "Pasukan",
     "teamSubtitle": "Siapa bekerja di sini dan apa yang mereka buat.",
