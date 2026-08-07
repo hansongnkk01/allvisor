@@ -5,212 +5,299 @@ import { Link } from "@/i18n/navigation";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { BrandLogo } from "@/components/BrandLogo";
 import { HvcoForm } from "@/components/HvcoForm";
+import { Reveal } from "@/components/Reveal";
+import { Check, FileText, ListChecks, Table2, ArrowRight, ShieldCheck } from "lucide-react";
 
-/** Long-form Sell Like Crazy landing — sells the next step (HVCO + trial). */
+/**
+ * Pricing is placeholder while the real plans are decided. Swap the amounts and
+ * the plan copy before this goes in front of paying prospects.
+ */
+const PLANS = [
+  { id: "management", price: "99", featured: false, features: 5 },
+  { id: "growth", price: "199", featured: true, features: 6 },
+  { id: "full", price: "349", featured: false, features: 6 },
+] as const;
+
+/** Placeholder social proof. Replace with real, named customers before launch. */
+const VOICES = ["v1", "v2", "v3"] as const;
+
+const AGITATE = [1, 2, 3, 4, 5] as const;
+const EDU = [1, 2, 3, 4] as const;
+const BULLETS = [1, 2, 3, 4, 5, 6] as const;
+const STACK = [1, 2, 3, 4, 5] as const;
+const FAQS = [1, 2, 3, 4, 5, 6] as const;
+
 export function StartLandingClient() {
   const t = useTranslations("StartLanding");
 
   return (
-    <div className="start-shell" style={{ minHeight: "100vh" }}>
-      <header
-        className="row"
-        style={{
-          justifyContent: "space-between",
-          padding: "1.15rem clamp(1rem, 4vw, 3rem)",
-          gap: "0.75rem",
-          flexWrap: "wrap",
-          borderBottom: "1px solid var(--line)",
-        }}
-      >
-        <Link href="/" aria-label="Allvisor" style={{ display: "inline-flex", alignItems: "center" }}>
+    <div className="sl-shell">
+      <header className="sl-nav">
+        <Link href="/" aria-label="Allvisor" className="sl-nav__brand">
           <BrandLogo size="nav" />
         </Link>
-        <div className="row" style={{ flexWrap: "wrap", gap: "0.5rem" }}>
-          <Link href="/" className="btn btn-ghost" style={{ padding: "0.5rem 0.9rem" }}>
-            {t("navHome")}
-          </Link>
+        <div className="row" style={{ gap: "0.5rem", flexWrap: "wrap" }}>
           <LanguageSwitcher />
-          <Link href="/login" className="btn btn-ghost" style={{ padding: "0.5rem 0.9rem" }}>
-            {t("navLogin")}
-          </Link>
-          <Link href="/register" className="btn btn-soft" style={{ padding: "0.5rem 0.9rem" }}>
-            {t("navTrial")}
-          </Link>
+          <a href="#playbook" className="btn btn-primary sl-nav__cta">
+            {t("navGet")}
+          </a>
         </div>
       </header>
 
-      <article style={{ maxWidth: 760, margin: "0 auto", padding: "2.5rem clamp(1rem, 4vw, 2rem) 4rem" }}>
-        <p
-          style={{
-            display: "inline-block",
-            margin: "0 0 0.75rem",
-            padding: "0.25rem 0.65rem",
-            fontWeight: 800,
-            letterSpacing: "0.06em",
-            fontSize: "0.78rem",
-            background: "var(--accent-soft)",
-            color: "var(--accent-ink)",
-            borderRadius: 6,
-          }}
-        >
-          {t("warning")}
-        </p>
-        <h1 className="display" style={{ fontSize: "clamp(1.85rem, 4.2vw, 2.75rem)", lineHeight: 1.15, margin: "0 0 1rem" }}>
-          {t("hookTitle")}
-        </h1>
-        <p className="muted" style={{ fontSize: "1.12rem", lineHeight: 1.65, marginBottom: "1.75rem" }}>
-          {t("hookSub")}
-        </p>
-
-        <div
-          className="surface"
-          style={{
-            padding: "1.15rem 1.25rem",
-            marginBottom: "2rem",
-            borderLeft: "4px solid var(--accent)",
-          }}
-        >
-          <h2 style={{ margin: "0 0 0.5rem", fontSize: "1.05rem" }}>{t("whyBoxTitle")}</h2>
-          <p style={{ margin: 0, lineHeight: 1.6 }}>{t("whyBoxBody")}</p>
-        </div>
-
-        <h2 className="page-title" style={{ marginBottom: "0.65rem" }}>
-          {t("problemTitle")}
-        </h2>
-        <p style={{ lineHeight: 1.65, marginBottom: "1.5rem" }}>{t("problemBody")}</p>
-
-        <h2 className="page-title" style={{ marginBottom: "0.65rem" }}>
-          {t("agitateTitle")}
-        </h2>
-        <ul style={{ margin: "0 0 2rem", paddingLeft: "1.2rem", lineHeight: 1.7 }}>
-          <li>{t("agitate1")}</li>
-          <li>{t("agitate2")}</li>
-          <li>{t("agitate3")}</li>
-          <li>{t("agitate4")}</li>
-        </ul>
-
-        <h2 className="page-title" style={{ marginBottom: "1rem" }}>
-          {t("eduTitle")}
-        </h2>
-        {(
-          [
-            ["edu1Title", "edu1Body"],
-            ["edu2Title", "edu2Body"],
-            ["edu3Title", "edu3Body"],
-            ["edu4Title", "edu4Body"],
-          ] as const
-        ).map(([title, body]) => (
-          <div key={title} style={{ marginBottom: "1.25rem" }}>
-            <h3 style={{ margin: "0 0 0.35rem", fontSize: "1.05rem" }}>{t(title)}</h3>
-            <p className="muted" style={{ margin: 0, lineHeight: 1.6 }}>
-              {t(body)}
-            </p>
+      {/* ── Above the fold: one job, sell the opt-in ── */}
+      <section className="sl-hero">
+        <div className="sl-hero__inner">
+          <div className="sl-hero__copy">
+            <p className="sl-warning">{t("warning")}</p>
+            <h1 className="sl-hero__title">{t("hookTitle")}</h1>
+            <p className="sl-hero__curiosity">{t("hookCuriosity")}</p>
+            <p className="sl-hero__sub">{t("hookSub")}</p>
+            <ul className="sl-hero__marks">
+              <li>{t("heroMark1")}</li>
+              <li>{t("heroMark2")}</li>
+              <li>{t("heroMark3")}</li>
+            </ul>
           </div>
-        ))}
 
-        <div id="playbook" className="surface" style={{ padding: "1.35rem", margin: "2.25rem 0" }}>
-          <p className="muted" style={{ margin: "0 0 0.35rem", fontWeight: 700, letterSpacing: "0.04em", fontSize: "0.8rem" }}>
-            {t("hvcoTitle")}
-          </p>
-          <h2 style={{ margin: "0 0 0.5rem" }}>{t("hvcoName")}</h2>
-          <p style={{ lineHeight: 1.6, marginBottom: "0.85rem" }}>{t("hvcoDesc")}</p>
-          <ul style={{ margin: "0 0 1.15rem", paddingLeft: "1.15rem", lineHeight: 1.65 }}>
-            <li>{t("hvcoBullet1")}</li>
-            <li>{t("hvcoBullet2")}</li>
-            <li>{t("hvcoBullet3")}</li>
-          </ul>
-          <HvcoForm source="hvco_start_mid" />
+          <div className="sl-hero__card" id="get">
+            <div className="sl-mock" aria-hidden>
+              <span className="sl-mock__tag">{t("mockTag")}</span>
+              <span className="sl-mock__title">{t("mockTitle")}</span>
+              <span className="sl-mock__lines">
+                <i />
+                <i />
+                <i />
+              </span>
+              <span className="sl-mock__foot">{t("mockFoot")}</span>
+            </div>
+            <h2 className="sl-hero__cardTitle">{t("formTitle")}</h2>
+            <p className="sl-hero__cardHint">{t("formHint")}</p>
+            <HvcoForm source="hvco_start_hero" />
+            <p className="sl-hero__privacy">{t("formPrivacy")}</p>
+          </div>
         </div>
+      </section>
 
-        <h2 className="page-title" style={{ marginBottom: "0.65rem" }}>
-          {t("offerTitle")}
-        </h2>
-        <p style={{ fontWeight: 700, fontSize: "1.15rem", lineHeight: 1.45, marginBottom: "0.75rem" }}>
-          {t("offerHeadline")}
-        </p>
-        <p className="muted" style={{ lineHeight: 1.65, marginBottom: "1rem" }}>
-          {t("offerBody")}
-        </p>
-        <Link href="/register" className="btn btn-soft" style={{ marginBottom: "2rem" }}>
-          {t("offerCta")}
-        </Link>
+      <article className="sl-body">
+        {/* Kills the "what's the catch" question before it forms. */}
+        <Reveal>
+          <aside className="sl-why">
+            <h2>{t("whyBoxTitle")}</h2>
+            <p>{t("whyBoxBody")}</p>
+          </aside>
+        </Reveal>
 
-        <h2 className="page-title" style={{ margin: "2rem 0 1rem" }}>
-          {t("stackTitle")}
-        </h2>
-        <div className="stack" style={{ gap: "0.65rem", marginBottom: "2rem" }}>
-          {(
-            [
-              ["stack1F", "stack1B"],
-              ["stack2F", "stack2B"],
-              ["stack3F", "stack3B"],
-              ["stack4F", "stack4B"],
-              ["stack5F", "stack5B"],
-            ] as const
-          ).map(([f, b]) => (
-            <div key={f} className="surface" style={{ padding: "0.9rem 1.05rem" }}>
-              <div style={{ fontWeight: 700 }}>{t(f)}</div>
-              <div className="muted" style={{ marginTop: "0.25rem", lineHeight: 1.5 }}>
-                {t(b)}
+        <Reveal>
+          <h2 className="sl-h2">{t("problemTitle")}</h2>
+          <p className="sl-lead">{t("problemBody")}</p>
+          <p className="sl-p">{t("problemBody2")}</p>
+        </Reveal>
+
+        <Reveal>
+          <h2 className="sl-h2">{t("agitateTitle")}</h2>
+          <ul className="sl-cost">
+            {AGITATE.map((n) => (
+              <li key={n}>
+                <span className="sl-cost__mark" aria-hidden />
+                <span>
+                  <strong>{t(`agitate${n}T` as "agitate1T")}</strong>
+                  {t(`agitate${n}B` as "agitate1B")}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="sl-p sl-p--tight">{t("agitateClose")}</p>
+        </Reveal>
+
+        <Reveal>
+          <h2 className="sl-h2">{t("eduTitle")}</h2>
+          <div className="sl-edu">
+            {EDU.map((n) => (
+              <div key={n} className="sl-edu__item">
+                <span className="sl-edu__num" aria-hidden>
+                  {n}
+                </span>
+                <div>
+                  <h3>{t(`edu${n}Title` as "edu1Title")}</h3>
+                  <p>{t(`edu${n}Body` as "edu1Body")}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Reveal>
+
+        {/* ── Primary conversion for cold traffic ── */}
+        <Reveal>
+          <section id="playbook" className="sl-hvco">
+            <div className="sl-hvco__copy">
+              <p className="sl-kicker">{t("hvcoTitle")}</p>
+              <h2 className="sl-hvco__name">{t("hvcoName")}</h2>
+              <p className="sl-hvco__desc">{t("hvcoDesc")}</p>
+              <ul className="sl-fascinate">
+                {BULLETS.map((n) => (
+                  <li key={n}>
+                    <Check size={15} aria-hidden />
+                    {t(`hvcoBullet${n}` as "hvcoBullet1")}
+                  </li>
+                ))}
+              </ul>
+              <div className="sl-spec">
+                <span>
+                  <FileText size={15} aria-hidden />
+                  {t("spec1")}
+                </span>
+                <span>
+                  <ListChecks size={15} aria-hidden />
+                  {t("spec2")}
+                </span>
+                <span>
+                  <Table2 size={15} aria-hidden />
+                  {t("spec3")}
+                </span>
               </div>
             </div>
-          ))}
-        </div>
-
-        <h2 className="page-title" style={{ marginBottom: "0.5rem" }}>
-          {t("proofTitle")}
-        </h2>
-        <p className="muted" style={{ fontSize: "0.85rem", marginBottom: "0.85rem" }}>
-          {t("proofNote")}
-        </p>
-        <div className="stack" style={{ gap: "0.75rem", marginBottom: "2rem" }}>
-          {(
-            [
-              ["proof1", "proof1By"],
-              ["proof2", "proof2By"],
-              ["proof3", "proof3By"],
-            ] as const
-          ).map(([q, by]) => (
-            <div key={q} className="surface" style={{ padding: "1rem 1.1rem" }}>
-              <p style={{ margin: "0 0 0.45rem", lineHeight: 1.5 }}>{t(q)}</p>
-              <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
-                {t(by)}
-              </p>
+            <div className="sl-hvco__form">
+              <h3>{t("formTitle")}</h3>
+              <p>{t("formHint")}</p>
+              <HvcoForm source="hvco_start_mid" />
+              <p className="sl-hero__privacy">{t("formPrivacy")}</p>
             </div>
-          ))}
-        </div>
+          </section>
+        </Reveal>
 
-        <h2 className="page-title" style={{ marginBottom: "1rem" }}>
-          {t("faqTitle")}
-        </h2>
-        {(
-          [
-            ["faq1Q", "faq1A"],
-            ["faq2Q", "faq2A"],
-            ["faq3Q", "faq3A"],
-            ["faq4Q", "faq4A"],
-          ] as const
-        ).map(([q, a]) => (
-          <div key={q} style={{ marginBottom: "1.1rem" }}>
-            <h3 style={{ margin: "0 0 0.35rem", fontSize: "1.02rem" }}>{t(q)}</h3>
-            <p className="muted" style={{ margin: 0, lineHeight: 1.6 }}>
-              {t(a)}
+        {/* ── From here the page speaks to warmer traffic ── */}
+        <Reveal>
+          <div className="sl-turn">
+            <p className="sl-kicker">{t("offerTitle")}</p>
+            <h2 className="sl-h2 sl-h2--big">{t("offerHeadline")}</h2>
+            <p className="sl-lead">{t("offerBody")}</p>
+            <p className="sl-p">{t("offerBody2")}</p>
+          </div>
+        </Reveal>
+
+        <Reveal>
+          <h2 className="sl-h2">{t("stackTitle")}</h2>
+          <div className="sl-stack">
+            {STACK.map((n) => (
+              <div key={n} className="sl-stack__row">
+                <div className="sl-stack__f">{t(`stack${n}F` as "stack1F")}</div>
+                <div className="sl-stack__b">{t(`stack${n}B` as "stack1B")}</div>
+              </div>
+            ))}
+          </div>
+        </Reveal>
+
+        <Reveal>
+          <section className="sl-pricing">
+            <p className="sl-kicker">{t("priceKicker")}</p>
+            <h2 className="sl-h2 sl-h2--big">{t("priceTitle")}</h2>
+            <p className="sl-lead">{t("priceLead")}</p>
+
+            <div className="sl-plans">
+              {PLANS.map((plan) => (
+                <div
+                  key={plan.id}
+                  className="sl-plan"
+                  data-featured={plan.featured ? "true" : undefined}
+                >
+                  {plan.featured ? (
+                    <span className="sl-plan__flag">{t("planPopular")}</span>
+                  ) : null}
+                  <h3>{t(`plan_${plan.id}_name` as "plan_management_name")}</h3>
+                  <p className="sl-plan__for">
+                    {t(`plan_${plan.id}_for` as "plan_management_for")}
+                  </p>
+                  <p className="sl-plan__price">
+                    <span className="sl-plan__cur">{t("priceCurrency")}</span>
+                    {plan.price}
+                    <span className="sl-plan__per">{t("pricePer")}</span>
+                  </p>
+                  <ul className="sl-plan__list">
+                    {Array.from({ length: plan.features }, (_, i) => i + 1).map((i) => (
+                      <li key={i}>
+                        <Check size={14} aria-hidden />
+                        {t(`plan_${plan.id}_f${i}` as "plan_management_f1")}
+                      </li>
+                    ))}
+                  </ul>
+                  <Link href="/register" className={plan.featured ? "btn btn-primary" : "btn btn-soft"}>
+                    {t("planCta")}
+                  </Link>
+                </div>
+              ))}
+            </div>
+            <p className="sl-plans__note">{t("priceNote")}</p>
+          </section>
+        </Reveal>
+
+        <Reveal>
+          <section className="sl-risk">
+            <span className="sl-risk__icon" aria-hidden>
+              <ShieldCheck size={22} />
+            </span>
+            <div>
+              <h2>{t("riskTitle")}</h2>
+              <p>{t("riskBody")}</p>
+              <ul>
+                <li>{t("risk1")}</li>
+                <li>{t("risk2")}</li>
+                <li>{t("risk3")}</li>
+              </ul>
+            </div>
+          </section>
+        </Reveal>
+
+        <Reveal>
+          <h2 className="sl-h2">{t("proofTitle")}</h2>
+          <p className="sl-note">{t("proofNote")}</p>
+          <div className="sl-voices">
+            {VOICES.map((v) => (
+              <blockquote key={v} className="sl-voice" data-placeholder="true">
+                <p>{t(`${v}Quote` as "v1Quote")}</p>
+                <cite>
+                  <strong>{t(`${v}Name` as "v1Name")}</strong>
+                  {t(`${v}Biz` as "v1Biz")}
+                </cite>
+              </blockquote>
+            ))}
+          </div>
+        </Reveal>
+
+        <Reveal>
+          <h2 className="sl-h2">{t("faqTitle")}</h2>
+          <div className="sl-faq">
+            {FAQS.map((n) => (
+              <details key={n} className="sl-faq__item">
+                <summary>{t(`faq${n}Q` as "faq1Q")}</summary>
+                <p>{t(`faq${n}A` as "faq1A")}</p>
+              </details>
+            ))}
+          </div>
+        </Reveal>
+
+        <Reveal>
+          <section className="sl-final">
+            <h2>{t("finalTitle")}</h2>
+            <p>{t("finalBody")}</p>
+            <div className="sl-final__grid">
+              <div className="sl-final__card">
+                <p className="sl-final__label">{t("finalColdLabel")}</p>
+                <HvcoForm source="hvco_start_final" />
+              </div>
+              <div className="sl-final__card sl-final__card--warm">
+                <p className="sl-final__label">{t("finalWarmLabel")}</p>
+                <p className="sl-final__warmBody">{t("finalWarmBody")}</p>
+                <Link href="/register" className="btn btn-primary">
+                  {t("finalTrial")}
+                  <ArrowRight size={16} />
+                </Link>
+              </div>
+            </div>
+            <p className="sl-ps">
+              <strong>{t("psLabel")}</strong> {t("psBody")}
             </p>
-          </div>
-        ))}
-
-        <div className="surface" style={{ padding: "1.35rem", marginTop: "2.5rem" }}>
-          <h2 style={{ margin: "0 0 0.5rem" }}>{t("finalTitle")}</h2>
-          <p className="muted" style={{ margin: "0 0 1.15rem", lineHeight: 1.55 }}>
-            {t("finalBody")}
-          </p>
-          <HvcoForm source="hvco_start_final" />
-          <div style={{ marginTop: "1rem" }}>
-            <Link href="/register" className="btn btn-ghost" style={{ width: "100%" }}>
-              {t("finalTrial")}
-            </Link>
-          </div>
-        </div>
+          </section>
+        </Reveal>
       </article>
     </div>
   );
