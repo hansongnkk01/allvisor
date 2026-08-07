@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import { getNicheVocab } from "@/lib/niche-vocab";
 import { hasCapability } from "@/lib/niches";
-import { updateAlertStatusAction } from "@/app/ops-brain-actions";
 
 type InsightInput = {
   niche: string;
@@ -20,22 +19,9 @@ type InsightInput = {
   orgHasTin: boolean;
 };
 
-export type DbAlertTip = {
-  id: string;
-  title: string;
-  message: string;
-  severity: "low" | "medium" | "high";
-  status: string;
-};
-
 type TipTone = "good" | "alert" | "info";
 
-type Tip = {
-  text: string;
-  tone: TipTone;
-  alertId?: string;
-  canResolve?: boolean;
-};
+type Tip = { text: string; tone: TipTone };
 
 const TONE_STYLE: Record<TipTone, { bg: string; border: string }> = {
   good: { bg: "rgba(22, 163, 74, 0.1)", border: "rgba(22, 163, 74, 0.45)" },
@@ -139,60 +125,20 @@ function buildInsights(data: InsightInput): Tip[] {
   return tips.slice(0, 4);
 }
 
-function dbAlertsToTips(
-  alerts: DbAlertTip[],
-  opts: { includeHigh: boolean; canResolve: boolean }
-): Tip[] {
-  return alerts
-    .filter((a) => opts.includeHigh || a.severity !== "high")
-    .slice(0, 6)
-    .map((a) => ({
-      text: `${a.title}: ${a.message}`,
-      tone: (a.severity === "low" ? "info" : "alert") as TipTone,
-      alertId: a.id,
-      canResolve: opts.canResolve && a.status !== "resolved",
-    }));
-}
-
 export function DashboardAiPanel({
   data,
   title,
-  dbAlerts = [],
-  opsBrainEnabled = false,
-  includeHighSeverity = true,
-  canResolveAlerts = false,
 }: {
   data: InsightInput;
   title: string;
-  dbAlerts?: DbAlertTip[];
-  opsBrainEnabled?: boolean;
-  /** Staff dashboards pass false to hide high-severity alerts. */
-  includeHighSeverity?: boolean;
-  canResolveAlerts?: boolean;
 }) {
-  const ruleTips = buildInsights(data);
-  const alertTips =
-    opsBrainEnabled && dbAlerts.length
-      ? dbAlertsToTips(dbAlerts, {
-          includeHigh: includeHighSeverity,
-          canResolve: canResolveAlerts,
-        })
-      : [];
-  const [tips, setTips] = useState(() => [...alertTips, ...ruleTips].slice(0, 6));
+  const [tips, setTips] = useState(() => buildInsights(data));
   const [updatedAt, setUpdatedAt] = useState(() => new Date());
-  const [pending, startTransition] = useTransition();
 
   useEffect(() => {
-    const nextAlertTips =
-      opsBrainEnabled && dbAlerts.length
-        ? dbAlertsToTips(dbAlerts, {
-            includeHigh: includeHighSeverity,
-            canResolve: canResolveAlerts,
-          })
-        : [];
-    setTips([...nextAlertTips, ...buildInsights(data)].slice(0, 6));
+    setTips(buildInsights(data));
     setUpdatedAt(new Date());
-  }, [data, dbAlerts, opsBrainEnabled, includeHighSeverity, canResolveAlerts]);
+  }, [data]);
 
   return (
     <aside
@@ -206,14 +152,14 @@ export function DashboardAiPanel({
     >
       <div className="row" style={{ justifyContent: "space-between", marginBottom: 8 }}>
         <strong>{title}</strong>
-        <span className="badge">{opsBrainEnabled ? "Ops Brain" : "AI"}</span>
+        <span className="badge">AI</span>
       </div>
       <div className="stack" style={{ gap: "0.5rem" }}>
         {tips.map((tip, i) => {
           const color = TONE_STYLE[tip.tone];
           return (
-            <div
-              key={`${tip.tone}-${tip.alertId || tip.text}-${i}`}
+            <p
+              key={`${tip.tone}-${tip.text}-${i}`}
               style={{
                 margin: 0,
                 fontSize: "0.86rem",
@@ -224,49 +170,13 @@ export function DashboardAiPanel({
                 borderLeft: `3px solid ${color.border}`,
               }}
             >
-              <p style={{ margin: 0 }}>{tip.text}</p>
-              {tip.alertId && tip.canResolve ? (
-                <div className="row" style={{ gap: 6, marginTop: 6, flexWrap: "wrap" }}>
-                  <button
-                    type="button"
-                    className="btn btn-ghost"
-                    style={{ fontSize: "0.75rem", padding: "0.2rem 0.5rem" }}
-                    disabled={pending}
-                    onClick={() => {
-                      const fd = new FormData();
-                      fd.set("alert_id", tip.alertId!);
-                      fd.set("status", "investigating");
-                      startTransition(async () => {
-                        await updateAlertStatusAction(fd);
-                      });
-                    }}
-                  >
-                    Investigating
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-ghost"
-                    style={{ fontSize: "0.75rem", padding: "0.2rem 0.5rem" }}
-                    disabled={pending}
-                    onClick={() => {
-                      const fd = new FormData();
-                      fd.set("alert_id", tip.alertId!);
-                      fd.set("status", "resolved");
-                      startTransition(async () => {
-                        await updateAlertStatusAction(fd);
-                      });
-                    }}
-                  >
-                    Resolve
-                  </button>
-                </div>
-              ) : null}
-            </div>
+              {tip.text}
+            </p>
           );
         })}
       </div>
       <p className="muted" style={{ fontSize: "0.75rem", marginTop: 10, marginBottom: 0 }}>
-        {opsBrainEnabled ? "Live alerts + tips" : "Tips from current dashboard"} ·{" "}
+        Tips from current dashboard ·{" "}
         {updatedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
       </p>
     </aside>

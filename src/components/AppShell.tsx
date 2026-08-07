@@ -46,17 +46,11 @@ import {
   BookOpen,
   ClipboardCheck,
   ScanBarcode,
-  ShieldAlert,
-  ListChecks,
-  UsersRound,
-  TrendingUp,
-  PiggyBank,
-  Megaphone,
 } from "lucide-react";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import {
   ADMIN_ZONE_NAV_KEYS,
-  getNavSectionsForRole,
+  getNavSectionsForNiche,
   hasCapability,
   vocabLabels,
 } from "@/lib/niches";
@@ -113,13 +107,6 @@ const icons: Record<string, ReactNode> = {
   matters: <Scale size={18} />,
   events: <PartyPopper size={18} />,
   plots: <Sprout size={18} />,
-  alerts: <ShieldAlert size={18} />,
-  tasks: <ListChecks size={18} />,
-  team: <UsersRound size={18} />,
-  performance: <TrendingUp size={18} />,
-  cashflow: <PiggyBank size={18} />,
-  marketing: <Megaphone size={18} />,
-  cycleCount: <ScanBarcode size={18} />,
 };
 
 function NavItem({
@@ -208,15 +195,12 @@ export function AppShell({
     role === "supervisor" ||
     role === "manager";
 
-  const sections = getNavSectionsForRole(niche, canSeeAdminZone);
+  const sections = getNavSectionsForNiche(niche);
   const V = vocabLabels(niche, locale);
 
   function labelFor(key: string) {
     if (key === "customers") return V.entityTitle;
     if (key === "appointments") return V.schedule;
-    if (key === "dashboard") {
-      return canSeeAdminZone ? t("adminDashboard") : t("staffDashboard");
-    }
     try {
       return t(key as "dashboard");
     } catch {
@@ -278,24 +262,17 @@ export function AppShell({
           >
             {sections.map((section, index) => {
               const keys = section.keys.filter((key) => {
-                if (ADMIN_ZONE_NAV_KEYS.has(key) && !canSeeAdminZone) return false;
-                if (key === "cycleCount") return hasCapability(niche, "inventory");
-                return true;
+                if (!ADMIN_ZONE_NAV_KEYS.has(key)) return true;
+                return canSeeAdminZone;
               });
               if (!keys.length) return null;
               return (
                 <div key={section.id} className="stack" style={{ gap: "0.35rem" }}>
                   <SectionLabel first={index === 0}>{t(section.labelKey)}</SectionLabel>
                   {keys.map((key) => {
-                    let href = NAV_HREF[key];
-                    if (key === "dashboard") {
-                      href = canSeeAdminZone ? "/admin-dashboard" : "/staff-dashboard";
-                    }
+                    const href = NAV_HREF[key];
                     if (!href) return null;
-                    const active =
-                      key === "dashboard"
-                        ? pathname.includes("dashboard")
-                        : pathname === href || pathname.startsWith(`${href}/`);
+                    const active = pathname === href || pathname.startsWith(`${href}/`);
                     return (
                       <NavItem
                         key={key}
@@ -306,7 +283,7 @@ export function AppShell({
                       />
                     );
                   })}
-                  {(section.id === "admin" || section.id === "business") && adminZoneUnlocked ? (
+                  {section.id === "admin" && adminZoneUnlocked ? (
                     <div style={{ marginTop: "0.35rem" }}>
                       <ExitAdminZoneButton label={t("exitAdminZone")} />
                     </div>

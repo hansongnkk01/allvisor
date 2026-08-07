@@ -206,10 +206,7 @@ export function HomeClient() {
             <h1 className="home-hero__title">{t("heroTitle")}</h1>
             <p className="home-hero__lead">{t("heroSubtitle")}</p>
             <div className="home-hero__cta">
-              <Link href="/register" className="btn btn-primary">
-                {t("ctaSignupAdmin")}
-              </Link>
-              <Link href="/start" className="btn btn-ghost">
+              <Link href="/start" className="btn btn-primary">
                 {t("ctaPlaybook")}
               </Link>
               <button
