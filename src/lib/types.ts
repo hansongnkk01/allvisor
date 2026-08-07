@@ -26,6 +26,9 @@ export type Niche =
 
 export type MembershipRole = "owner" | "admin" | "supervisor" | "manager" | "staff";
 
+/** Which dashboard experience a signed-in member gets. */
+export type Audience = "admin" | "staff";
+
 export type RiskLevel = "high" | "medium" | "low";
 
 export type SubscriptionPlan = "free" | "starter" | "growth" | "pro";

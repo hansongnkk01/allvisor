@@ -1,4 +1,17 @@
-import type { MembershipRole } from "@/lib/types";
+import type { Audience, MembershipRole } from "@/lib/types";
+
+/**
+ * Owner-facing oversight versus floor operations.
+ * Supervisor and manager run the floor, so they belong to the staff experience.
+ */
+export function audienceForRole(role: MembershipRole): Audience {
+  return role === "owner" || role === "admin" ? "admin" : "staff";
+}
+
+/** Owner area: /admin-dashboard, /team, /performance, /cashflow, /marketing */
+export function canAccessOwnerArea(role: MembershipRole) {
+  return audienceForRole(role) === "admin";
+}
 
 /** Sensitive sections (Admin / Accounting / LHDN): owner, admin, supervisor, manager */
 export function canAccessSensitive(role: MembershipRole) {

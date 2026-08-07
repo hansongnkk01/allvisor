@@ -48,21 +48,13 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import { PageHeader } from "@/components/PageHeader";
-import { DashboardAiPanel } from "@/components/DashboardAiPanel";
-import { DailyClosePanel } from "@/components/DailyClosePanel";
-import {
-  DashboardRecentInvoices,
-  DashboardUpcomingAppointments,
-  DashboardTodaySales,
-  DashboardTopSellers,
-} from "@/components/DashboardLists";
-import { DayHourTimetable } from "@/components/DayHourTimetable";
 import { BrandLogo } from "@/components/BrandLogo";
 import { ClinicLogoMark } from "@/components/ClinicLogoMark";
-import { getNavSectionsForNiche, hasCapability, vocabLabels } from "@/lib/niches";
+import { StaffDashboardView } from "@/components/dashboards/StaffDashboardView";
+import { getNavSectionsForNiche, vocabLabels } from "@/lib/niches";
 import { NAV_HREF } from "@/lib/niche-capabilities";
-import { formatCurrency, nicheThemeAttr } from "@/lib/utils";
+import { buildDemoDashboard } from "@/lib/demo-dashboard";
+import { nicheThemeAttr } from "@/lib/utils";
 import { HomeDemoPage } from "@/components/HomeDemoPages";
 import { NICHES } from "@/lib/niches";
 import { DEMO_ORG, LANDING_TITLE_KEY } from "@/lib/demo-orgs";
@@ -167,114 +159,6 @@ function hrefToView(href: string): string {
   return HREF_SEGMENT_TO_VIEW[seg] || seg;
 }
 
-const DEMO_INVOICES = [
-  {
-    id: "1",
-    title: "Consult + meds",
-    invoice_number: "INV-1042",
-    status: "paid",
-    total: 85,
-    created_at: "2026-08-04T09:12:00+08:00",
-  },
-  {
-    id: "2",
-    title: "Walk-in treatment",
-    invoice_number: "INV-1041",
-    status: "unpaid",
-    total: 120,
-    created_at: "2026-08-04T08:40:00+08:00",
-  },
-  {
-    id: "3",
-    title: "Follow-up",
-    invoice_number: "INV-1040",
-    status: "partial",
-    total: 60,
-    created_at: "2026-08-03T16:20:00+08:00",
-  },
-  {
-    id: "4",
-    title: "Lab panel",
-    invoice_number: "INV-1039",
-    status: "paid",
-    total: 95,
-    created_at: "2026-08-03T11:05:00+08:00",
-  },
-  {
-    id: "5",
-    title: "Procedure",
-    invoice_number: "INV-1038",
-    status: "paid",
-    total: 45,
-    created_at: "2026-08-02T15:30:00+08:00",
-  },
-];
-
-const DEMO_APPTS_SLOTS = [
-  { id: "a1", title: "Consult", h: 9, m: 0, dur: 30, name: "Nurul Aisyah", risk: "low" as const, allergies: null as string | null },
-  { id: "a2", title: "Follow-up", h: 10, m: 30, dur: 30, name: "Rajesh K.", risk: "medium" as const, allergies: "Penicillin" },
-  { id: "a3", title: "Walk-in", h: 14, m: 0, dur: 20, name: "Lim Wei", risk: "low" as const, allergies: null },
-  { id: "a4", title: "Consult", h: 16, m: 30, dur: 30, name: "Aina Rahman", risk: "high" as const, allergies: "Nuts" },
-];
-
-function demoAppointments(day: Date) {
-  return DEMO_APPTS_SLOTS.map((slot) => {
-    const start = new Date(day);
-    start.setHours(slot.h, slot.m, 0, 0);
-    const end = new Date(start.getTime() + slot.dur * 60000);
-    return {
-      id: slot.id,
-      title: slot.title,
-      starts_at: start.toISOString(),
-      ends_at: end.toISOString(),
-      status: "confirmed",
-      customers: {
-        name: slot.name,
-        risk_level: slot.risk,
-        allergies: slot.allergies,
-      },
-    };
-  });
-}
-
-const DEMO_SALES = [
-  {
-    id: "s1",
-    label: "Counter sale",
-    customer: "Walk-in",
-    amount: 86,
-    paid_at: "2026-08-04T10:12:00+08:00",
-  },
-  {
-    id: "s2",
-    label: "Counter sale",
-    customer: "Cash",
-    amount: 42.5,
-    paid_at: "2026-08-04T11:05:00+08:00",
-  },
-  {
-    id: "s3",
-    label: "QR payment",
-    customer: "Mei Ling",
-    amount: 125,
-    paid_at: "2026-08-04T12:40:00+08:00",
-  },
-  {
-    id: "s4",
-    label: "Counter sale",
-    customer: "Walk-in",
-    amount: 18.9,
-    paid_at: "2026-08-04T14:18:00+08:00",
-  },
-];
-
-const DEMO_TOP = [
-  { name: "Paracetamol 500mg", units: 38 },
-  { name: "Saline 500ml", units: 22 },
-  { name: "Gloves M", units: 19 },
-  { name: "Alcohol swab", units: 14 },
-];
-
 /** Full-size interactive replica of the real Allvisor app shell + dashboard. */
 export function HomeDashboardPreview({
   niche,
@@ -285,17 +169,17 @@ export function HomeDashboardPreview({
 }) {
   const t = useTranslations("Home");
   const tNav = useTranslations("Nav");
-  const tDash = useTranslations("Dashboard");
   const tLanding = useTranslations("Landing");
   const locale = useLocale();
   const [view, setView] = useState("dashboard");
   const orgName = DEMO_ORG[niche];
-  const canAppointments = hasCapability(niche, "appointments");
-  const canPos = hasCapability(niche, "pos");
   const V = vocabLabels(niche, locale);
   const sections = useMemo(() => getNavSectionsForNiche(niche), [niche]);
   const now = useMemo(() => new Date(), []);
-  const demoAppts = useMemo(() => demoAppointments(now), [now]);
+  const demoData = useMemo(
+    () => buildDemoDashboard({ niche, audience: "staff", now, locale }),
+    [niche, now, locale]
+  );
   const frameRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const mainScrollRef = useRef<HTMLElement | null>(null);
@@ -684,175 +568,7 @@ export function HomeDashboardPreview({
           <main ref={mainScrollRef} className="app-main home-demo__main-scroll">
             <div className="app-content">
               {view === "dashboard" ? (
-                <div className="stack" style={{ gap: "1.25rem" }}>
-                  <PageHeader title={`${tDash("welcome")}, ${orgName}`} subtitle={orgName} />
-
-                  <div
-                    style={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      gap: "0.85rem",
-                      alignItems: "stretch",
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr 1fr",
-                        gap: "0.65rem",
-                        flex: "1 1 280px",
-                        minWidth: 0,
-                      }}
-                    >
-                      {canAppointments && !canPos ? (
-                        <div className="surface kpi" style={{ margin: 0 }}>
-                          <div className="kpi-label">{tDash("appointmentsToday")}</div>
-                          <div className="kpi-value">12</div>
-                        </div>
-                      ) : (
-                        <div className="surface kpi" style={{ margin: 0 }}>
-                          <div className="kpi-label">{tDash("salesToday")}</div>
-                          <div className="kpi-value">{formatCurrency(canPos ? 2450 : 1280)}</div>
-                        </div>
-                      )}
-                      <div className="surface kpi" style={{ margin: 0 }}>
-                        <div className="kpi-label">{tDash("unpaidInvoices")}</div>
-                        <div className="kpi-value">3</div>
-                      </div>
-                      <div className="surface kpi" style={{ margin: 0 }}>
-                        <div className="kpi-label">{V.entityTitle}</div>
-                        <div className="kpi-value">{niche === "gym" ? 186 : niche === "retail" ? 420 : 248}</div>
-                      </div>
-                      <div className="surface kpi" style={{ margin: 0 }}>
-                        <div className="kpi-label">{tDash("lowStock")}</div>
-                        <div className="kpi-value">{canPos ? 5 : niche === "clinic" ? 2 : 0}</div>
-                      </div>
-                    </div>
-
-                    <DashboardAiPanel
-                      title={tDash("aiTitle")}
-                      data={{
-                        niche,
-                        patients: niche === "gym" ? 186 : niche === "retail" ? 420 : 248,
-                        unpaidInvoices: 3,
-                        lowStock: canPos ? 5 : niche === "clinic" ? 2 : 0,
-                        lowStockNames: canPos
-                          ? ["Cable 2m", "Adapter USB-C", "Power bank"]
-                          : niche === "clinic"
-                            ? ["Gloves M", "Saline"]
-                            : [],
-                        income: 12480,
-                        expense: 4210,
-                        appointmentsToday: canAppointments ? 12 : 0,
-                        lhdnPending: 1,
-                        orgHasTin: true,
-                      }}
-                    />
-                  </div>
-
-                  <DailyClosePanel
-                    title={tDash("dailyClose")}
-                    subtitle={tDash("dailyCloseHint")}
-                    incomeToday={canPos ? 2450 : 1280}
-                    unpaidCount={3}
-                    unpaidTotal={265}
-                    noShowToday={canAppointments ? 1 : -1}
-                    txnToday={canPos ? 47 : -1}
-                    lowStockNames={
-                      canPos
-                        ? ["Cable 2m", "Adapter USB-C", "Power bank", "Tape pack", "Mouse pad"]
-                        : niche === "clinic"
-                          ? ["Gloves M", "Saline"]
-                          : []
-                    }
-                    lhdnPendingCount={1}
-                    lhdnRejectedCount={0}
-                    labels={{
-                      income: tDash("closeIncome"),
-                      unpaid: tDash("closeUnpaid"),
-                      noShow: tDash("closeNoShow"),
-                      txnToday: tDash("closeTxnToday"),
-                      lowStock: tDash("closeLowStock"),
-                      lhdnPending: tDash("closeLhdnPending"),
-                      lhdnRejected: tDash("closeLhdnRejected"),
-                      none: tDash("closeNone"),
-                      openInvoices: tDash("closeOpenInvoices"),
-                      openInventory: tDash("closeOpenInventory"),
-                      openLhdn: tDash("closeOpenLhdn"),
-                      openPos: canPos ? tDash("closeOpenPos") : undefined,
-                    }}
-                  />
-
-                  <div className="row">
-                    <span className="muted">{tDash("quickActions")}:</span>
-                    <button type="button" className="btn btn-soft" onClick={() => setView("customers")}>
-                      {V.entityTitle}
-                    </button>
-                    <button type="button" className="btn btn-soft" onClick={() => setView("invoices")}>
-                      Invoices
-                    </button>
-                    {canAppointments ? (
-                      <button type="button" className="btn btn-soft" onClick={() => setView("appointments")}>
-                        {V.schedule}
-                      </button>
-                    ) : null}
-                    {canPos ? (
-                      <button type="button" className="btn btn-soft" onClick={() => setView("pos")}>
-                        POS
-                      </button>
-                    ) : null}
-                  </div>
-
-                  {canAppointments ? (
-                    <DayHourTimetable
-                      date={now}
-                      appointments={demoAppts}
-                      orientation="horizontal"
-                      hoursConfig={{
-                        openHour: 8,
-                        closeHour: 18,
-                        closedWeekdays: [],
-                        locale,
-                      }}
-                      labels={{
-                        timetable: tDash("miniTimetable"),
-                        occupied: tDash("occupied"),
-                        free: tDash("free"),
-                        closed: tDash("clinicClosed"),
-                        publicHoliday: tDash("publicHoliday"),
-                      }}
-                    />
-                  ) : null}
-
-                  <div className="fluid-grid">
-                    <DashboardRecentInvoices title={tDash("recentInvoices")} invoices={DEMO_INVOICES} />
-                    {canAppointments && !canPos ? (
-                      <DashboardUpcomingAppointments
-                        title={tDash("upcomingAppointments")}
-                        items={demoAppts}
-                      />
-                    ) : canPos ? (
-                      <DashboardTodaySales
-                        title={tDash("todaySales")}
-                        empty={tDash("todaySalesEmpty")}
-                        rows={DEMO_SALES}
-                      />
-                    ) : (
-                      <DashboardUpcomingAppointments
-                        title={tDash("upcomingAppointments")}
-                        items={demoAppts.slice(0, 2)}
-                      />
-                    )}
-                  </div>
-
-                  {canPos ? (
-                    <DashboardTopSellers
-                      title={tDash("topSellers")}
-                      empty={tDash("topSellersEmpty")}
-                      rows={DEMO_TOP}
-                    />
-                  ) : null}
-                </div>
+                <StaffDashboardView data={demoData} />
               ) : (
                 <HomeDemoPage
                   view={view}

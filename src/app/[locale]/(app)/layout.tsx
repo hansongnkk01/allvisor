@@ -3,6 +3,7 @@ import { AppShell } from "@/components/AppShell";
 import { OrgProvider } from "@/components/OrgProvider";
 import { ConfirmProvider } from "@/components/ConfirmDialog";
 import { isAdminZoneUnlocked } from "@/app/actions";
+import { audienceForRole } from "@/lib/roles";
 import { setRequestLocale } from "next-intl/server";
 
 export default async function AppLayout({
@@ -26,6 +27,7 @@ export default async function AppLayout({
           orgLogoUrl={ctx.organization.logo_url}
           orgLogoShape={ctx.organization.logo_shape}
           role={ctx.membership.role}
+          audience={audienceForRole(ctx.membership.role)}
           adminZoneUnlocked={adminZoneUnlocked}
         >
           {children}

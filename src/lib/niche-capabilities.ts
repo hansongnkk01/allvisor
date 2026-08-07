@@ -3,7 +3,7 @@
  * Pages/actions must gate via hasCapability(), not scattered niche === checks.
  */
 
-import type { Niche } from "./types";
+import type { Audience, Niche } from "./types";
 
 export type Capability =
   | "dashboard"
@@ -59,7 +59,14 @@ export type NicheEngine = "care" | "commerce" | "hybrid" | "fnb" | "hospitality"
 
 export type NavSectionDef = {
   id: string;
-  labelKey: "operationsZone" | "settingsZone" | "adminZone" | "careZone" | "studioZone";
+  labelKey:
+    | "operationsZone"
+    | "settingsZone"
+    | "adminZone"
+    | "managerZone"
+    | "ownerZone"
+    | "careZone"
+    | "studioZone";
   keys: string[];
 };
 
@@ -732,7 +739,25 @@ export const NAV_HREF: Record<string, string> = {
   matters: "/matters",
   events: "/events",
   plots: "/plots",
+  team: "/team",
+  performance: "/performance",
+  cashflow: "/cashflow",
+  marketing: "/marketing",
 };
+
+/** Nav keys only ever shown to the owner audience. */
+export const OWNER_NAV_KEYS = ["team", "performance", "cashflow", "marketing"] as const;
+
+/**
+ * The dashboard link differs per audience so each role lands on its own page
+ * instead of bouncing through the /dashboard redirect on every click.
+ */
+export function navHrefFor(key: string, audience: Audience): string | undefined {
+  if (key === "dashboard") {
+    return audience === "admin" ? "/admin-dashboard" : "/staff-dashboard";
+  }
+  return NAV_HREF[key];
+}
 
 export function getNicheDef(niche: Niche | string | null | undefined): NicheDefinition {
   if (niche && niche in NICHE_DEFINITIONS) {
@@ -748,8 +773,31 @@ export function hasCapability(
   return getNicheDef(niche).capabilities.includes(cap);
 }
 
-export function getNavSectionsForNiche(niche: Niche | string | null | undefined): NavSectionDef[] {
-  return getNicheDef(niche).navSections;
+/**
+ * Sections are authored once per niche for the floor. The owner audience gets the
+ * same operational access plus an oversight section, and the staff audience sees
+ * the shared settings zone under a manager label instead of an admin one.
+ */
+export function getNavSectionsForNiche(
+  niche: Niche | string | null | undefined,
+  audience: Audience = "staff"
+): NavSectionDef[] {
+  const base = getNicheDef(niche).navSections;
+
+  if (audience === "staff") {
+    return base.map((section) =>
+      section.labelKey === "adminZone" ? { ...section, labelKey: "managerZone" } : section
+    );
+  }
+
+  const ownerSection: NavSectionDef = {
+    id: "owner",
+    labelKey: "ownerZone",
+    keys: [...OWNER_NAV_KEYS],
+  };
+  const adminZoneIndex = base.findIndex((section) => section.labelKey === "adminZone");
+  if (adminZoneIndex < 0) return [...base, ownerSection];
+  return [...base.slice(0, adminZoneIndex), ownerSection, ...base.slice(adminZoneIndex)];
 }
 
 export function nichesInGroup(group: NicheDefinition["group"]): Niche[] {

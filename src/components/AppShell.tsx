@@ -46,6 +46,10 @@ import {
   BookOpen,
   ClipboardCheck,
   ScanBarcode,
+  UsersRound,
+  TrendingUp,
+  PiggyBank,
+  Megaphone,
 } from "lucide-react";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import {
@@ -54,8 +58,8 @@ import {
   hasCapability,
   vocabLabels,
 } from "@/lib/niches";
-import { NAV_HREF } from "@/lib/niche-capabilities";
-import type { Niche } from "@/lib/types";
+import { navHrefFor } from "@/lib/niche-capabilities";
+import type { Audience, Niche } from "@/lib/types";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { NavigationProgress } from "./NavigationProgress";
 import { ExitAdminZoneButton } from "./ExitAdminZoneButton";
@@ -107,6 +111,10 @@ const icons: Record<string, ReactNode> = {
   matters: <Scale size={18} />,
   events: <PartyPopper size={18} />,
   plots: <Sprout size={18} />,
+  team: <UsersRound size={18} />,
+  performance: <TrendingUp size={18} />,
+  cashflow: <PiggyBank size={18} />,
+  marketing: <Megaphone size={18} />,
 };
 
 function NavItem({
@@ -175,6 +183,7 @@ export function AppShell({
   orgLogoUrl,
   orgLogoShape,
   role,
+  audience = "staff",
   adminZoneUnlocked = false,
   children,
 }: {
@@ -183,6 +192,7 @@ export function AppShell({
   orgLogoUrl?: string | null;
   orgLogoShape?: LogoShape | null;
   role?: string;
+  audience?: Audience;
   adminZoneUnlocked?: boolean;
   children: React.ReactNode;
 }) {
@@ -195,7 +205,7 @@ export function AppShell({
     role === "supervisor" ||
     role === "manager";
 
-  const sections = getNavSectionsForNiche(niche);
+  const sections = getNavSectionsForNiche(niche, audience);
   const V = vocabLabels(niche, locale);
 
   function labelFor(key: string) {
@@ -270,7 +280,7 @@ export function AppShell({
                 <div key={section.id} className="stack" style={{ gap: "0.35rem" }}>
                   <SectionLabel first={index === 0}>{t(section.labelKey)}</SectionLabel>
                   {keys.map((key) => {
-                    const href = NAV_HREF[key];
+                    const href = navHrefFor(key, audience);
                     if (!href) return null;
                     const active = pathname === href || pathname.startsWith(`${href}/`);
                     return (
