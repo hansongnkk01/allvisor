@@ -3,6 +3,7 @@ import { Link } from "@/i18n/navigation";
 import { requireOwner } from "@/lib/require-owner";
 import { PageHeader } from "@/components/PageHeader";
 import { RevenueTrendChart } from "@/components/dashboards/RevenueTrendChart";
+import { ScoreBar } from "@/components/dashboards/ScoreBar";
 import { formatCurrency } from "@/lib/utils";
 import { formatDayKeyMY } from "@/lib/datetime-my";
 import {
@@ -50,33 +51,49 @@ export default async function PerformancePage({
   const endDay = formatDayKeyMY(window.end);
   const prevStartDay = formatDayKeyMY(window.prevStart);
 
-  const [{ data: payments }, { data: ledger }, { data: invoices }, { data: customers }] =
-    await Promise.all([
-      supabase
-        .from("payments")
-        .select("amount, paid_at")
-        .eq("organization_id", orgId)
-        .gte("paid_at", prevStartIso)
-        .lte("paid_at", endIso),
-      supabase
-        .from("ledger_entries")
-        .select("entry_type, amount, entry_date")
-        .eq("organization_id", orgId)
-        .gte("entry_date", prevStartDay)
-        .lte("entry_date", endDay),
-      supabase
-        .from("invoices")
-        .select("id, total, created_at")
-        .eq("organization_id", orgId)
-        .gte("created_at", prevStartIso)
-        .lte("created_at", endIso),
-      supabase
-        .from("customers")
-        .select("id, created_at")
-        .eq("organization_id", orgId)
-        .gte("created_at", startIso)
-        .lte("created_at", endIso),
-    ]);
+  const [
+    { data: payments },
+    { data: ledger },
+    { data: invoices },
+    { data: customers },
+    { data: scores },
+    { data: members },
+  ] = await Promise.all([
+    supabase
+      .from("payments")
+      .select("amount, paid_at")
+      .eq("organization_id", orgId)
+      .gte("paid_at", prevStartIso)
+      .lte("paid_at", endIso),
+    supabase
+      .from("ledger_entries")
+      .select("entry_type, amount, entry_date")
+      .eq("organization_id", orgId)
+      .gte("entry_date", prevStartDay)
+      .lte("entry_date", endDay),
+    supabase
+      .from("invoices")
+      .select("id, total, created_at")
+      .eq("organization_id", orgId)
+      .gte("created_at", prevStartIso)
+      .lte("created_at", endIso),
+    supabase
+      .from("customers")
+      .select("id, created_at")
+      .eq("organization_id", orgId)
+      .gte("created_at", startIso)
+      .lte("created_at", endIso),
+    supabase
+      .from("staff_scores")
+      .select("user_id, score, sales_amount, transaction_count")
+      .eq("organization_id", orgId)
+      .gte("score_date", startDay)
+      .lte("score_date", endDay),
+    supabase
+      .from("memberships")
+      .select("user_id, profiles(full_name, email)")
+      .eq("organization_id", orgId),
+  ]);
 
   const inWindow = (iso: string | null | undefined) => {
     if (!iso) return false;
@@ -127,6 +144,35 @@ export default async function PerformancePage({
     month: t("rangeMonth"),
     year: t("rangeYear"),
   };
+
+  const nameByUser = new Map<string, string>(
+    (members || []).map((m) => {
+      const profile = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
+      return [String(m.user_id), profile?.full_name || profile?.email || "—"];
+    })
+  );
+  const scoreByUser = new Map<
+    string,
+    { days: number; total: number; sales: number; transactions: number }
+  >();
+  for (const row of scores || []) {
+    const key = String(row.user_id);
+    const entry = scoreByUser.get(key) || { days: 0, total: 0, sales: 0, transactions: 0 };
+    entry.days += 1;
+    entry.total += Number(row.score || 0);
+    entry.sales += Number(row.sales_amount || 0);
+    entry.transactions += Number(row.transaction_count || 0);
+    scoreByUser.set(key, entry);
+  }
+  const staffRanking = [...scoreByUser.entries()]
+    .map(([userId, entry]) => ({
+      userId,
+      name: nameByUser.get(userId) || "—",
+      percent: Math.round(entry.total / Math.max(1, entry.days)),
+      sales: entry.sales,
+      transactions: entry.transactions,
+    }))
+    .sort((a, b) => b.percent - a.percent);
 
   const collectedDelta = deltaPercent(collected, collectedPrev);
   const deltaHint =
@@ -187,9 +233,34 @@ export default async function PerformancePage({
 
       <section className="surface" style={{ padding: "1rem" }}>
         <h2 style={{ marginTop: 0 }}>{t("staffRankingTitle")}</h2>
-        <p className="muted" style={{ marginBottom: 0 }}>
-          {t("staffRankingPending")}
-        </p>
+        {staffRanking.length ? (
+          <table className="table">
+            <thead>
+              <tr>
+                <th>{t("teamMember")}</th>
+                <th>{t("scoreColumn")}</th>
+                <th>{t("salesColumn")}</th>
+                <th>{t("transactionsLabel")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {staffRanking.map((row) => (
+                <tr key={row.userId}>
+                  <td>{row.name}</td>
+                  <td style={{ minWidth: 140 }}>
+                    <ScoreBar percent={row.percent} />
+                  </td>
+                  <td>{formatCurrency(row.sales)}</td>
+                  <td>{row.transactions}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p className="muted" style={{ marginBottom: 0 }}>
+            {t("staffRankingPending")}
+          </p>
+        )}
       </section>
     </div>
   );

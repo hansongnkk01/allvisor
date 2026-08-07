@@ -4073,6 +4073,27 @@ export async function importMigrationDataAction(
   return { success: true, inserted, skipped, errors: errors.slice(0, 20) };
 }
 
+/** Owner-triggered rescore, used when the nightly cron has not run yet. */
+export async function recalculateStaffScoresAction() {
+  const { supabase, organization, membership } = await requireMember();
+  if (!canManageOrgSettings(membership.role)) return { error: "Forbidden" };
+
+  const { computeStaffScores, saveStaffScores } = await import("@/lib/staff-scores");
+  const today = formatDayKeyMY();
+  const yesterday = formatDayKeyMY(new Date(Date.now() - 86400000));
+
+  let saved = 0;
+  for (const day of [yesterday, today]) {
+    const rows = await computeStaffScores({ supabase, orgId: organization.id, day });
+    const result = await saveStaffScores(supabase, rows);
+    if (result.error) return { error: result.error };
+    saved += result.saved;
+  }
+
+  revalidateApp("/team", "/performance", "/admin-dashboard");
+  return { success: true, saved };
+}
+
 export async function signOutAction() {
   const supabase = await createClient();
   await supabase.auth.signOut();

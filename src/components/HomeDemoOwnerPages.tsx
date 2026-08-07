@@ -8,6 +8,7 @@ import {
   type PerformanceRange,
 } from "@/lib/performance-range";
 import { RevenueTrendChart } from "@/components/dashboards/RevenueTrendChart";
+import { ScoreBar } from "@/components/dashboards/ScoreBar";
 import { staffRoleLabel } from "@/lib/roles";
 import { vocabLabels } from "@/lib/niches";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
@@ -20,13 +21,81 @@ import type { Niche } from "@/lib/types";
  */
 
 const DEMO_MEMBERS = [
-  { id: "m1", name: "Nor Hafizah", role: "owner", jobTitle: null, joinedDaysAgo: 640 },
-  { id: "m2", name: "Farah Iman", role: "manager", jobTitle: "Floor manager", joinedDaysAgo: 410 },
-  { id: "m3", name: "Danial Hakim", role: "supervisor", jobTitle: "Shift lead", joinedDaysAgo: 260 },
-  { id: "m4", name: "Siti Aminah", role: "staff", jobTitle: "Counter", joinedDaysAgo: 120 },
-  { id: "m5", name: "Kavitha R.", role: "staff", jobTitle: "Counter", joinedDaysAgo: 45 },
-  { id: "m6", name: "Chong Wei", role: "admin", jobTitle: "Accounts", joinedDaysAgo: 30 },
+  {
+    id: "m1",
+    name: "Nor Hafizah",
+    role: "owner",
+    jobTitle: null,
+    joinedDaysAgo: 640,
+    score: 88,
+    sales: 18420,
+    transactions: 96,
+    mistakes: 1,
+    actions: 142,
+  },
+  {
+    id: "m2",
+    name: "Farah Iman",
+    role: "manager",
+    jobTitle: "Floor manager",
+    joinedDaysAgo: 410,
+    score: 92,
+    sales: 21350,
+    transactions: 118,
+    mistakes: 2,
+    actions: 196,
+  },
+  {
+    id: "m3",
+    name: "Danial Hakim",
+    role: "supervisor",
+    jobTitle: "Shift lead",
+    joinedDaysAgo: 260,
+    score: 79,
+    sales: 14980,
+    transactions: 88,
+    mistakes: 4,
+    actions: 131,
+  },
+  {
+    id: "m4",
+    name: "Siti Aminah",
+    role: "staff",
+    jobTitle: "Counter",
+    joinedDaysAgo: 120,
+    score: 71,
+    sales: 11240,
+    transactions: 74,
+    mistakes: 5,
+    actions: 108,
+  },
+  {
+    id: "m5",
+    name: "Kavitha R.",
+    role: "staff",
+    jobTitle: "Counter",
+    joinedDaysAgo: 45,
+    score: 64,
+    sales: 8630,
+    transactions: 61,
+    mistakes: 7,
+    actions: 92,
+  },
+  {
+    id: "m6",
+    name: "Chong Wei",
+    role: "admin",
+    jobTitle: "Accounts",
+    joinedDaysAgo: 30,
+    score: 58,
+    sales: 4210,
+    transactions: 27,
+    mistakes: 3,
+    actions: 64,
+  },
 ];
+
+const DEMO_RANKED = [...DEMO_MEMBERS].sort((a, b) => b.score - a.score);
 
 const DEMO_OUTSTANDING = [
   { id: "o1", label: "INV-1041", customer: "Mei Ling", outstanding: 120, ageDays: 41 },
@@ -47,6 +116,45 @@ function TeamDemo({ insights, now }: { insights: AdminInsights; now: Date }) {
   return (
     <div className="stack" style={{ gap: "1.25rem" }}>
       <PageHeader title={t("teamTitle")} subtitle={t("teamSubtitle")} />
+
+      <section className="surface" style={{ padding: "1rem" }}>
+        <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+          <h2 style={{ margin: 0 }}>{t("scoreTitle")}</h2>
+          <button type="button" className="btn btn-soft">
+            {t("recalculate")}
+          </button>
+        </div>
+        <p className="muted">{t("scoreHint", { days: 30 })}</p>
+        <table className="table">
+          <thead>
+            <tr>
+              <th>{t("teamMember")}</th>
+              <th>{t("scoreColumn")}</th>
+              <th>{t("salesColumn")}</th>
+              <th>{t("transactionsLabel")}</th>
+              <th>{t("mistakesColumn")}</th>
+              <th>{t("actionsColumn")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {DEMO_RANKED.map((member) => (
+              <tr key={member.id}>
+                <td>
+                  {member.name}
+                  <div className="muted">{staffRoleLabel(member.role)}</div>
+                </td>
+                <td style={{ minWidth: 140 }}>
+                  <ScoreBar percent={member.score} />
+                </td>
+                <td>{formatCurrency(member.sales)}</td>
+                <td>{member.transactions}</td>
+                <td>{member.mistakes}</td>
+                <td>{member.actions}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
 
       <section className="surface" style={{ padding: "1rem" }}>
         <h2 style={{ marginTop: 0 }}>{t("teamMembers")}</h2>
@@ -251,9 +359,28 @@ function PerformanceDemo({ insights }: { insights: AdminInsights }) {
 
       <section className="surface" style={{ padding: "1rem" }}>
         <h2 style={{ marginTop: 0 }}>{t("staffRankingTitle")}</h2>
-        <p className="muted" style={{ marginBottom: 0 }}>
-          {t("staffRankingPending")}
-        </p>
+        <table className="table">
+          <thead>
+            <tr>
+              <th>{t("teamMember")}</th>
+              <th>{t("scoreColumn")}</th>
+              <th>{t("salesColumn")}</th>
+              <th>{t("transactionsLabel")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {DEMO_RANKED.slice(0, 5).map((member) => (
+              <tr key={member.id}>
+                <td>{member.name}</td>
+                <td style={{ minWidth: 140 }}>
+                  <ScoreBar percent={member.score} />
+                </td>
+                <td>{formatCurrency(Math.round(member.sales * scale))}</td>
+                <td>{Math.max(1, Math.round(member.transactions * scale))}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </section>
     </div>
   );
