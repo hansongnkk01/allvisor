@@ -139,7 +139,7 @@ export async function savePosTicketAction(formData: FormData) {
 }
 
 export async function voidPosTicketAction(formData: FormData) {
-  const { supabase, organization } = await requireRetailMember();
+  const { supabase, organization, profile } = await requireRetailMember();
   const id = String(formData.get("ticket_id") || "");
   if (!id) return { error: "Ticket required" };
   const { error } = await supabase
@@ -148,6 +148,22 @@ export async function voidPosTicketAction(formData: FormData) {
     .eq("id", id)
     .eq("organization_id", organization.id);
   if (error) return { error: error.message };
+  await logActivity({
+    action: "pos.void",
+    summary: `Voided POS ticket`,
+    entityType: "pos_ticket",
+    entityId: id,
+    meta: { staff_id: profile.id },
+  });
+  try {
+    const { runOpsBrainAfterVoid } = await import("@/lib/ops-brain/rules");
+    await runOpsBrainAfterVoid(
+      { supabase, organization, actorId: profile.id },
+      { ticketId: id }
+    );
+  } catch {
+    /* never block void */
+  }
   revalidateApp("/pos");
   return { success: true };
 }
@@ -278,7 +294,17 @@ export async function refundInvoiceAction(formData: FormData) {
     summary: `Refunded receipt ${invoice.invoice_number}`,
     entityType: "invoice",
     entityId: refund.id,
+    meta: { staff_id: profile.id, original_invoice_id: invoice.id },
   });
+  try {
+    const { runOpsBrainAfterRefund } = await import("@/lib/ops-brain/rules");
+    await runOpsBrainAfterRefund(
+      { supabase, organization, actorId: profile.id },
+      { invoiceId: invoice.id, refundInvoiceId: refund.id }
+    );
+  } catch {
+    /* never block refund */
+  }
   revalidateApp("/receipts", "/inventory", "/invoices", "/dashboard", "/accounting");
   return { success: true };
 }
@@ -359,6 +385,23 @@ export async function closeCashSessionAction(formData: FormData) {
     .eq("organization_id", organization.id)
     .eq("status", "open");
   if (error) return { error: error.message };
+  const variance = closingCount - expected;
+  await logActivity({
+    action: "cash.close",
+    summary: `Closed cash session (variance RM ${variance.toFixed(2)})`,
+    entityType: "cash_session",
+    entityId: sessionId,
+    meta: { staff_id: profile.id, variance, expected, closingCount },
+  });
+  try {
+    const { runOpsBrainAfterCashClose } = await import("@/lib/ops-brain/rules");
+    await runOpsBrainAfterCashClose(
+      { supabase, organization, actorId: profile.id },
+      { sessionId, variance, expected, closingCount }
+    );
+  } catch {
+    /* never block cash close */
+  }
   revalidateApp("/cash");
   return { success: true };
 }
@@ -497,7 +540,30 @@ export async function createStockAdjustmentDocumentAction(formData: FormData) {
       note: `${number}: ${line.quantity > 0 ? "+" : ""}${line.quantity}`,
       created_by: profile.id,
     });
+    try {
+      const { runOpsBrainAfterStockAdjust } = await import("@/lib/ops-brain/rules");
+      await runOpsBrainAfterStockAdjust(
+        { supabase, organization, actorId: profile.id },
+        {
+          adjustmentId: adjustment.id,
+          productId: product.id,
+          productName: product.name,
+          quantityDelta: line.quantity,
+          movementType: "adjust",
+          fromPosSale: false,
+        }
+      );
+    } catch {
+      /* never block adjustment */
+    }
   }
+  await logActivity({
+    action: "stock.adjust",
+    summary: `Stock adjustment ${number}`,
+    entityType: "stock_adjustment",
+    entityId: adjustment.id,
+    meta: { staff_id: profile.id },
+  });
   revalidateApp("/logistics", "/inventory", "/pos");
   return { success: true };
 }

@@ -270,9 +270,15 @@ export function AppShell({
                 <div key={section.id} className="stack" style={{ gap: "0.35rem" }}>
                   <SectionLabel first={index === 0}>{t(section.labelKey)}</SectionLabel>
                   {keys.map((key) => {
-                    const href = NAV_HREF[key];
+                    let href = NAV_HREF[key];
+                    if (key === "dashboard") {
+                      href = canSeeAdminZone ? "/admin-dashboard" : "/staff-dashboard";
+                    }
                     if (!href) return null;
-                    const active = pathname === href || pathname.startsWith(`${href}/`);
+                    const active =
+                      key === "dashboard"
+                        ? pathname.includes("dashboard")
+                        : pathname === href || pathname.startsWith(`${href}/`);
                     return (
                       <NavItem
                         key={key}

@@ -116,12 +116,31 @@ export const getOrgContext = cache(async (): Promise<OrgContext | null> => {
     logoRow?.logo_url ?? null
   );
 
+  // Ops Brain columns (migration 025) — fail soft if not applied yet.
+  let opsBrainEnabled = false;
+  let opsBrainSettings: Organization["ops_brain_settings"] = {};
+  try {
+    const { data: opsRow, error: opsErr } = await supabase
+      .from("organizations")
+      .select("ops_brain_enabled, ops_brain_settings")
+      .eq("id", organization.id)
+      .maybeSingle();
+    if (!opsErr && opsRow) {
+      opsBrainEnabled = Boolean(opsRow.ops_brain_enabled);
+      opsBrainSettings = (opsRow.ops_brain_settings || {}) as Organization["ops_brain_settings"];
+    }
+  } catch {
+    /* migration not applied */
+  }
+
   organization = {
     ...organization,
     logo_url: resolvedLogoUrl,
     logo_shape: (logoRow?.logo_shape === "square" ? "square" : "round") as
       | "round"
       | "square",
+    ops_brain_enabled: opsBrainEnabled,
+    ops_brain_settings: opsBrainSettings,
   };
 
   const profileRow = Array.isArray(membership.profiles)

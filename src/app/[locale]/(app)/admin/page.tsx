@@ -21,6 +21,11 @@ import {
   upsertServiceCategoryAction,
   upsertServiceItemAction,
 } from "@/app/actions";
+import {
+  setOpsBrainEnabledAction,
+  upsertNotificationChannelAction,
+  testNotifyWebhookAction,
+} from "@/app/ops-brain-actions";
 import { DataImportPanel } from "@/components/DataImportPanel";
 import { AdminActivityLog } from "@/components/AdminActivityLog";
 import { FilterableRows } from "@/components/FilterableRows";
@@ -50,7 +55,7 @@ export default async function AdminPage({
   const ctx = await requireOrg(locale);
 
   if (!canAccessAdmin(ctx.membership.role)) {
-    redirect({ href: "/dashboard", locale });
+    redirect({ href: "/staff-dashboard", locale });
   }
 
   const unlocked = await isAdminUnlocked();
@@ -400,6 +405,47 @@ export default async function AdminPage({
           ))}
         </div>
       ) : null}
+
+      <div className="surface" style={{ padding: "1.25rem" }}>
+            <h3 style={{ marginTop: 0 }}>{t("opsBrainTitle")}</h3>
+            <p className="muted">{t("opsBrainHint")}</p>
+            <ActionForm action={setOpsBrainEnabledAction} className="row" style={{ flexWrap: "wrap" }}>
+              <label className="row" style={{ gap: 8 }}>
+                <input
+                  type="checkbox"
+                  name="ops_brain_enabled"
+                  value="1"
+                  defaultChecked={Boolean(org.ops_brain_enabled)}
+                />
+                {t("opsBrainEnable")}
+              </label>
+              <button type="submit" className="btn btn-primary">
+                {t("opsBrainSave")}
+              </button>
+            </ActionForm>
+            <div style={{ marginTop: "1rem" }}>
+              <h4 style={{ marginBottom: 6 }}>{t("opsBrainNotifyTitle")}</h4>
+              <ActionForm action={upsertNotificationChannelAction} className="stack" style={{ maxWidth: 480 }}>
+                <input type="hidden" name="channel_type" value="webhook" />
+                <div className="field">
+                  <label>{t("opsBrainWebhookUrl")}</label>
+                  <input name="endpoint_url" className="input" placeholder="https://..." />
+                </div>
+                <label className="row" style={{ gap: 8 }}>
+                  <input type="checkbox" name="enabled" value="1" />
+                  {t("opsBrainChannelEnabled")}
+                </label>
+                <button type="submit" className="btn btn-primary">
+                  {t("opsBrainSaveChannel")}
+                </button>
+              </ActionForm>
+              <ActionForm action={testNotifyWebhookAction} style={{ marginTop: 8 }}>
+                <button type="submit" className="btn btn-ghost">
+                  {t("opsBrainTestWebhook")}
+                </button>
+              </ActionForm>
+            </div>
+          </div>
 
       <div className="surface" style={{ padding: "1.25rem" }}>
             <h3 style={{ marginTop: 0 }}>{t("securityTitle")}</h3>

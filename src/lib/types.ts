@@ -86,7 +86,86 @@ export interface Organization {
   invoice_number_pattern?: string | null;
   logo_url?: string | null;
   logo_shape?: "round" | "square" | null;
+  /** Ops Brain / AI Supervisor — default false until owner enables. */
+  ops_brain_enabled?: boolean;
+  ops_brain_settings?: OpsBrainSettings | Record<string, unknown> | null;
   created_at: string;
+}
+
+export type AlertSeverity = "low" | "medium" | "high";
+export type AlertStatus = "open" | "investigating" | "resolved" | "auto_handled";
+
+export type OpsBrainSettings = {
+  refund_rate_pct?: number;
+  void_rate_pct?: number;
+  cash_variance_rm?: number;
+  cash_variance_pct?: number;
+  lead_time_days?: number;
+  safety_stock_days?: number;
+  dead_stock_days?: number;
+};
+
+export interface Alert {
+  id: string;
+  organization_id: string;
+  type: string;
+  severity: AlertSeverity;
+  title: string;
+  message: string;
+  status: AlertStatus;
+  related_staff_id: string | null;
+  related_entity_type: string | null;
+  related_entity_id: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  resolved_at: string | null;
+  resolved_by: string | null;
+  auto_handled_at: string | null;
+  escalated_at: string | null;
+}
+
+export interface StaffScore {
+  id: string;
+  organization_id: string;
+  user_id: string;
+  score_date: string;
+  sales_amount: number;
+  transaction_count: number;
+  refund_count: number;
+  void_count: number;
+  refund_rate: number;
+  void_rate: number;
+  average_basket: number;
+  hours_worked: number | null;
+  score: number;
+  notes: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export type TaskStatus = "open" | "in_progress" | "done" | "cancelled";
+export type TaskPriority = "low" | "medium" | "high";
+export type TaskSource = "manual" | "rule" | "ai";
+
+export interface OpsTask {
+  id: string;
+  organization_id: string;
+  title: string;
+  description: string | null;
+  status: TaskStatus;
+  priority: TaskPriority;
+  source: TaskSource;
+  assigned_to: string | null;
+  created_by: string | null;
+  related_alert_id: string | null;
+  related_entity_type: string | null;
+  related_entity_id: string | null;
+  due_at: string | null;
+  completed_at: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
 }
 
 export type InvoiceLineKind = "service" | "medicine" | "additional" | "service_charge";
