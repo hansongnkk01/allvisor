@@ -129,6 +129,7 @@ const icons: Record<string, ReactNode> = {
   team: <UsersRound size={18} />,
   performance: <TrendingUp size={18} />,
   cashflow: <PiggyBank size={18} />,
+  money: <PiggyBank size={18} />,
   marketing: <Megaphone size={18} />,
 };
 

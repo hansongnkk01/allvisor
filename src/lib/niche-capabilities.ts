@@ -741,12 +741,12 @@ export const NAV_HREF: Record<string, string> = {
   plots: "/plots",
   team: "/team",
   performance: "/performance",
-  cashflow: "/cashflow",
+  money: "/money",
   marketing: "/marketing",
 };
 
 /** Nav keys only ever shown to the owner audience. */
-export const OWNER_NAV_KEYS = ["team", "performance", "cashflow", "marketing"] as const;
+export const OWNER_NAV_KEYS = ["team", "performance", "money", "marketing"] as const;
 
 /**
  * The dashboard link differs per audience so each role lands on its own page
@@ -795,9 +795,21 @@ export function getNavSectionsForNiche(
     labelKey: "ownerZone",
     keys: [...OWNER_NAV_KEYS],
   };
-  const adminZoneIndex = base.findIndex((section) => section.labelKey === "adminZone");
-  if (adminZoneIndex < 0) return [...base, ownerSection];
-  return [...base.slice(0, adminZoneIndex), ownerSection, ...base.slice(adminZoneIndex)];
+  // The owner reads accounting inside Money, so the duplicate link is dropped here.
+  const withoutAccounting = base.map((section) =>
+    section.labelKey === "adminZone"
+      ? { ...section, keys: section.keys.filter((key) => key !== "accounting") }
+      : section
+  );
+  const adminZoneIndex = withoutAccounting.findIndex(
+    (section) => section.labelKey === "adminZone"
+  );
+  if (adminZoneIndex < 0) return [...withoutAccounting, ownerSection];
+  return [
+    ...withoutAccounting.slice(0, adminZoneIndex),
+    ownerSection,
+    ...withoutAccounting.slice(adminZoneIndex),
+  ];
 }
 
 export function nichesInGroup(group: NicheDefinition["group"]): Niche[] {

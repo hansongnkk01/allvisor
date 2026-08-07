@@ -35,6 +35,7 @@ import { defaultAdminPassword } from "@/lib/admin-lock";
 import {
   assignableStaffRoles,
   canAccessAdmin,
+  canManageOrgSettings,
   kickableStaffRoles,
 } from "@/lib/roles";
 import type { MembershipRole } from "@/lib/types";
@@ -57,6 +58,7 @@ export default async function AdminPage({
   const hint = await getDefaultAdminPasswordHint();
   const rolesCanAssign = assignableStaffRoles(ctx.membership.role);
   const rolesCanKick = kickableStaffRoles(ctx.membership.role);
+  const canEditOrgSettings = canManageOrgSettings(ctx.membership.role);
   const currentUserId = ctx.membership.user_id || ctx.profile.id;
 
   if (!unlocked) {
@@ -401,6 +403,9 @@ export default async function AdminPage({
         </div>
       ) : null}
 
+      {/* Business identity, billing and the zone password stay with the owner. */}
+      {canEditOrgSettings ? (
+        <>
       <div className="surface" style={{ padding: "1.25rem" }}>
             <h3 style={{ marginTop: 0 }}>{t("securityTitle")}</h3>
             <p className="muted">
@@ -514,6 +519,8 @@ export default async function AdminPage({
               save: t("saveInvoiceFormat"),
             }}
           />
+        </>
+      ) : null}
 
           <DataImportPanel
             allowedKinds={

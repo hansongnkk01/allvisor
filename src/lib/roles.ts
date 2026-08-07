@@ -13,6 +13,15 @@ export function canAccessOwnerArea(role: MembershipRole) {
   return audienceForRole(role) === "admin";
 }
 
+/**
+ * Ownership-level controls: business identity, billing plan and the Admin Zone
+ * password itself. Supervisor and manager run the floor, so they must not be able
+ * to rename the business, change its tax numbers, or lock the owner out.
+ */
+export function canManageOrgSettings(role: MembershipRole) {
+  return role === "owner" || role === "admin";
+}
+
 /** Sensitive sections (Admin / Accounting / LHDN): owner, admin, supervisor, manager */
 export function canAccessSensitive(role: MembershipRole) {
   return (

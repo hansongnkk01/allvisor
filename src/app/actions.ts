@@ -35,6 +35,7 @@ import {
 import {
   assignableStaffRoles,
   canAccessSensitive,
+  canManageOrgSettings,
   canManageStaff,
   kickableStaffRoles,
 } from "@/lib/roles";
@@ -1755,8 +1756,8 @@ export async function createIncomeAction(formData: FormData) {
 
 export async function updateOrgSettingsAction(formData: FormData) {
   const { supabase, organization, membership } = await requireMember();
-  if (!canAccessSensitive(membership.role)) {
-    return { error: "Forbidden — only owner/admin/supervisor/manager can update settings." };
+  if (!canManageOrgSettings(membership.role)) {
+    return { error: "Forbidden — only the owner or a co-admin can update business settings." };
   }
 
   const patch: Record<string, unknown> = {
@@ -1835,8 +1836,8 @@ export async function updateOrgSettingsAction(formData: FormData) {
 
 export async function saveOrgLogoAction(formData: FormData) {
   const { supabase, organization, membership } = await requireMember();
-  if (!canAccessSensitive(membership.role)) {
-    return { error: "Forbidden — only owner/admin/supervisor/manager can update logo." };
+  if (!canManageOrgSettings(membership.role)) {
+    return { error: "Forbidden — only the owner or a co-admin can update the logo." };
   }
 
   const shapeRaw = String(formData.get("logo_shape") || "round");
@@ -1942,7 +1943,7 @@ export async function saveOrgLogoAction(formData: FormData) {
 
 export async function removeOrgLogoAction() {
   const { supabase, organization, membership } = await requireMember();
-  if (!canAccessSensitive(membership.role)) {
+  if (!canManageOrgSettings(membership.role)) {
     return { error: "Forbidden" };
   }
 
@@ -1974,7 +1975,7 @@ export async function removeOrgLogoAction() {
 
 export async function upgradePlanAction(plan: SubscriptionPlan) {
   const { supabase, organization, membership } = await requireMember();
-  if (membership.role === "staff") return { error: "Forbidden" };
+  if (!canManageOrgSettings(membership.role)) return { error: "Forbidden" };
 
   const unlocked = await isAdminUnlocked();
   if (!unlocked) return { error: "Admin unlock required" };
@@ -3336,7 +3337,7 @@ export async function lockAdminZoneAction() {
 
 export async function changeAdminPasswordAction(formData: FormData) {
   const { supabase, organization, membership } = await requireMember();
-  if (!canManageStaff(membership.role)) return { error: "Forbidden" };
+  if (!canManageOrgSettings(membership.role)) return { error: "Forbidden" };
   const unlocked = await isSectionUnlocked("admin");
   if (!unlocked) return { error: "Admin unlock required" };
 

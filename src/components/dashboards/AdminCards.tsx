@@ -108,8 +108,8 @@ export function AdminMonthPnlCard({ data, insights }: AdminCardProps) {
     <Card
       title={t("monthPnlTitle")}
       action={
-        <Link href="/accounting" className="btn btn-soft">
-          {t("openAccounting")}
+        <Link href="/money" className="btn btn-soft">
+          {t("openMoney")}
         </Link>
       }
     >
@@ -147,8 +147,8 @@ export function AdminReceivablesCard({ insights }: AdminCardProps) {
     <Card
       title={t("receivablesTitle")}
       action={
-        <Link href="/cashflow" className="btn btn-soft">
-          {t("openCashflow")}
+        <Link href="/money" className="btn btn-soft">
+          {t("openMoney")}
         </Link>
       }
     >

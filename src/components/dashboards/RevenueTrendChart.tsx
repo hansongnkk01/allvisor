@@ -49,7 +49,7 @@ export function RevenueTrendChart({
             className="muted"
             style={{ fontSize: "0.65rem", textAlign: "center", marginTop: 4 }}
           >
-            {point.day.slice(8)}
+            {point.label ?? point.day.slice(8)}
           </div>
         </div>
       ))}

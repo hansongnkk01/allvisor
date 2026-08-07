@@ -9,7 +9,7 @@ import { isSectionUnlocked, updateOrgSettingsAction } from "@/app/actions";
 import { canUseLhdn } from "@/lib/subscription";
 import { formatDateTime } from "@/lib/utils";
 import { Link } from "@/i18n/navigation";
-import { canAccessSensitive } from "@/lib/roles";
+import { canAccessSensitive, canManageOrgSettings } from "@/lib/roles";
 import { SectionLockGate } from "@/components/SectionLockGate";
 import { SectionActivityLog } from "@/components/SectionActivityLog";
 import { fetchSectionLogs } from "@/lib/section-logs";
@@ -24,6 +24,7 @@ export default async function LhdnPage({
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("Lhdn");
+  const tNav = await getTranslations("Nav");
   const ctx = await requireOrg(locale);
   const V = vocabLabels(ctx.organization.niche, locale);
 
@@ -93,7 +94,9 @@ export default async function LhdnPage({
             </p>
           </div>
 
+          {/* The tax identity belongs to the owner, so managers see it read-only. */}
           <div className="surface" style={{ padding: "1.25rem" }}>
+            {canManageOrgSettings(ctx.membership.role) ? (
             <ActionForm action={updateOrgSettingsAction} className="stack">
               <input type="hidden" name="name" value={ctx.organization.name} />
               <input type="hidden" name="phone" value={ctx.organization.phone || ""} />
@@ -153,6 +156,25 @@ export default async function LhdnPage({
                 {t("saveSettings")}
               </button>
             </ActionForm>
+            ) : (
+              <div className="stack" style={{ gap: "0.5rem" }}>
+                <div>
+                  <div className="muted" style={{ fontSize: "0.85rem" }}>
+                    {t("tin")}
+                  </div>
+                  <div style={{ fontWeight: 600 }}>{ctx.organization.tin || "—"}</div>
+                </div>
+                <div>
+                  <div className="muted" style={{ fontSize: "0.85rem" }}>
+                    {t("brn")}
+                  </div>
+                  <div style={{ fontWeight: 600 }}>{ctx.organization.lhdn_brn || "—"}</div>
+                </div>
+                <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
+                  {tNav("ownerOnlyHint")}
+                </p>
+              </div>
+            )}
           </div>
         </>
       )}

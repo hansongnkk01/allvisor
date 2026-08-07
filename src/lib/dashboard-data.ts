@@ -95,9 +95,11 @@ export type NicheCardPayload = {
 };
 
 export type RevenueTrendPoint = {
-  /** YYYY-MM-DD in Malaysia time. */
+  /** YYYY-MM-DD in Malaysia time, or a bucket key when the window is not daily. */
   day: string;
   amount: number;
+  /** Axis label; falls back to the day of month when absent. */
+  label?: string;
 };
 
 export type ActivityEntry = {
