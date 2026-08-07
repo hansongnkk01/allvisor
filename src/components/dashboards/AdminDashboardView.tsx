@@ -3,12 +3,10 @@
 import { Link } from "@/i18n/navigation";
 import { useTransition } from "react";
 import { PageHeader } from "@/components/PageHeader";
-import { DashboardAiPanel } from "@/components/DashboardAiPanel";
 import { formatCurrency } from "@/lib/utils";
 import type { SharedDashboardData, DashboardMode } from "@/lib/dashboard-data";
 import { ActionForm } from "@/components/ActionForm";
 import {
-  createTaskAction,
   generateAiBriefingAction,
   recomputeStaffScoresAction,
   runSmartInventoryScanAction,
@@ -18,35 +16,47 @@ import {
 export type AdminDashLabels = {
   welcome: string;
   subtitle: string;
-  salesToday: string;
-  unpaidInvoices: string;
-  peopleLabel: string;
-  lowStock: string;
-  cashflow: string;
-  income: string;
-  expense: string;
-  net: string;
-  aiTitle: string;
-  alertsInbox: string;
+  /** Oversight header strip */
+  monthRevenue: string;
+  vsLastMonth: string;
+  outstanding: string;
+  overdue: string;
+  teamSize: string;
+  branches: string;
+  openAlerts: string;
+  /** Sections */
+  revenueTrend: string;
   staffRanking: string;
   noScores: string;
   recomputeScores: string;
+  staffActivity: string;
+  noActivity: string;
+  alertsInbox: string;
+  noAlerts: string;
+  reviewAlerts: string;
   scanInventory: string;
+  cashflowPlanning: string;
+  income: string;
+  expense: string;
+  net: string;
+  runway: string;
+  openAccounting: string;
+  marketing: string;
   briefing: string;
   generateBriefing: string;
-  tasks: string;
-  createTask: string;
-  taskTitle: string;
-  adminLinks: string;
-  branches: string;
-  accounting: string;
-  lhdn: string;
+  delegatedTasks: string;
+  noTasks: string;
+  manageTasks: string;
+  adminTools: string;
   adminZone: string;
-  marketing: string;
+  addBranch: string;
+  lhdn: string;
+  teamPage: string;
+  performancePage: string;
   chatTitle: string;
   chatPlaceholder: string;
   chatSend: string;
-  activity: string;
+  demoNotice: string;
 };
 
 export function AdminDashboardView({
@@ -61,96 +71,98 @@ export function AdminDashboardView({
   locale: string;
 }) {
   const demo = mode === "demo";
+  const live = !demo && data.opsBrainEnabled;
   const [pending, startTransition] = useTransition();
-  const net = data.kpi.income - data.kpi.expense;
+
+  const insights = data.adminInsights;
+  const monthIncome = insights?.monthIncome ?? data.kpi.income;
+  const monthExpense = insights?.monthExpense ?? data.kpi.expense;
+  const net = monthIncome - monthExpense;
+  const prev = insights?.prevMonthIncome ?? 0;
+  const deltaPct = prev > 0 ? ((monthIncome - prev) / prev) * 100 : null;
+  const receivables = insights?.receivables ?? { current: 0, overdue: 0, overdueCount: 0 };
+  const highAlerts = data.dbAlerts.filter((a) => a.severity === "high").length;
+  const trend = insights?.salesTrend ?? [];
+  const peak = Math.max(1, ...trend.map((t) => t.amount));
+  const burnPerDay = monthExpense / 30;
+  const runwayDays = burnPerDay > 0 ? Math.max(0, Math.round(net / burnPerDay)) : null;
 
   return (
-    <div className="stack dash-admin" data-dash-mode={mode} data-dash-role="admin" style={{ gap: "1.25rem" }}>
+    <div
+      className="stack dash-admin"
+      data-dash-mode={mode}
+      data-dash-role="admin"
+      style={{ gap: "1.1rem" }}
+    >
       <PageHeader title={`${labels.welcome}, ${data.welcomeName}`} subtitle={labels.subtitle} />
 
-      <div
-        className="dash-kpi-ai-row"
-        style={{ display: "flex", flexWrap: "wrap", gap: "0.85rem", alignItems: "stretch" }}
-      >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: "0.65rem",
-            flex: "1 1 280px",
-            minWidth: 0,
-          }}
-        >
-          <div className="surface kpi" style={{ margin: 0 }}>
-            <div className="kpi-label">{labels.salesToday}</div>
-            <div className="kpi-value">{formatCurrency(data.kpi.salesToday)}</div>
-          </div>
-          <div className="surface kpi" style={{ margin: 0 }}>
-            <div className="kpi-label">{labels.unpaidInvoices}</div>
-            <div className="kpi-value">{data.kpi.unpaidCount}</div>
-          </div>
-          <div className="surface kpi" style={{ margin: 0 }}>
-            <div className="kpi-label">{labels.peopleLabel}</div>
-            <div className="kpi-value">{data.kpi.customerCount}</div>
-          </div>
-          <div className="surface kpi" style={{ margin: 0 }}>
-            <div className="kpi-label">{labels.lowStock}</div>
-            <div className="kpi-value">{data.kpi.lowStockCount}</div>
-          </div>
-        </div>
-        <DashboardAiPanel
-          title={labels.aiTitle}
-          opsBrainEnabled={data.opsBrainEnabled}
-          dbAlerts={data.dbAlerts}
-          includeHighSeverity
-          canResolveAlerts={!demo && data.opsBrainEnabled}
-          data={{
-            niche: data.niche,
-            patients: data.kpi.customerCount,
-            unpaidInvoices: data.kpi.unpaidCount,
-            lowStock: data.kpi.lowStockCount,
-            lowStockNames: data.kpi.lowStockNames,
-            income: data.kpi.income,
-            expense: data.kpi.expense,
-            appointmentsToday: data.kpi.appointmentsToday,
-            lhdnPending: data.kpi.lhdnPending,
-            orgHasTin: data.kpi.orgHasTin,
-          }}
-        />
-      </div>
+      {demo ? <div className="callout">{labels.demoNotice}</div> : null}
 
-      <div className="surface" style={{ padding: "1rem" }}>
-        <strong>{labels.cashflow}</strong>
-        <div className="row" style={{ gap: "1.5rem", marginTop: 8, flexWrap: "wrap" }}>
-          <span>
-            {labels.income}: <strong>{formatCurrency(data.kpi.income)}</strong>
-          </span>
-          <span>
-            {labels.expense}: <strong>{formatCurrency(data.kpi.expense)}</strong>
-          </span>
-          <span>
-            {labels.net}:{" "}
-            <strong style={{ color: net >= 0 ? "var(--success, #16a34a)" : "var(--danger)" }}>
-              {formatCurrency(net)}
-            </strong>
+      <section className="dash-admin-strip">
+        <div className="surface dash-stat">
+          <span className="kpi-label">{labels.monthRevenue}</span>
+          <strong className="kpi-value">{formatCurrency(monthIncome)}</strong>
+          <span className="muted" style={{ fontSize: ".8rem" }}>
+            {labels.vsLastMonth}:{" "}
+            {deltaPct === null ? "—" : `${deltaPct >= 0 ? "+" : ""}${deltaPct.toFixed(1)}%`}
           </span>
         </div>
-      </div>
+        <div className="surface dash-stat">
+          <span className="kpi-label">{labels.outstanding}</span>
+          <strong className="kpi-value">
+            {formatCurrency(receivables.current + receivables.overdue)}
+          </strong>
+          <span className="muted" style={{ fontSize: ".8rem" }}>
+            {labels.overdue}: {formatCurrency(receivables.overdue)} ({receivables.overdueCount})
+          </span>
+        </div>
+        <div className="surface dash-stat">
+          <span className="kpi-label">{labels.teamSize}</span>
+          <strong className="kpi-value">{insights?.teamSize ?? data.staffScores.length}</strong>
+          <span className="muted" style={{ fontSize: ".8rem" }}>
+            {labels.branches}: {insights?.branchCount ?? 0}
+          </span>
+        </div>
+        <div className="surface dash-stat">
+          <span className="kpi-label">{labels.openAlerts}</span>
+          <strong className="kpi-value" style={{ color: highAlerts ? "var(--danger)" : undefined }}>
+            {data.dbAlerts.length}
+          </strong>
+          <span className="muted" style={{ fontSize: ".8rem" }}>
+            high: {highAlerts}
+          </span>
+        </div>
+      </section>
+
+      <section className="surface" style={{ padding: "1rem" }}>
+        <strong>{labels.revenueTrend}</strong>
+        {trend.length ? (
+          <div className="dash-trend">
+            {trend.map((point) => (
+              <div key={point.day} className="dash-trend-col" title={formatCurrency(point.amount)}>
+                <div
+                  className="dash-trend-bar"
+                  style={{ height: `${Math.round((point.amount / peak) * 100)}%` }}
+                />
+                <span className="dash-trend-label">{point.day.slice(5)}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="muted">—</p>
+        )}
+      </section>
 
       <div className="fluid-grid">
-        <div className="surface" style={{ padding: "1rem" }}>
-          <div className="row" style={{ justifyContent: "space-between" }}>
+        <section className="surface" style={{ padding: "1rem" }}>
+          <div className="row" style={{ justifyContent: "space-between", gap: 8 }}>
             <strong>{labels.staffRanking}</strong>
-            {!demo && data.opsBrainEnabled ? (
+            {live ? (
               <button
                 type="button"
                 className="btn btn-ghost"
                 disabled={pending}
-                onClick={() =>
-                  startTransition(async () => {
-                    await recomputeStaffScoresAction();
-                  })
-                }
+                onClick={() => startTransition(async () => void (await recomputeStaffScoresAction()))}
               >
                 {labels.recomputeScores}
               </button>
@@ -159,52 +171,160 @@ export function AdminDashboardView({
           {!data.staffScores.length ? (
             <p className="muted">{labels.noScores}</p>
           ) : (
-            <ol style={{ margin: "0.75rem 0 0", paddingLeft: "1.2rem" }}>
-              {data.staffScores.map((s) => (
-                <li key={s.userId} style={{ marginBottom: 6 }}>
-                  <strong>{s.name}</strong> — {s.score} pts · {formatCurrency(s.salesAmount)} · refund{" "}
-                  {s.refundRate.toFixed(1)}%
-                </li>
-              ))}
-            </ol>
+            <table className="table" style={{ marginTop: 10 }}>
+              <tbody>
+                {data.staffScores.map((s, i) => (
+                  <tr key={s.userId}>
+                    <td style={{ width: 28 }}>{i + 1}</td>
+                    <td>
+                      <strong>{s.name}</strong>
+                      <div className="muted" style={{ fontSize: ".78rem" }}>
+                        {s.transactionCount} txn · refund {s.refundRate.toFixed(1)}%
+                      </div>
+                    </td>
+                    <td style={{ textAlign: "right" }}>
+                      <strong>{s.score}</strong>
+                      <div className="muted" style={{ fontSize: ".78rem" }}>
+                        {formatCurrency(s.salesAmount)}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
-        </div>
+          {!demo ? (
+            <Link href="/team" className="btn btn-ghost" style={{ marginTop: 10 }}>
+              {labels.teamPage}
+            </Link>
+          ) : null}
+        </section>
 
-        <div className="surface" style={{ padding: "1rem" }}>
-          <strong>{labels.alertsInbox}</strong>
-          <ul style={{ margin: "0.75rem 0 0", paddingLeft: "1.1rem" }}>
-            {data.dbAlerts.length ? (
-              data.dbAlerts.map((a) => (
-                <li key={a.id} style={{ marginBottom: 6 }}>
-                  <span className="badge">{a.severity}</span> {a.title}
+        <section className="surface" style={{ padding: "1rem" }}>
+          <strong>{labels.staffActivity}</strong>
+          <ol className="dash-timeline">
+            {(insights?.staffActivity?.length
+              ? insights.staffActivity
+              : data.activitySummary.map((line) => ({ actor: "", summary: line, at: "" }))
+            ).length ? (
+              (insights?.staffActivity?.length
+                ? insights.staffActivity
+                : data.activitySummary.map((line) => ({ actor: "", summary: line, at: "" }))
+              ).map((entry, i) => (
+                <li key={i}>
+                  <span className="dash-timeline-dot" />
+                  <div>
+                    {entry.actor ? <strong>{entry.actor}</strong> : null}{" "}
+                    <span>{entry.summary}</span>
+                    {entry.at ? (
+                      <div className="muted" style={{ fontSize: ".75rem" }}>
+                        {new Date(entry.at).toLocaleString(locale === "ms" ? "ms-MY" : "en-MY")}
+                      </div>
+                    ) : null}
+                  </div>
                 </li>
               ))
             ) : (
-              <li className="muted">—</li>
+              <li className="muted">{labels.noActivity}</li>
             )}
-          </ul>
-          {!demo && data.opsBrainEnabled ? (
-            <button
-              type="button"
-              className="btn btn-soft"
-              style={{ marginTop: 10 }}
-              disabled={pending}
-              onClick={() =>
-                startTransition(async () => {
-                  await runSmartInventoryScanAction();
-                })
-              }
-            >
-              {labels.scanInventory}
-            </button>
-          ) : null}
-        </div>
+          </ol>
+        </section>
       </div>
 
-      <div className="surface" style={{ padding: "1rem" }}>
+      <section className="surface" style={{ padding: "1rem" }}>
+        <div className="row" style={{ justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+          <strong>{labels.alertsInbox}</strong>
+          <div className="row" style={{ gap: 8 }}>
+            {live ? (
+              <button
+                type="button"
+                className="btn btn-ghost"
+                disabled={pending}
+                onClick={() => startTransition(async () => void (await runSmartInventoryScanAction()))}
+              >
+                {labels.scanInventory}
+              </button>
+            ) : null}
+            {!demo ? (
+              <Link href="/alerts" className="btn btn-soft">
+                {labels.reviewAlerts}
+              </Link>
+            ) : null}
+          </div>
+        </div>
+        {data.dbAlerts.length ? (
+          <ul className="dash-alert-list">
+            {data.dbAlerts.slice(0, 6).map((a) => (
+              <li key={a.id} data-severity={a.severity}>
+                <span className="badge">{a.severity}</span>
+                <div>
+                  <strong>{a.title}</strong>
+                  <div className="muted" style={{ fontSize: ".8rem" }}>
+                    {a.message}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="muted">{labels.noAlerts}</p>
+        )}
+      </section>
+
+      <div className="fluid-grid">
+        <section className="surface" style={{ padding: "1rem" }}>
+          <strong>{labels.cashflowPlanning}</strong>
+          <dl className="dash-figures">
+            <div>
+              <dt>{labels.income}</dt>
+              <dd>{formatCurrency(monthIncome)}</dd>
+            </div>
+            <div>
+              <dt>{labels.expense}</dt>
+              <dd>{formatCurrency(monthExpense)}</dd>
+            </div>
+            <div>
+              <dt>{labels.net}</dt>
+              <dd style={{ color: net >= 0 ? "var(--success, #16a34a)" : "var(--danger)" }}>
+                {formatCurrency(net)}
+              </dd>
+            </div>
+            <div>
+              <dt>{labels.runway}</dt>
+              <dd>{runwayDays === null ? "—" : `${runwayDays}d`}</dd>
+            </div>
+          </dl>
+          {!demo ? (
+            <div className="row" style={{ gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+              <Link href="/cashflow" className="btn btn-soft">
+                {labels.cashflowPlanning}
+              </Link>
+              <Link href="/accounting" className="btn btn-ghost">
+                {labels.openAccounting}
+              </Link>
+            </div>
+          ) : null}
+        </section>
+
+        <section className="surface" style={{ padding: "1rem" }}>
+          <strong>{labels.marketing}</strong>
+          <ul style={{ margin: "0.6rem 0 0", paddingLeft: "1.1rem", lineHeight: 1.7 }}>
+            {(insights?.marketingIdeas ?? data.marketingIdeas).map((idea, i) => (
+              <li key={i}>{idea}</li>
+            ))}
+          </ul>
+          {!demo ? (
+            <Link href="/marketing" className="btn btn-ghost" style={{ marginTop: 10 }}>
+              {labels.marketing}
+            </Link>
+          ) : null}
+        </section>
+      </div>
+
+      <section className="surface" style={{ padding: "1rem" }}>
         <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
           <strong>{labels.briefing}</strong>
-          {!demo && data.opsBrainEnabled ? (
+          {live ? (
             <button
               type="button"
               className="btn btn-primary"
@@ -221,81 +341,73 @@ export function AdminDashboardView({
             </button>
           ) : null}
         </div>
-        <p style={{ marginTop: 10, lineHeight: 1.5 }}>{data.briefing || "—"}</p>
-      </div>
+        <p style={{ marginTop: 10, lineHeight: 1.6 }}>{data.briefing || "—"}</p>
+      </section>
 
       <div className="fluid-grid">
-        <div className="surface" style={{ padding: "1rem" }}>
-          <strong>{labels.tasks}</strong>
-          <ul style={{ margin: "0.5rem 0", paddingLeft: "1.1rem" }}>
-            {data.tasks.map((t) => (
-              <li key={t.id}>
-                {t.title} <span className="badge">{t.status}</span>
-              </li>
-            ))}
-          </ul>
+        <section className="surface" style={{ padding: "1rem" }}>
+          <strong>{labels.delegatedTasks}</strong>
+          {data.tasks.length ? (
+            <ul style={{ margin: "0.6rem 0 0", paddingLeft: "1.1rem", lineHeight: 1.7 }}>
+              {data.tasks.slice(0, 6).map((t) => (
+                <li key={t.id}>
+                  {t.title} <span className="badge">{t.status}</span>
+                  {t.assignedToName ? (
+                    <span className="muted"> · {t.assignedToName}</span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="muted">{labels.noTasks}</p>
+          )}
           {!demo ? (
-            <ActionForm action={createTaskAction} className="stack" style={{ marginTop: 8 }}>
-              <input name="title" className="input" placeholder={labels.taskTitle} required />
-              <button type="submit" className="btn btn-soft">
-                {labels.createTask}
-              </button>
-            </ActionForm>
+            <Link href="/tasks" className="btn btn-ghost" style={{ marginTop: 10 }}>
+              {labels.manageTasks}
+            </Link>
           ) : null}
-        </div>
+        </section>
 
-        <div className="surface" style={{ padding: "1rem" }}>
-          <strong>{labels.adminLinks}</strong>
-          <div className="stack" style={{ gap: 8, marginTop: 10 }}>
-            {!demo ? (
+        <section className="surface" style={{ padding: "1rem" }}>
+          <strong>{labels.adminTools}</strong>
+          <div className="dash-admin-links">
+            {demo ? (
+              <>
+                <span className="btn btn-ghost" aria-disabled>
+                  {labels.adminZone}
+                </span>
+                <span className="btn btn-ghost" aria-disabled>
+                  {labels.addBranch}
+                </span>
+                <span className="btn btn-ghost" aria-disabled>
+                  {labels.performancePage}
+                </span>
+                <span className="btn btn-ghost" aria-disabled>
+                  {labels.lhdn}
+                </span>
+              </>
+            ) : (
               <>
                 <Link href="/admin" className="btn btn-soft">
                   {labels.adminZone}
                 </Link>
-                <Link href="/admin" className="btn btn-ghost">
-                  {labels.branches}
+                <Link href="/admin#branches" className="btn btn-ghost">
+                  {labels.addBranch}
                 </Link>
-                <Link href="/accounting" className="btn btn-ghost">
-                  {labels.accounting}
+                <Link href="/performance" className="btn btn-ghost">
+                  {labels.performancePage}
                 </Link>
                 <Link href="/lhdn" className="btn btn-ghost">
                   {labels.lhdn}
                 </Link>
-                <Link href="/alerts" className="btn btn-ghost">
-                  {labels.alertsInbox}
-                </Link>
-                <Link href="/cycle-count" className="btn btn-ghost">
-                  Cycle count
-                </Link>
               </>
-            ) : (
-              <span className="muted">Demo links</span>
             )}
           </div>
-          <div style={{ marginTop: 14 }}>
-            <strong>{labels.marketing}</strong>
-            <ul style={{ margin: "0.5rem 0 0", paddingLeft: "1.1rem" }}>
-              {data.marketingIdeas.map((idea, i) => (
-                <li key={i}>{idea}</li>
-              ))}
-            </ul>
-          </div>
-        </div>
+        </section>
       </div>
 
-      <div className="surface" style={{ padding: "1rem" }}>
-        <strong>{labels.activity}</strong>
-        <ul style={{ margin: "0.5rem 0 0", paddingLeft: "1.1rem" }}>
-          {data.activitySummary.length ? (
-            data.activitySummary.map((line, i) => <li key={i}>{line}</li>)
-          ) : (
-            <li className="muted">—</li>
-          )}
-        </ul>
-      </div>
-
-      {!demo && data.opsBrainEnabled ? (
-        <div className="surface" style={{ padding: "1rem" }}>
+      {live ? (
+        <section className="surface" style={{ padding: "1rem" }}>
           <strong>{labels.chatTitle}</strong>
           <ActionForm action={sendOwnerChatAction} className="stack" style={{ marginTop: 10 }}>
             <input type="hidden" name="locale" value={locale} />
@@ -310,7 +422,7 @@ export function AdminDashboardView({
               {labels.chatSend}
             </button>
           </ActionForm>
-        </div>
+        </section>
       ) : null}
     </div>
   );

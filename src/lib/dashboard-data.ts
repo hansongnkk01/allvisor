@@ -43,6 +43,19 @@ export type TaskRow = {
   assignedToName?: string | null;
 };
 
+/** Admin-only oversight slices — never loaded for the staff view. */
+export type AdminInsights = {
+  salesTrend: Array<{ day: string; amount: number }>;
+  monthIncome: number;
+  monthExpense: number;
+  prevMonthIncome: number;
+  receivables: { current: number; overdue: number; overdueCount: number };
+  staffActivity: Array<{ actor: string; summary: string; at: string }>;
+  teamSize: number;
+  branchCount: number;
+  marketingIdeas: string[];
+};
+
 export type SharedDashboardData = {
   niche: Niche;
   orgName: string;
@@ -73,4 +86,6 @@ export type SharedDashboardData = {
   briefing: string | null;
   activitySummary: string[];
   marketingIdeas: string[];
+  /** Present only when the admin view loaded the data. */
+  adminInsights?: AdminInsights;
 };

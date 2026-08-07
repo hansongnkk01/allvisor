@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { dayBoundsMY, formatDayKeyMY } from "@/lib/datetime-my";
 import { isOpsBrainEnabled } from "@/lib/ops-brain/enabled";
 import type { OrgContext } from "@/lib/types";
-import type { SharedDashboardData } from "@/lib/dashboard-data";
+import type { AdminInsights, SharedDashboardData } from "@/lib/dashboard-data";
 import type { DbAlertTip } from "@/components/DashboardAiPanel";
 
 type Risk = "high" | "medium" | "low" | null;
@@ -267,14 +267,22 @@ export async function loadLiveDashboardData(
     };
   };
 
-  const marketingIdeas =
-    niche === "tuition"
-      ? ["Promote term packages on WhatsApp", "Offer sibling discount this month"]
-      : niche === "clinic"
-        ? ["Remind overdue checkups", "Bundle wellness packages"]
-        : ["Weekend promo for slow SKUs", "Bundle top sellers with add-ons"];
-
+  const marketingIdeas = buildMarketingIdeas(niche);
   const activities = activitiesRes.data || [];
+
+  let adminInsights: AdminInsights | undefined;
+  if (opts.forAdmin) {
+    adminInsights = await loadAdminInsights({
+      supabase,
+      orgId,
+      monthStart,
+      income,
+      expense,
+      activities,
+      marketingIdeas,
+      teamSize: profiles.length,
+    });
+  }
 
   return {
     unpaidTotal,
@@ -333,5 +341,119 @@ export async function loadLiveDashboardData(
       (a) => `${a.actor_name || "Staff"}: ${a.summary}`
     ),
     marketingIdeas,
+    adminInsights,
+  };
+}
+
+function buildMarketingIdeas(niche: string): string[] {
+  if (niche === "tuition") {
+    return [
+      "Promote next-term packages to parents on WhatsApp",
+      "Sibling discount for families with 2+ students",
+      "Publish top improvement stories after assessments",
+    ];
+  }
+  if (niche === "clinic" || niche === "vet" || niche === "physio") {
+    return [
+      "Recall list: patients with no visit in 6 months",
+      "Bundle wellness or follow-up packages",
+      "Collect Google reviews after completed visits",
+    ];
+  }
+  return [
+    "Weekend promo to clear slow-moving SKUs",
+    "Bundle top sellers with a low-margin add-on",
+    "Win-back message to customers inactive 60+ days",
+  ];
+}
+
+async function loadAdminInsights(input: {
+  supabase: Awaited<ReturnType<typeof createClient>>;
+  orgId: string;
+  monthStart: string;
+  income: number;
+  expense: number;
+  activities: Array<{ summary: string; actor_name: string | null; created_at?: string }>;
+  marketingIdeas: string[];
+  teamSize: number;
+}): Promise<AdminInsights> {
+  const { supabase, orgId, monthStart } = input;
+  const trendStart = new Date(Date.now() - 6 * 86400000);
+  trendStart.setHours(0, 0, 0, 0);
+
+  const prevMonthDate = new Date(`${monthStart}T00:00:00+08:00`);
+  prevMonthDate.setMonth(prevMonthDate.getMonth() - 1);
+  const prevMonthStart = formatDayKeyMY(prevMonthDate).slice(0, 7) + "-01";
+
+  const [trendRes, prevLedgerRes, invoiceAgeRes, branchRes] = await Promise.all([
+    supabase
+      .from("payments")
+      .select("amount, paid_at")
+      .eq("organization_id", orgId)
+      .gte("paid_at", trendStart.toISOString())
+      .limit(1000),
+    supabase
+      .from("ledger_entries")
+      .select("entry_type, amount")
+      .eq("organization_id", orgId)
+      .gte("entry_date", prevMonthStart)
+      .lt("entry_date", monthStart),
+    supabase
+      .from("invoices")
+      .select("total, amount_paid, issue_date, created_at")
+      .eq("organization_id", orgId)
+      .in("status", ["unpaid", "partial"])
+      .limit(500),
+    supabase
+      .from("branch_links")
+      .select("id")
+      .eq("organization_id", orgId)
+      .limit(50),
+  ]);
+
+  const byDay = new Map<string, number>();
+  for (let i = 6; i >= 0; i -= 1) {
+    const d = new Date(Date.now() - i * 86400000);
+    byDay.set(formatDayKeyMY(d), 0);
+  }
+  for (const p of trendRes.data || []) {
+    const key = formatDayKeyMY(new Date(p.paid_at as string));
+    if (byDay.has(key)) byDay.set(key, (byDay.get(key) || 0) + Number(p.amount || 0));
+  }
+
+  const prevLedger = prevLedgerRes.data || [];
+  const prevMonthIncome = prevLedger
+    .filter((e) => e.entry_type === "income")
+    .reduce((s, e) => s + Number(e.amount), 0);
+
+  const cutoff = Date.now() - 30 * 86400000;
+  let current = 0;
+  let overdue = 0;
+  let overdueCount = 0;
+  for (const inv of invoiceAgeRes.data || []) {
+    const outstanding = Math.max(0, Number(inv.total) - Number(inv.amount_paid || 0));
+    const issued = new Date((inv.issue_date as string) || (inv.created_at as string)).getTime();
+    if (issued < cutoff) {
+      overdue += outstanding;
+      overdueCount += 1;
+    } else {
+      current += outstanding;
+    }
+  }
+
+  return {
+    salesTrend: [...byDay.entries()].map(([day, amount]) => ({ day, amount })),
+    monthIncome: input.income,
+    monthExpense: input.expense,
+    prevMonthIncome,
+    receivables: { current, overdue, overdueCount },
+    staffActivity: input.activities.map((a) => ({
+      actor: a.actor_name || "Staff",
+      summary: a.summary,
+      at: a.created_at || "",
+    })),
+    teamSize: input.teamSize,
+    branchCount: (branchRes.data || []).length,
+    marketingIdeas: input.marketingIdeas,
   };
 }

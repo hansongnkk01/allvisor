@@ -38,6 +38,14 @@ import {
   WorkshopVehiclesDemo,
 } from "@/components/HomeDemoWorkshopPages";
 import { VetPetsDemo } from "@/components/HomeDemoVetPages";
+import {
+  AlertsDemo,
+  CashflowDemo,
+  MarketingDemo,
+  PerformanceDemo,
+  TasksDemo,
+  TeamDemo,
+} from "@/components/HomeDemoAdminPages";
 import { SalonCommissionsDemo } from "@/components/HomeDemoSalonPages";
 import { PharmacyBatchesDemo } from "@/components/HomeDemoPharmacyPages";
 import { PhysioPackagesDemo } from "@/components/HomeDemoPhysioPages";
@@ -86,6 +94,8 @@ type Props = {
   orgName: string;
   entityTitle: string;
   scheduleLabel: string;
+  /** Which demo persona is browsing — admin unlocks the oversight pages. */
+  role?: "admin" | "staff";
 };
 
 function DemoNoopForm({
@@ -1087,8 +1097,34 @@ function AdminDemo({ niche, orgName }: { niche: Niche; orgName: string }) {
 }
 
 /** Rich frontend-only pages that mount the same client UI as the real app. */
-export function HomeDemoPage({ view, niche, orgName, entityTitle, scheduleLabel }: Props) {
+export function HomeDemoPage({
+  view,
+  niche,
+  orgName,
+  entityTitle,
+  scheduleLabel,
+  role = "staff",
+}: Props) {
+  const locale = useLocale();
+  const isAdmin = role === "admin";
   const content = (() => {
+    if (view === "alerts") return <AlertsDemo niche={niche} orgName={orgName} isAdmin={isAdmin} />;
+    if (view === "tasks") return <TasksDemo niche={niche} orgName={orgName} isAdmin={isAdmin} />;
+    if (isAdmin) {
+      if (view === "team") return <TeamDemo niche={niche} orgName={orgName} />;
+      if (view === "performance") return <PerformanceDemo niche={niche} orgName={orgName} />;
+      if (view === "cashflow") return <CashflowDemo orgName={orgName} />;
+      if (view === "marketing") {
+        return (
+          <MarketingDemo
+            niche={niche}
+            orgName={orgName}
+            entityTitle={entityTitle}
+            locale={locale}
+          />
+        );
+      }
+    }
     if (view === "customers") {
       return <CustomersDemo niche={niche} orgName={orgName} entityTitle={entityTitle} />;
     }

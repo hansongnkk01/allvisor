@@ -171,11 +171,39 @@ export function buildDemoSharedDashboard(
       role === "admin"
         ? ["Ahmad: Voided ticket", "Siti: Closed cash session", "System: Low stock alert"]
         : [],
-    marketingIdeas:
-      niche === "tuition"
-        ? ["Promote term packages", "Sibling discount"]
-        : niche === "clinic"
-          ? ["Remind overdue checkups", "Wellness packages"]
-          : ["Weekend promo", "Bundle bestsellers"],
+    marketingIdeas: demoMarketingIdeas(niche),
+    adminInsights: role === "admin" ? buildDemoAdminInsights(niche) : undefined,
+  };
+}
+
+function demoMarketingIdeas(niche: Niche): string[] {
+  if (niche === "tuition") return ["Promote term packages", "Sibling discount", "Share result stories"];
+  if (niche === "clinic" || niche === "vet" || niche === "physio") {
+    return ["Remind overdue checkups", "Wellness packages", "Collect Google reviews"];
+  }
+  return ["Weekend promo", "Bundle bestsellers", "Win-back inactive customers"];
+}
+
+function buildDemoAdminInsights(niche: Niche) {
+  const pattern = [820, 1140, 960, 1480, 1720, 1310, 1280];
+  const salesTrend = pattern.map((amount, i) => {
+    const d = new Date(Date.now() - (6 - i) * 86400000);
+    return { day: d.toISOString().slice(0, 10), amount };
+  });
+
+  return {
+    salesTrend,
+    monthIncome: 12000,
+    monthExpense: 7400,
+    prevMonthIncome: 10650,
+    receivables: { current: 3200, overdue: 1450, overdueCount: 3 },
+    staffActivity: [
+      { actor: "Ahmad", summary: "Voided ticket #1042", at: new Date(Date.now() - 3600000).toISOString() },
+      { actor: "Siti", summary: "Closed cash session (variance RM12)", at: new Date(Date.now() - 7200000).toISOString() },
+      { actor: "System", summary: "Low stock alert raised", at: new Date(Date.now() - 10800000).toISOString() },
+    ],
+    teamSize: 6,
+    branchCount: 2,
+    marketingIdeas: demoMarketingIdeas(niche),
   };
 }

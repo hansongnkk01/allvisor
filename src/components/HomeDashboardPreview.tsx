@@ -47,12 +47,18 @@ import {
   ScanBarcode,
   ChevronLeft,
   ChevronRight,
+  ShieldAlert,
+  ListChecks,
+  UsersRound,
+  TrendingUp,
+  PiggyBank,
+  Megaphone,
 } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { ClinicLogoMark } from "@/components/ClinicLogoMark";
 import { StaffDashboardView } from "@/components/dashboards/StaffDashboardView";
 import { AdminDashboardView } from "@/components/dashboards/AdminDashboardView";
-import { getNavSectionsForNiche, vocabLabels } from "@/lib/niches";
+import { getNavSectionsForRole, vocabLabels } from "@/lib/niches";
 import { NAV_HREF } from "@/lib/niche-capabilities";
 import { nicheThemeAttr } from "@/lib/utils";
 import { HomeDemoPage } from "@/components/HomeDemoPages";
@@ -118,6 +124,13 @@ const icons: Record<string, ReactNode> = {
   matters: <Scale size={18} />,
   events: <PartyPopper size={18} />,
   plots: <Sprout size={18} />,
+  alerts: <ShieldAlert size={18} />,
+  tasks: <ListChecks size={18} />,
+  team: <UsersRound size={18} />,
+  performance: <TrendingUp size={18} />,
+  cashflow: <PiggyBank size={18} />,
+  marketing: <Megaphone size={18} />,
+  cycleCount: <ScanBarcode size={18} />,
 };
 
 function SectionLabel({ children, first }: { children: ReactNode; first?: boolean }) {
@@ -178,7 +191,10 @@ export function HomeDashboardPreview({
   const [demoRole, setDemoRole] = useState<"staff" | "admin">("staff");
   const orgName = DEMO_ORG[niche];
   const V = vocabLabels(niche, locale);
-  const sections = useMemo(() => getNavSectionsForNiche(niche), [niche]);
+  const sections = useMemo(
+    () => getNavSectionsForRole(niche, demoRole === "admin"),
+    [niche, demoRole]
+  );
   const demoDashData = useMemo(
     () => buildDemoSharedDashboard(niche, demoRole),
     [niche, demoRole]
@@ -357,9 +373,17 @@ export function HomeDashboardPreview({
     return tLanding(LANDING_TITLE_KEY[id] as "clinicTitle");
   }
 
+  function switchDemoRole(next: "admin" | "staff") {
+    setDemoRole(next);
+    setView("dashboard");
+  }
+
   function labelFor(key: string) {
     if (key === "customers") return V.entityTitle;
     if (key === "appointments") return V.schedule;
+    if (key === "dashboard") {
+      return demoRole === "admin" ? tNav("adminDashboard") : tNav("staffDashboard");
+    }
     try {
       return tNav(key as "dashboard");
     } catch {
@@ -532,7 +556,7 @@ export function HomeDashboardPreview({
                         </button>
                       );
                     })}
-                    {section.id === "admin" ? (
+                    {section.id === "admin" || section.id === "business" ? (
                       <button
                         type="button"
                         className="btn btn-ghost"
@@ -576,14 +600,14 @@ export function HomeDashboardPreview({
                     <button
                       type="button"
                       className={demoRole === "staff" ? "btn btn-primary" : "btn btn-ghost"}
-                      onClick={() => setDemoRole("staff")}
+                      onClick={() => switchDemoRole("staff")}
                     >
                       Staff demo
                     </button>
                     <button
                       type="button"
                       className={demoRole === "admin" ? "btn btn-primary" : "btn btn-ghost"}
-                      onClick={() => setDemoRole("admin")}
+                      onClick={() => switchDemoRole("admin")}
                     >
                       Admin demo
                     </button>
@@ -593,7 +617,7 @@ export function HomeDashboardPreview({
                       mode="demo"
                       data={demoDashData}
                       locale={locale}
-                      labels={adminDashLabelsFromT((k) => tDash(k as "welcome"), V.entityTitle)}
+                      labels={adminDashLabelsFromT((k) => tDash(k as "welcome"))}
                     />
                   ) : (
                     <StaffDashboardView
@@ -610,6 +634,7 @@ export function HomeDashboardPreview({
                   view={view}
                   niche={niche}
                   orgName={orgName}
+                  role={demoRole}
                   entityTitle={labelFor("customers")}
                   scheduleLabel={labelFor("appointments")}
                 />

@@ -2,7 +2,6 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { redirect } from "@/i18n/navigation";
 import { requireOrg } from "@/lib/org";
 import { canAccessAdmin } from "@/lib/roles";
-import { vocabLabels } from "@/lib/niches";
 import { loadLiveDashboardData } from "@/lib/load-live-dashboard";
 import { AdminDashboardView } from "@/components/dashboards/AdminDashboardView";
 import { adminDashLabelsFromT } from "@/lib/dashboard-labels";
@@ -21,7 +20,6 @@ export default async function AdminDashboardPage({
   }
 
   const t = await getTranslations("Dashboard");
-  const V = vocabLabels(ctx.organization.niche, locale);
   const data = await loadLiveDashboardData(ctx, { forAdmin: true });
 
   return (
@@ -29,7 +27,7 @@ export default async function AdminDashboardPage({
       mode="live"
       data={data}
       locale={locale}
-      labels={adminDashLabelsFromT((k) => t(k as "welcome"), V.entityTitle)}
+      labels={adminDashLabelsFromT((k) => t(k as "welcome"))}
     />
   );
 }

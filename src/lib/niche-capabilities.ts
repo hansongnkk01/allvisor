@@ -59,7 +59,15 @@ export type NicheEngine = "care" | "commerce" | "hybrid" | "fnb" | "hospitality"
 
 export type NavSectionDef = {
   id: string;
-  labelKey: "operationsZone" | "settingsZone" | "adminZone" | "careZone" | "studioZone";
+  labelKey:
+    | "operationsZone"
+    | "settingsZone"
+    | "adminZone"
+    | "careZone"
+    | "studioZone"
+    | "oversightZone"
+    | "businessZone"
+    | "floorZone";
   keys: string[];
 };
 
@@ -732,6 +740,13 @@ export const NAV_HREF: Record<string, string> = {
   matters: "/matters",
   events: "/events",
   plots: "/plots",
+  alerts: "/alerts",
+  tasks: "/tasks",
+  team: "/team",
+  performance: "/performance",
+  cashflow: "/cashflow",
+  marketing: "/marketing",
+  cycleCount: "/cycle-count",
 };
 
 export function getNicheDef(niche: Niche | string | null | undefined): NicheDefinition {
@@ -750,6 +765,62 @@ export function hasCapability(
 
 export function getNavSectionsForNiche(niche: Niche | string | null | undefined): NavSectionDef[] {
   return getNicheDef(niche).navSections;
+}
+
+/** Nav keys only an admin-capable role may see. */
+export const ADMIN_ONLY_NAV_KEYS = new Set([
+  "admin",
+  "accounting",
+  "lhdn",
+  "team",
+  "performance",
+  "cashflow",
+  "marketing",
+]);
+
+/**
+ * Admin and staff get structurally different sidebars.
+ * Admin leads with oversight; staff leads with the floor tools they use daily.
+ */
+export function getNavSectionsForRole(
+  niche: Niche | string | null | undefined,
+  isAdmin: boolean
+): NavSectionDef[] {
+  const nicheSections = getNicheDef(niche).navSections;
+  const floorKeys = nicheSections
+    .flatMap((section) => section.keys)
+    .filter((key) => !ADMIN_ONLY_NAV_KEYS.has(key) && key !== "dashboard");
+
+  if (!isAdmin) {
+    // Keep the niche's own grouping, just strip anything admin-only and add
+    // the two staff-safe Ops Brain entries to the primary section.
+    return nicheSections
+      .map((section, index) => ({
+        ...section,
+        keys: section.keys
+          .filter((key) => !ADMIN_ONLY_NAV_KEYS.has(key))
+          .concat(index === 0 ? ["tasks", "alerts"] : []),
+      }))
+      .filter((section) => section.keys.length > 0);
+  }
+
+  return [
+    {
+      id: "oversight",
+      labelKey: "oversightZone",
+      keys: ["dashboard", "performance", "team", "alerts", "tasks"],
+    },
+    {
+      id: "business",
+      labelKey: "businessZone",
+      keys: ["cashflow", "accounting", "lhdn", "marketing", "admin"],
+    },
+    {
+      id: "floor",
+      labelKey: "floorZone",
+      keys: floorKeys,
+    },
+  ];
 }
 
 export function nichesInGroup(group: NicheDefinition["group"]): Niche[] {

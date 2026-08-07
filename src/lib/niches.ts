@@ -1,6 +1,7 @@
 import type { Niche } from "./types";
 import {
   getNavSectionsForNiche,
+  getNavSectionsForRole,
   getNicheDef,
   hasCapability,
   NICHE_DEFINITIONS,
@@ -53,6 +54,7 @@ export {
   hasCapability,
   getNicheDef,
   getNavSectionsForNiche,
+  getNavSectionsForRole,
   NICHE_DEFINITIONS,
   type Capability,
 };

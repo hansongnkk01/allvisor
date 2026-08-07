@@ -57,6 +57,8 @@ export type StaffDashLabels = {
   appointments: string;
   pos: string;
   inventory: string;
+  alerts: string;
+  cycleCount: string;
 };
 
 export function StaffDashboardView({
@@ -78,10 +80,35 @@ export function StaffDashboardView({
   const canInventory = hasCapability(niche, "inventory");
   const demo = mode === "demo";
   const now = new Date();
+  const openTasks = data.tasks.filter((t) => t.status !== "done").length;
+
+  const quickActions: Array<{ href: string; label: string }> = [];
+  if (canPos) quickActions.push({ href: "/pos", label: labels.pos });
+  if (canAppts) quickActions.push({ href: "/appointments", label: labels.appointments });
+  quickActions.push({ href: "/customers", label: labels.peopleLabel });
+  quickActions.push({ href: "/invoices", label: labels.invoices });
+  if (canInventory) quickActions.push({ href: "/inventory", label: labels.inventory });
+  if (canInventory && data.opsBrainEnabled)
+    quickActions.push({ href: "/cycle-count", label: labels.cycleCount });
+  if (data.opsBrainEnabled) quickActions.push({ href: "/alerts", label: labels.alerts });
 
   return (
     <div className="stack dash-staff" data-dash-mode={mode} data-dash-role="staff" style={{ gap: "1.25rem" }}>
       <PageHeader title={`${labels.welcome}, ${data.welcomeName}`} subtitle={data.orgName} />
+
+      <section className="dash-staff-actions" aria-label={labels.quickActions}>
+        {quickActions.map((action) =>
+          demo ? (
+            <span key={action.href} className="dash-action-tile" aria-disabled>
+              {action.label}
+            </span>
+          ) : (
+            <Link key={action.href} href={action.href} className="dash-action-tile">
+              {action.label}
+            </Link>
+          )
+        )}
+      </section>
 
       <div
         className="dash-kpi-ai-row"
@@ -113,12 +140,14 @@ export function StaffDashboardView({
             <div className="kpi-value">{data.kpi.unpaidCount}</div>
           </div>
           <div className="surface kpi" style={{ margin: 0 }}>
-            <div className="kpi-label">{labels.peopleLabel}</div>
-            <div className="kpi-value">{data.kpi.customerCount}</div>
+            <div className="kpi-label">{labels.myTasks}</div>
+            <div className="kpi-value">{openTasks}</div>
           </div>
           <div className="surface kpi" style={{ margin: 0 }}>
-            <div className="kpi-label">{labels.lowStock}</div>
-            <div className="kpi-value">{data.kpi.lowStockCount}</div>
+            <div className="kpi-label">{canInventory ? labels.lowStock : labels.peopleLabel}</div>
+            <div className="kpi-value">
+              {canInventory ? data.kpi.lowStockCount : data.kpi.customerCount}
+            </div>
           </div>
         </div>
         <DashboardAiPanel
@@ -178,47 +207,6 @@ export function StaffDashboardView({
           openPos: canPos ? labels.closeOpenPos : undefined,
         }}
       />
-
-      <div className="row" style={{ flexWrap: "wrap", gap: 8 }}>
-        <span className="muted">{labels.quickActions}:</span>
-        {!demo ? (
-          <>
-            <Link href="/customers" className="btn btn-soft">
-              {labels.peopleLabel}
-            </Link>
-            <Link href="/invoices" className="btn btn-soft">
-              {labels.invoices}
-            </Link>
-            {canAppts ? (
-              <Link href="/appointments" className="btn btn-soft">
-                {labels.appointments}
-              </Link>
-            ) : null}
-            {canPos ? (
-              <Link href="/pos" className="btn btn-soft">
-                {labels.pos}
-              </Link>
-            ) : null}
-            {canInventory ? (
-              <Link href="/inventory" className="btn btn-soft">
-                {labels.inventory}
-              </Link>
-            ) : null}
-            {data.opsBrainEnabled ? (
-              <Link href="/alerts" className="btn btn-soft">
-                Alerts
-              </Link>
-            ) : null}
-            {canInventory && data.opsBrainEnabled ? (
-              <Link href="/cycle-count" className="btn btn-soft">
-                Cycle count
-              </Link>
-            ) : null}
-          </>
-        ) : (
-          <span className="muted">Demo</span>
-        )}
-      </div>
 
       <div className="surface" style={{ padding: "1rem" }}>
         <strong>{labels.myTasks}</strong>
