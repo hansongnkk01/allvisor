@@ -575,7 +575,12 @@ export function HomeDashboardPreview({
                         </button>
                       );
                     })}
-                    {section.id === "admin" && audience === "staff" ? (
+                    {section.id === "admin" &&
+                    audience === "staff" &&
+                    // Demo parity with the real shell: the exit button only
+                    // appears once the zone is "open" — here, while viewing one
+                    // of the Manager Zone pages.
+                    ["alerts", "admin", "accounting", "lhdn"].includes(view) ? (
                       <button
                         type="button"
                         className="btn btn-ghost"
