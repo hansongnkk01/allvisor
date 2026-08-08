@@ -65,6 +65,8 @@ import { LanguageSwitcher } from "./LanguageSwitcher";
 import { NavigationProgress } from "./NavigationProgress";
 import { ExitAdminZoneButton } from "./ExitAdminZoneButton";
 import { AiChatWidget } from "@/components/AiChatWidget";
+import { GymPresenceNotifier } from "@/components/GymPresenceNotifier";
+import { BranchBar, type BranchOption } from "@/components/BranchBar";
 import { BrandLogo } from "@/components/BrandLogo";
 import { ClinicLogoMark, type LogoShape } from "@/components/ClinicLogoMark";
 import { signOutAction } from "@/app/actions";
@@ -192,6 +194,8 @@ export function AppShell({
   audience = "staff",
   adminZoneUnlocked = false,
   opsBrainEnabled = false,
+  branches,
+  activeOrgId,
   children,
 }: {
   niche: Niche;
@@ -202,6 +206,9 @@ export function AppShell({
   adminZoneUnlocked?: boolean;
   /** Owner chat widget mounts only for the admin audience with Ops Brain on. */
   opsBrainEnabled?: boolean;
+  /** All orgs the account belongs to — the branch bar shows when 2+. */
+  branches?: BranchOption[];
+  activeOrgId?: string;
   children: React.ReactNode;
 }) {
   const t = useTranslations("Nav");
@@ -359,11 +366,17 @@ export function AppShell({
         </aside>
 
         <main className="app-main">
-          <div className="app-content">{children}</div>
+          <div className="app-content">
+            {branches && branches.length > 1 && activeOrgId ? (
+              <BranchBar branches={branches} activeOrgId={activeOrgId} />
+            ) : null}
+            {children}
+          </div>
         </main>
       </div>
 
       {audience === "admin" && opsBrainEnabled ? <AiChatWidget /> : null}
+      {niche === "gym" ? <GymPresenceNotifier /> : null}
     </div>
   );
 }

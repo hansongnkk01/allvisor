@@ -264,10 +264,10 @@ export async function generateBriefing({
   try {
     const { data: org, error: orgError } = await supabase
       .from("organizations")
-      .select("name, ops_brain_enabled, locale_default")
+      .select("name, locale_default")
       .eq("id", orgId)
       .maybeSingle();
-    if (orgError || !org || org.ops_brain_enabled === false) return null;
+    if (orgError || !org) return null;
 
     const ms = String(locale || org.locale_default || "ms").startsWith("ms");
     const context = await buildBriefingContext(supabase, orgId, String(org.name || ""), now);

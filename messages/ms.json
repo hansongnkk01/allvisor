@@ -356,6 +356,7 @@
   },
   "Nav": {
     "dashboard": "Dashboard",
+    "branchBarLabel": "Cawangan",
     "customers": "Pelanggan",
     "patients": "Pesakit",
     "students": "Pelajar",
@@ -1349,7 +1350,23 @@
     "present": "Hadir",
     "yes": "Ya",
     "no": "Tidak",
-    "saveAttendance": "Simpan kehadiran"
+    "saveAttendance": "Simpan kehadiran",
+    "walkInTitle": "Daftar walk-in",
+    "walkInSubtitle": "Customer bayar di kaunter (cth. RM1 = 1 jam). Dashboard akan pop notifikasi bila masa berbayar mereka tamat.",
+    "walkInName": "Nama customer",
+    "walkInAmount": "Bayaran (RM)",
+    "walkInRate": "Minit setiap RM1",
+    "walkInDuration": "Tempoh",
+    "walkInExpiresAt": "tamat pada",
+    "walkInExpiredAt": "tamat sejak",
+    "walkInSubmit": "Daftar masuk",
+    "walkInActive": "Sedang di gym",
+    "walkInNone": "Tiada walk-in aktif sekarang.",
+    "walkInExpired": "Masa tamat — perlu tindakan",
+    "walkInAck": "Selesai",
+    "notifyWalkInTitle": "Masa walk-in tamat",
+    "notifyMembershipTitle": "Membership tamat",
+    "notifyDismiss": "Tutup"
   },
   "TuitionStudent": {
     "welcome": "Selamat datang",

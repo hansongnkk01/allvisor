@@ -1,8 +1,12 @@
 import { cache } from "react";
+import { cookies } from "next/headers";
 import { redirect } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { resolveOrgLogoUrl } from "@/lib/org-logo";
 import type { Membership, Organization, OrgContext, Profile } from "@/lib/types";
+
+/** Cookie set by the branch bar: which of the user's orgs is currently shown. */
+export const ACTIVE_ORG_COOKIE = "allvisor_active_org";
 
 /** Dedupes auth lookup within a single server request. */
 export const getSessionUser = cache(async () => {
@@ -29,61 +33,66 @@ const ORG_SELECT_INVOICE_BASIC = `${ORG_SELECT_BASE}, invoice_prefix, invoice_ne
 const MEMBERSHIP_SELECT = (orgFields: string) =>
   `id, organization_id, user_id, role, created_at, organizations(${orgFields}), profiles(id, full_name, email, locale, created_at)`;
 
+type MembershipRow = {
+  id: string;
+  organization_id: string;
+  user_id: string;
+  role: Membership["role"];
+  created_at: string;
+  organizations: Organization | Organization[] | null;
+  profiles: Profile | Profile[] | null;
+};
+
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
+
+/**
+ * Membership lookup with a column ladder: migrations 017/015/014 may be
+ * pending, so a schema-cache error retries with fewer org columns. When orgId
+ * is given (branch bar selection), only a membership in THAT org qualifies —
+ * a forged cookie simply finds nothing and the caller falls back.
+ */
+async function fetchMembershipWithFallback(
+  supabase: SupabaseServerClient,
+  userId: string,
+  orgId: string | null
+): Promise<MembershipRow | null> {
+  for (const fields of [
+    ORG_SELECT_WITH_LOGO,
+    ORG_SELECT_WITH_INVOICE,
+    ORG_SELECT_INVOICE_BASIC,
+    ORG_SELECT_BASE,
+  ]) {
+    let query = supabase
+      .from("memberships")
+      .select(MEMBERSHIP_SELECT(fields))
+      .eq("user_id", userId)
+      .order("created_at", { ascending: true })
+      .limit(1);
+    if (orgId) query = query.eq("organization_id", orgId);
+    const { data, error } = await query.maybeSingle();
+    if (error) continue; // missing column — try a leaner select
+    if (!data) return null; // no membership row at all
+    const row = data as unknown as MembershipRow;
+    if (row.organizations) return row;
+    // embed came back empty — try a leaner select
+  }
+  return null;
+}
+
 /** Dedupes org membership lookup within a single server request (layout + page share one query). */
 export const getOrgContext = cache(async (): Promise<OrgContext | null> => {
   const { supabase, user } = await getSessionUser();
   if (!user) return null;
 
-  type MembershipRow = {
-    id: string;
-    organization_id: string;
-    user_id: string;
-    role: Membership["role"];
-    created_at: string;
-    organizations: Organization | Organization[] | null;
-    profiles: Profile | Profile[] | null;
-  };
+  // Branch bar: honour the selected org when the user actually belongs to it.
+  const preferredOrgId =
+    (await cookies()).get(ACTIVE_ORG_COOKIE)?.value || null;
 
-  const full = await supabase
-    .from("memberships")
-    .select(MEMBERSHIP_SELECT(ORG_SELECT_WITH_LOGO))
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-
-  let membership = full.data as MembershipRow | null;
-
-  // Migration 017 / 015 / 014 may not be applied yet — retry with fewer columns.
-  if (full.error || !membership?.organizations) {
-    const mid = await supabase
-      .from("memberships")
-      .select(MEMBERSHIP_SELECT(ORG_SELECT_WITH_INVOICE))
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-    membership = mid.data as MembershipRow | null;
-  }
-  if (!membership?.organizations) {
-    const basic = await supabase
-      .from("memberships")
-      .select(MEMBERSHIP_SELECT(ORG_SELECT_INVOICE_BASIC))
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-    membership = basic.data as MembershipRow | null;
-  }
-  if (!membership?.organizations) {
-    const fallback = await supabase
-      .from("memberships")
-      .select(MEMBERSHIP_SELECT(ORG_SELECT_BASE))
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-    membership = fallback.data as MembershipRow | null;
+  let membership = preferredOrgId
+    ? await fetchMembershipWithFallback(supabase, user.id, preferredOrgId)
+    : null;
+  if (!membership) {
+    membership = await fetchMembershipWithFallback(supabase, user.id, null);
   }
 
   if (!membership?.organizations) return null;

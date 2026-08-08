@@ -25,12 +25,10 @@ export async function GET(request: Request) {
   const { createClient } = await import("@supabase/supabase-js");
   const admin = createClient(url, serviceKey);
 
-  // Missing column (migration pending) returns an error here and the cron
-  // simply has nothing to do — same fail-quiet contract as the loaders.
+  // Every organisation gets a briefing — the AI supervisor is always on.
   const { data: orgs, error } = await admin
     .from("organizations")
-    .select("id, locale_default")
-    .neq("ops_brain_enabled", false);
+    .select("id, locale_default");
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

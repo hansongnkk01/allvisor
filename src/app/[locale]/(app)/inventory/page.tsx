@@ -114,17 +114,8 @@ export default async function InventoryPage({
 
   // Ops Brain smart-inventory slices. Everything soft-fails: a pending
   // migration hides the sections instead of breaking the stock page.
-  let opsBrainEnabled = false;
-  try {
-    const { data: flagRow, error: flagError } = await supabase
-      .from("organizations")
-      .select("ops_brain_enabled")
-      .eq("id", ctx.organization.id)
-      .maybeSingle();
-    opsBrainEnabled = !flagError && flagRow?.ops_brain_enabled === true;
-  } catch {
-    opsBrainEnabled = false;
-  }
+  // The AI supervisor is always on for every organisation.
+  const opsBrainEnabled = true;
 
   type CountRow = {
     id: string;

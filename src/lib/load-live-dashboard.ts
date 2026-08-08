@@ -327,16 +327,9 @@ export async function loadLiveDashboard(locale: string): Promise<SharedDashboard
   const { start: todayStart, end: todayEnd } = dayBoundsMY(now);
   const monthStart = `${formatDayKeyMY(now).slice(0, 7)}-01`;
 
-  // Queried on its own: a missing column (migration 029 pending) turns the
-  // Ops Brain off instead of breaking the whole org lookup.
-  const flagRes = await soft(
-    supabase
-      .from("organizations")
-      .select("ops_brain_enabled")
-      .eq("id", orgId)
-      .maybeSingle()
-  );
-  const opsBrainEnabled = !flagRes?.error && flagRes?.data?.ops_brain_enabled !== false;
+  // The AI supervisor is always on for every organisation (the
+  // ops_brain_enabled column remains in the schema but is no longer consulted).
+  const opsBrainEnabled = true;
 
   const [
     { count: customerCount },

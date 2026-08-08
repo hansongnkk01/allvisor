@@ -8,7 +8,7 @@
 import { getOrgContext } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
 import { canAccessOwnerArea, canAccessSensitive, canManageOrgSettings } from "@/lib/roles";
-import { revalidateApp, revalidateAppLayout } from "@/lib/revalidate";
+import { revalidateApp } from "@/lib/revalidate";
 import { logActivity } from "@/lib/activity";
 import { generateBriefing, buildBriefingContext } from "@/lib/briefing";
 import { answerOwnerQuestion } from "@/lib/ai-chat";
@@ -177,29 +177,6 @@ export async function updateAlertSettingsAction(formData: FormData) {
 }
 
 /** Owner/admin-only kill switch for the whole Ops Brain surface. */
-export async function setOpsBrainEnabledAction(formData: FormData) {
-  const { supabase, organization, membership } = await requireMember();
-  if (!canManageOrgSettings(membership.role)) return { error: "Forbidden" };
-
-  const enabled = String(formData.get("enabled") || "") === "true";
-  const { error } = await supabase
-    .from("organizations")
-    .update({ ops_brain_enabled: enabled })
-    .eq("id", organization.id);
-  if (error) return { error: error.message };
-
-  await logActivity({
-    action: "ops_brain.toggled",
-    summary: `${enabled ? "Enabled" : "Disabled"} the AI supervisor`,
-    entityType: "organization",
-    entityId: organization.id,
-  });
-
-  revalidateAppLayout();
-  revalidateApp("/dashboard", "/admin-dashboard", "/alerts");
-  return { success: true };
-}
-
 // ── Fasa 4: cycle count ─────────────────────────────────────────────────────
 
 const CYCLE_COUNT_SKUS = 10;
@@ -426,13 +403,12 @@ export async function askAiSupervisorAction(input: {
   if (!message) return { error: "Empty message" };
   if (message.length > 500) return { error: "Message too long" };
 
-  // Ops Brain off means no chat either — same flag governs the whole surface.
+  // The AI supervisor is always on; read the org row only for locale and name.
   const { data: orgRow } = await supabase
     .from("organizations")
-    .select("ops_brain_enabled, locale_default, name")
+    .select("locale_default, name")
     .eq("id", organization.id)
     .maybeSingle();
-  if (orgRow?.ops_brain_enabled === false) return { error: "AI supervisor is disabled" };
 
   try {
     let sessionId = input.sessionId || null;

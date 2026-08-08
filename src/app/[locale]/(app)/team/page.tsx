@@ -3,10 +3,13 @@ import { requireOwner } from "@/lib/require-owner";
 import { PageHeader } from "@/components/PageHeader";
 import { ActionForm } from "@/components/ActionForm";
 import { ScoreBar } from "@/components/dashboards/ScoreBar";
+import { TeamMembersSection } from "@/components/TeamMembersSection";
 import { recalculateStaffScoresAction } from "@/app/actions";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { formatDayKeyMY } from "@/lib/datetime-my";
-import { staffRoleLabel } from "@/lib/roles";
+import { assignableStaffRoles, kickableStaffRoles, staffRoleLabel } from "@/lib/roles";
+import { vocabLabels } from "@/lib/niches";
+import type { MembershipRole } from "@/lib/types";
 
 type MemberRow = {
   id: string;
@@ -27,8 +30,10 @@ export default async function TeamPage({
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("Owner");
-  const { supabase, organization } = await requireOwner(locale);
+  const tAdmin = await getTranslations("Admin");
+  const { supabase, organization, membership, profile } = await requireOwner(locale);
   const orgId = organization.id;
+  const V = vocabLabels(organization.niche, locale);
 
   const now = new Date();
   const windowStart = formatDayKeyMY(new Date(now.getTime() - SCORE_WINDOW_DAYS * 86400000));
@@ -117,6 +122,42 @@ export default async function TeamPage({
   return (
     <div className="stack" style={{ gap: "1.25rem" }}>
       <PageHeader title={t("teamTitle")} subtitle={t("teamSubtitle")} />
+
+      {/* Add / remove members — moved here from the Admin tab. */}
+      <TeamMembersSection
+        branchId={orgId}
+        isOwnBranch
+        currentUserId={membership.user_id || profile.id}
+        assignableRoles={assignableStaffRoles(membership.role)}
+        kickableRoles={kickableStaffRoles(membership.role)}
+        defaultOpen
+        members={(members || []).map((m) => {
+          const p = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
+          return {
+            id: m.id as string,
+            user_id: String(m.user_id),
+            role: String(m.role) as MembershipRole,
+            job_title: (m.job_title as string | null) ?? null,
+            profiles: p ? { full_name: p.full_name, email: p.email } : null,
+          };
+        })}
+        labels={{
+          title: tAdmin("staffTitle"),
+          hint: V.addMemberHint,
+          username: tAdmin("staffUsername"),
+          name: tAdmin("staffName"),
+          password: tAdmin("staffPassword"),
+          passwordHint: tAdmin("staffPasswordHint"),
+          role: tAdmin("staffRole"),
+          jobTitle: tAdmin("jobTitle"),
+          jobTitlePlaceholder: V.staffHint,
+          add: tAdmin("addStaff"),
+          search: tAdmin("searchStaff"),
+          email: tAdmin("staffEmail"),
+          kickCol: tAdmin("kickStaff"),
+          kick: tAdmin("kick"),
+        }}
+      />
 
       <section className="surface" style={{ padding: "1rem" }}>
         <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>

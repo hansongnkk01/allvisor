@@ -356,6 +356,7 @@
   },
   "Nav": {
     "dashboard": "Dashboard",
+    "branchBarLabel": "Branch",
     "customers": "Customers",
     "patients": "Patients",
     "students": "Students",
@@ -1349,7 +1350,23 @@
     "present": "Present",
     "yes": "Yes",
     "no": "No",
-    "saveAttendance": "Save attendance"
+    "saveAttendance": "Save attendance",
+    "walkInTitle": "Walk-in check-in",
+    "walkInSubtitle": "Customer pays at the counter (e.g. RM1 = 1 hour). The dashboard pops a notification when their paid time runs out.",
+    "walkInName": "Customer name",
+    "walkInAmount": "Paid (RM)",
+    "walkInRate": "Minutes per RM1",
+    "walkInDuration": "Duration",
+    "walkInExpiresAt": "time up at",
+    "walkInExpiredAt": "time up since",
+    "walkInSubmit": "Check in",
+    "walkInActive": "In the gym now",
+    "walkInNone": "No active walk-ins right now.",
+    "walkInExpired": "Time up — needs attention",
+    "walkInAck": "Done",
+    "notifyWalkInTitle": "Walk-in time is up",
+    "notifyMembershipTitle": "Membership expired",
+    "notifyDismiss": "Dismiss"
   },
   "TuitionStudent": {
     "welcome": "Welcome",

@@ -807,14 +807,26 @@ export function getNavSectionsForNiche(
       ? { ...section, keys: section.keys.filter((key) => key !== "accounting") }
       : section
   );
-  const adminZoneIndex = withoutAccounting.findIndex(
+  // Category & service settings live on their own tab now (moved out of the
+  // Admin tab) — make sure the owner audience always has the link.
+  const hasCategories = withoutAccounting.some((section) =>
+    section.keys.includes("categories")
+  );
+  const withCategories = hasCategories
+    ? withoutAccounting
+    : withoutAccounting.map((section) =>
+        section.labelKey === "adminZone"
+          ? { ...section, keys: ["admin", "categories", ...section.keys.filter((k) => k !== "admin")] }
+          : section
+      );
+  const adminZoneIndex = withCategories.findIndex(
     (section) => section.labelKey === "adminZone"
   );
-  if (adminZoneIndex < 0) return [...withoutAccounting, ownerSection];
+  if (adminZoneIndex < 0) return [...withCategories, ownerSection];
   return [
-    ...withoutAccounting.slice(0, adminZoneIndex),
+    ...withCategories.slice(0, adminZoneIndex),
     ownerSection,
-    ...withoutAccounting.slice(adminZoneIndex),
+    ...withCategories.slice(adminZoneIndex),
   ];
 }
 

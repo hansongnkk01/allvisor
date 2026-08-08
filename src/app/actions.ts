@@ -2,7 +2,7 @@
 
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
-import { getOrgContext } from "@/lib/org";
+import { getOrgContext, ACTIVE_ORG_COOKIE } from "@/lib/org";
 import { isNiche, hasCapability, vocabLabels } from "@/lib/niches";
 import { getLhdnProvider } from "@/lib/lhdn";
 import { canUseLhdn } from "@/lib/subscription";
@@ -2276,6 +2276,35 @@ async function upsertBidirectionalBranchLinks(
     { onConflict: "organization_id,linked_organization_id" }
   );
   return error;
+}
+
+/**
+ * Branch bar: switch the active organisation. Only orgs the user actually
+ * belongs to are accepted — the cookie alone never grants access, because
+ * getOrgContext re-validates the membership on every request.
+ */
+export async function switchBranchAction(orgId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not signed in" };
+
+  const { data: membership } = await supabase
+    .from("memberships")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("organization_id", orgId)
+    .maybeSingle();
+  if (!membership) return { error: "Not a member of that branch" };
+
+  (await cookies()).set(ACTIVE_ORG_COOKIE, orgId, {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+    sameSite: "lax",
+  });
+  revalidateAppLayout();
+  return { success: true };
 }
 
 export async function requestBranchLinkAction(formData: FormData) {

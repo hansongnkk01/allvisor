@@ -4,8 +4,10 @@ import { requireOwner } from "@/lib/require-owner";
 import { PageHeader } from "@/components/PageHeader";
 import { RevenueTrendChart } from "@/components/dashboards/RevenueTrendChart";
 import { ScoreBar } from "@/components/dashboards/ScoreBar";
+import { BranchScorecard, type BranchScoreRow } from "@/components/BranchScorecard";
 import { formatCurrency } from "@/lib/utils";
-import { formatDayKeyMY } from "@/lib/datetime-my";
+import { dayBoundsMY, formatDayKeyMY } from "@/lib/datetime-my";
+import { getNicheVocab, hasCapability, vocabLabels } from "@/lib/niches";
 import {
   PERFORMANCE_RANGES,
   deltaPercent,
@@ -39,8 +41,10 @@ export default async function PerformancePage({
   const sp = await searchParams;
   setRequestLocale(locale);
   const t = await getTranslations("Owner");
-  const { supabase, organization } = await requireOwner(locale);
+  const tAdmin = await getTranslations("Admin");
+  const { supabase, organization, membership, profile } = await requireOwner(locale);
   const orgId = organization.id;
+  const userId = membership.user_id || profile.id;
 
   const range: PerformanceRange = isPerformanceRange(sp.range) ? sp.range : "week";
   const window = performanceWindow(range);
@@ -180,6 +184,112 @@ export default async function PerformancePage({
       ? null
       : t("vsPrevious", { value: `${collectedDelta > 0 ? "+" : ""}${collectedDelta}%` });
 
+  // Multi-branch scorecard (today + month-to-date) across every branch this
+  // owner belongs to — moved here from the Admin tab.
+  let branchScoreRows: BranchScoreRow[] = [];
+  const { data: myMemberships } = await supabase
+    .from("memberships")
+    .select("organization_id, organizations(name)")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true });
+  const branchList = (myMemberships || []).map((row) => {
+    const org = Array.isArray(row.organizations) ? row.organizations[0] : row.organizations;
+    return { id: String(row.organization_id), name: String((org as { name?: string } | null)?.name || "Branch") };
+  });
+
+  if (branchList.length > 1 && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    const { createClient: createAdminClient } = await import("@supabase/supabase-js");
+    const admin = createAdminClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+    const now = new Date();
+    const { start: todayStart, end: todayEnd } = dayBoundsMY(now);
+    const monthStart = `${formatDayKeyMY(now).slice(0, 7)}-01`;
+    const monthStartIso = new Date(`${monthStart}T00:00:00+08:00`).toISOString();
+    const isClinic = hasCapability(organization.niche, "appointments") || hasCapability(organization.niche, "allergies");
+    const isRetail = hasCapability(organization.niche, "pos");
+
+    branchScoreRows = await Promise.all(
+      branchList.map(async (b) => {
+        const [
+          { data: paidToday },
+          { data: paidMonth },
+          { data: unpaidRows },
+          { count: apptToday },
+          { count: noShowToday },
+          { data: products },
+        ] = await Promise.all([
+          admin
+            .from("payments")
+            .select("amount")
+            .eq("organization_id", b.id)
+            .gte("paid_at", todayStart.toISOString())
+            .lte("paid_at", todayEnd.toISOString()),
+          admin
+            .from("payments")
+            .select("amount")
+            .eq("organization_id", b.id)
+            .gte("paid_at", monthStartIso)
+            .lte("paid_at", todayEnd.toISOString()),
+          admin
+            .from("invoices")
+            .select("total, amount_paid")
+            .eq("organization_id", b.id)
+            .in("status", ["unpaid", "partial"]),
+          isClinic
+            ? admin
+                .from("appointments")
+                .select("id", { count: "exact", head: true })
+                .eq("organization_id", b.id)
+                .gte("starts_at", todayStart.toISOString())
+                .lte("starts_at", todayEnd.toISOString())
+            : Promise.resolve({ count: 0 }),
+          isClinic
+            ? admin
+                .from("appointments")
+                .select("id", { count: "exact", head: true })
+                .eq("organization_id", b.id)
+                .eq("status", "no_show")
+                .gte("starts_at", todayStart.toISOString())
+                .lte("starts_at", todayEnd.toISOString())
+            : Promise.resolve({ count: 0 }),
+          isRetail
+            ? admin
+                .from("products")
+                .select("quantity, low_stock_threshold")
+                .eq("organization_id", b.id)
+                .eq("is_active", true)
+            : Promise.resolve({ data: [] as { quantity: number; low_stock_threshold: number | null }[] }),
+        ]);
+
+        const unpaidTotal = (unpaidRows || []).reduce(
+          (sum, inv) => sum + Math.max(0, Number(inv.total) - Number(inv.amount_paid || 0)),
+          0
+        );
+        const lowStockCount = (products || []).filter(
+          (p) => Number(p.quantity) <= Number(p.low_stock_threshold ?? 5)
+        ).length;
+
+        return {
+          id: b.id,
+          name: b.name,
+          isCurrent: b.id === orgId,
+          incomeToday: (paidToday || []).reduce((s, p) => s + Number(p.amount), 0),
+          incomeMonth: (paidMonth || []).reduce((s, p) => s + Number(p.amount), 0),
+          unpaidCount: unpaidRows?.length || 0,
+          unpaidTotal,
+          appointmentsToday: apptToday || 0,
+          noShowToday: noShowToday || 0,
+          txnToday: paidToday?.length || 0,
+          lowStockCount,
+        };
+      })
+    );
+  }
+  const vocab = getNicheVocab(organization.niche);
+  const V = vocabLabels(organization.niche, locale);
+
   return (
     <div className="stack" style={{ gap: "1.25rem" }}>
       <PageHeader title={t("performanceTitle")} subtitle={t("performanceSubtitle")} />
@@ -262,6 +372,26 @@ export default async function PerformancePage({
           </p>
         )}
       </section>
+
+      {branchScoreRows.length > 1 ? (
+        <BranchScorecard
+          variant={vocab.scorecard === "pos" ? "retail" : "clinic"}
+          title={tAdmin("scorecardTitle")}
+          subtitle={V.scorecardHint}
+          rows={branchScoreRows}
+          labels={{
+            branch: tAdmin("scorecardBranch"),
+            incomeToday: tAdmin("scorecardIncomeToday"),
+            incomeMonth: tAdmin("scorecardIncomeMonth"),
+            unpaid: tAdmin("scorecardUnpaid"),
+            appointmentsToday: tAdmin("scorecardApptsToday"),
+            noShow: tAdmin("scorecardNoShow"),
+            thisClinic: V.thisBranch,
+            txnToday: tAdmin("scorecardTxnToday"),
+            lowStock: tAdmin("scorecardLowStock"),
+          }}
+        />
+      ) : null}
     </div>
   );
 }

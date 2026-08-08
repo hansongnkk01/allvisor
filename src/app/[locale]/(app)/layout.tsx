@@ -46,19 +46,25 @@ export default async function AppLayout({
 
   const adminZoneUnlocked = await isAdminZoneUnlocked();
 
-  // The cached org context skips this column (migration-safe); read it
-  // directly so the owner chat only mounts when the flag truly exists and is on.
-  let opsBrainEnabled = false;
-  try {
-    const { data: flagRow, error: flagError } = await supabase
-      .from("organizations")
-      .select("ops_brain_enabled")
-      .eq("id", ctx.organization.id)
-      .maybeSingle();
-    opsBrainEnabled = !flagError && flagRow?.ops_brain_enabled === true;
-  } catch {
-    opsBrainEnabled = false;
-  }
+  // The AI supervisor is always on (the ops_brain_enabled column remains in
+  // the schema but is no longer consulted).
+  const opsBrainEnabled = true;
+
+  // Branch bar: every org this account belongs to. 2+ orgs → the bar shows.
+  const { data: myMemberships } = await supabase
+    .from("memberships")
+    .select("organization_id, organizations(name)")
+    .eq("user_id", ctx.membership.user_id)
+    .order("created_at", { ascending: true });
+  const branches = (myMemberships || []).map((row) => {
+    const org = Array.isArray(row.organizations)
+      ? row.organizations[0]
+      : row.organizations;
+    return {
+      id: String(row.organization_id),
+      name: String((org as { name?: string } | null)?.name || "Branch"),
+    };
+  });
 
   return (
     <OrgProvider organization={ctx.organization} role={ctx.membership.role}>
@@ -71,6 +77,8 @@ export default async function AppLayout({
           audience={audienceForRole(ctx.membership.role)}
           adminZoneUnlocked={adminZoneUnlocked}
           opsBrainEnabled={opsBrainEnabled}
+          branches={branches}
+          activeOrgId={ctx.organization.id}
         >
           {children}
         </AppShell>

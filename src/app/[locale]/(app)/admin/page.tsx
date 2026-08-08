@@ -4,44 +4,27 @@ import { hasCapability, getNicheVocab, vocabLabels } from "@/lib/niches";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { ActionForm } from "@/components/ActionForm";
-import { BranchGroup, ExpandSection } from "@/components/BranchGroup";
 import {
   changeAdminPasswordAction,
-  deleteServiceCategoryAction,
-  deleteServiceItemAction,
   getDefaultAdminPasswordHint,
   isAdminUnlocked,
   requestBranchLinkAction,
   respondBranchLinkAction,
   unlockAdminAction,
-  upsertBranchServiceCategoryAction,
-  upsertBranchServiceItemAction,
   updateOrgSettingsAction,
-  upsertServiceCategoryAction,
-  upsertServiceItemAction,
 } from "@/app/actions";
-import { setOpsBrainEnabledAction, updateAlertSettingsAction } from "@/app/ops-actions";
+import { updateAlertSettingsAction } from "@/app/ops-actions";
 import {
   saveNotificationChannelAction,
   setNotificationChannelEnabledAction,
 } from "@/app/ops-actions";
 import { DataImportPanel } from "@/components/DataImportPanel";
-import { AdminActivityLog } from "@/components/AdminActivityLog";
-import { FilterableRows } from "@/components/FilterableRows";
 import { InvoiceFormatForm } from "@/components/InvoiceFormatForm";
 import { BranchClinicSettings } from "@/components/BranchClinicSettings";
-import { BranchScorecard, type BranchScoreRow } from "@/components/BranchScorecard";
 import { ClinicLogoEditor } from "@/components/ClinicLogoEditor";
-import { TeamMembersSection } from "@/components/TeamMembersSection";
-import { formatCurrency, formatDateTime } from "@/lib/utils";
-import { dayBoundsMY, formatDayKeyMY } from "@/lib/datetime-my";
+import { formatDateTime } from "@/lib/utils";
 import { defaultAdminPassword } from "@/lib/admin-lock";
-import {
-  assignableStaffRoles,
-  canManageOrgSettings,
-  kickableStaffRoles,
-} from "@/lib/roles";
-import type { MembershipRole } from "@/lib/types";
+import { canManageOrgSettings } from "@/lib/roles";
 
 export default async function AdminPage({
   params,
@@ -57,10 +40,7 @@ export default async function AdminPage({
   // so a supervisor on a staff account can step in without re-logging.
   const unlocked = await isAdminUnlocked();
   const hint = await getDefaultAdminPasswordHint();
-  const rolesCanAssign = assignableStaffRoles(ctx.membership.role);
-  const rolesCanKick = kickableStaffRoles(ctx.membership.role);
   const canEditOrgSettings = canManageOrgSettings(ctx.membership.role);
-  const currentUserId = ctx.membership.user_id || ctx.profile.id;
 
   if (!unlocked) {
     return (
@@ -91,35 +71,9 @@ export default async function AdminPage({
   const orgId = ctx.organization.id;
 
   const [
-    { data: categories },
-    { data: services },
-    { data: members },
-    { data: activities },
     { data: pendingRequests },
     { data: outgoingPending },
-    { data: links },
   ] = await Promise.all([
-    supabase
-      .from("service_categories")
-      .select("*")
-      .eq("organization_id", orgId)
-      .order("name"),
-    supabase
-      .from("service_items")
-      .select("*, service_categories(name)")
-      .eq("organization_id", orgId)
-      .order("name"),
-    supabase
-      .from("memberships")
-      .select("*, profiles(full_name, email)")
-      .eq("organization_id", orgId)
-      .order("created_at"),
-    supabase
-      .from("activity_logs")
-      .select("*")
-      .eq("organization_id", orgId)
-      .order("created_at", { ascending: false })
-      .limit(50),
     supabase
       .from("branch_link_requests")
       .select("*")
@@ -130,127 +84,20 @@ export default async function AdminPage({
       .select("*")
       .eq("from_organization_id", orgId)
       .eq("status", "pending"),
-    supabase
-      .from("branch_links")
-      .select("*")
-      .eq("organization_id", orgId)
-      .order("created_at"),
   ]);
-
-  // Fill profile names via service role when RLS embed returns null (teammates)
-  let membersResolved = members || [];
-  if (process.env.SUPABASE_SERVICE_ROLE_KEY && membersResolved.length) {
-    const { createClient: createAdminClient } = await import("@supabase/supabase-js");
-    const admin = createAdminClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-    const userIds = membersResolved.map((m) => m.user_id);
-    const { data: profiles } = await admin
-      .from("profiles")
-      .select("id, full_name, email")
-      .in("id", userIds);
-    const byId = Object.fromEntries((profiles || []).map((p) => [p.id, p]));
-    membersResolved = membersResolved.map((m) => ({
-      ...m,
-      profiles: byId[m.user_id]
-        ? {
-            full_name: byId[m.user_id].full_name,
-            email: byId[m.user_id].email,
-          }
-        : m.profiles,
-    }));
-  }
-
-  // Resolve linked org names via service-visible query through request/response orgs
-  // Use linked ids; fetch names with a second query if possible via memberships only —
-  // for names we store from requests or use admin client through action. Fallback: show id slice.
-  const linkedIds = (links || []).map((l) => l.linked_organization_id);
-  const branchOrgs: Array<{
-    id: string;
-    name: string;
-    categories: typeof categories;
-    services: typeof services;
-    members: typeof members;
-    service_charge_percent: number;
-    clinic_open_hour: number;
-    clinic_close_hour: number;
-    closed_weekdays: number[];
-  }> = [
-    {
-      id: orgId,
-      name: ctx.organization.name,
-      categories: categories || [],
-      services: services || [],
-      members: membersResolved,
-      service_charge_percent: Number(ctx.organization.service_charge_percent ?? 0),
-      clinic_open_hour: Number(ctx.organization.clinic_open_hour ?? 0),
-      clinic_close_hour: Number(ctx.organization.clinic_close_hour ?? 23),
-      closed_weekdays: ctx.organization.closed_weekdays || [],
-    },
-  ];
-
-  if (linkedIds.length) {
-    const { createClient: createAdminClient } = await import("@supabase/supabase-js");
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (url && key) {
-      const admin = createAdminClient(url, key);
-      const { data: linkedOrgs } = await admin
-        .from("organizations")
-        .select(
-          "id, name, service_charge_percent, clinic_open_hour, clinic_close_hour, closed_weekdays"
-        )
-        .in("id", linkedIds)
-        .order("name");
-
-      for (const lo of linkedOrgs || []) {
-        const [{ data: cats }, { data: svcs }, { data: mems }] = await Promise.all([
-          admin
-            .from("service_categories")
-            .select("*")
-            .eq("organization_id", lo.id)
-            .order("name"),
-          admin
-            .from("service_items")
-            .select("*, service_categories(name)")
-            .eq("organization_id", lo.id)
-            .order("name"),
-          admin
-            .from("memberships")
-            .select("*, profiles(full_name, email)")
-            .eq("organization_id", lo.id)
-            .order("created_at"),
-        ]);
-        branchOrgs.push({
-          id: lo.id,
-          name: lo.name,
-          categories: cats || [],
-          services: svcs || [],
-          members: mems || [],
-          service_charge_percent: Number(lo.service_charge_percent ?? 0),
-          clinic_open_hour: Number(lo.clinic_open_hour ?? 0),
-          clinic_close_hour: Number(lo.clinic_close_hour ?? 23),
-          closed_weekdays: (lo.closed_weekdays as number[] | null) || [],
-        });
-      }
-    }
-  }
-
-  const isSuper = branchOrgs.length > 1;
   const org = ctx.organization;
-  // The cached org context does not select these columns (migration-safe); read
-  // them directly so the toggles reflect reality. Missing columns = defaults.
-  let opsBrainEnabled = true;
+  // The AI supervisor is always on; the ops_brain_enabled column remains in
+  // the schema but is no longer consulted. Alert thresholds still come from
+  // the org row (migration-safe read).
+  const opsBrainEnabled = true;
   let alertSettings = { refund_rate_percent: 8, cash_variance_rm: 20, stock_leak_rm: 100 };
   try {
     const { data: flagRow, error: flagError } = await supabase
       .from("organizations")
-      .select("ops_brain_enabled, alert_settings")
+      .select("alert_settings")
       .eq("id", org.id)
       .maybeSingle();
     if (!flagError) {
-      opsBrainEnabled = flagRow?.ops_brain_enabled !== false;
       const raw = (flagRow?.alert_settings || {}) as Record<string, unknown>;
       const num = (value: unknown, fallback: number) =>
         Number.isFinite(Number(value)) && Number(value) > 0 ? Number(value) : fallback;
@@ -261,7 +108,7 @@ export default async function AdminPage({
       };
     }
   } catch {
-    opsBrainEnabled = true;
+    // keep defaults
   }
 
   // Notification channels (migration 031). Missing table = empty list.
@@ -289,99 +136,6 @@ export default async function AdminPage({
   const vocab = getNicheVocab(org.niche);
   const V = vocabLabels(org.niche, locale);
 
-  // Multi-branch scorecard (today + month-to-date)
-  let scoreRows: BranchScoreRow[] = [];
-  if (isSuper && process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    const { createClient: createAdminClient } = await import("@supabase/supabase-js");
-    const admin = createAdminClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-    const now = new Date();
-    const { start: todayStart, end: todayEnd } = dayBoundsMY(now);
-    const monthStart = `${formatDayKeyMY(now).slice(0, 7)}-01`;
-    const monthStartIso = new Date(`${monthStart}T00:00:00+08:00`).toISOString();
-
-    scoreRows = await Promise.all(
-      branchOrgs.map(async (b) => {
-        const [
-          { data: paidToday },
-          { data: paidMonth },
-          { data: unpaidRows },
-          { count: apptToday },
-          { count: noShowToday },
-          { data: products },
-        ] = await Promise.all([
-          admin
-            .from("payments")
-            .select("amount")
-            .eq("organization_id", b.id)
-            .gte("paid_at", todayStart.toISOString())
-            .lte("paid_at", todayEnd.toISOString()),
-          admin
-            .from("payments")
-            .select("amount")
-            .eq("organization_id", b.id)
-            .gte("paid_at", monthStartIso)
-            .lte("paid_at", todayEnd.toISOString()),
-          admin
-            .from("invoices")
-            .select("total, amount_paid")
-            .eq("organization_id", b.id)
-            .in("status", ["unpaid", "partial"]),
-          isClinic
-            ? admin
-                .from("appointments")
-                .select("id", { count: "exact", head: true })
-                .eq("organization_id", b.id)
-                .gte("starts_at", todayStart.toISOString())
-                .lte("starts_at", todayEnd.toISOString())
-            : Promise.resolve({ count: 0 }),
-          isClinic
-            ? admin
-                .from("appointments")
-                .select("id", { count: "exact", head: true })
-                .eq("organization_id", b.id)
-                .eq("status", "no_show")
-                .gte("starts_at", todayStart.toISOString())
-                .lte("starts_at", todayEnd.toISOString())
-            : Promise.resolve({ count: 0 }),
-          isRetail
-            ? admin
-                .from("products")
-                .select("quantity, low_stock_threshold")
-                .eq("organization_id", b.id)
-                .eq("is_active", true)
-            : Promise.resolve({ data: [] as { quantity: number; low_stock_threshold: number | null }[] }),
-        ]);
-
-        const unpaidTotal = (unpaidRows || []).reduce(
-          (sum, inv) =>
-            sum + Math.max(0, Number(inv.total) - Number(inv.amount_paid || 0)),
-          0
-        );
-
-        const lowStockCount = (products || []).filter(
-          (p) => Number(p.quantity) <= Number(p.low_stock_threshold ?? 5)
-        ).length;
-
-        return {
-          id: b.id,
-          name: b.name,
-          isCurrent: b.id === orgId,
-          incomeToday: (paidToday || []).reduce((s, p) => s + Number(p.amount), 0),
-          incomeMonth: (paidMonth || []).reduce((s, p) => s + Number(p.amount), 0),
-          unpaidCount: unpaidRows?.length || 0,
-          unpaidTotal,
-          appointmentsToday: apptToday || 0,
-          noShowToday: noShowToday || 0,
-          txnToday: paidToday?.length || 0,
-          lowStockCount,
-        };
-      })
-    );
-  }
-
   // Resolve pending request org names
   const pendingFromIds = (pendingRequests || []).map((r) => r.from_organization_id);
   let pendingNames: Record<string, string> = {};
@@ -400,10 +154,7 @@ export default async function AdminPage({
 
   return (
     <div className="stack" style={{ gap: "1.25rem" }}>
-      <PageHeader
-        title={isSuper ? t("superTitle") : t("title")}
-        subtitle={isSuper ? t("superSubtitle") : t("subtitle")}
-      />
+      <PageHeader title={t("title")} subtitle={t("subtitle")} />
 
       {(pendingRequests || []).length ? (
         <div className="surface" style={{ padding: "1.25rem", borderColor: "var(--accent)" }}>
@@ -604,21 +355,6 @@ export default async function AdminPage({
       {canEditOrgSettings ? (
         <>
       <div className="surface" style={{ padding: "1.25rem" }}>
-            <h3 style={{ marginTop: 0 }}>{t("opsBrainTitle")}</h3>
-            <p className="muted">{t("opsBrainHint")}</p>
-            <ActionForm action={setOpsBrainEnabledAction}>
-              <input
-                type="hidden"
-                name="enabled"
-                value={opsBrainEnabled ? "false" : "true"}
-              />
-              <button type="submit" className="btn btn-soft">
-                {opsBrainEnabled ? t("opsBrainDisable") : t("opsBrainEnable")}
-              </button>
-            </ActionForm>
-          </div>
-
-      <div className="surface" style={{ padding: "1.25rem" }}>
             <h3 style={{ marginTop: 0 }}>{t("securityTitle")}</h3>
             <p className="muted">
               {t("defaultPasswordHelp")}:{" "}
@@ -690,6 +426,38 @@ export default async function AdminPage({
               </button>
             </ActionForm>
           </div>
+
+          {/* Hours / service charge for the active branch. Other branches are
+              edited by switching to them from the branch bar. */}
+          <BranchClinicSettings
+            branchId={orgId}
+            showHours={vocab.showHours}
+            settings={{
+              serviceChargePercent: Number(org.service_charge_percent ?? 0),
+              openHour: Number(org.clinic_open_hour ?? 0),
+              closeHour: Number(org.clinic_close_hour ?? 23),
+              closedWeekdays: org.closed_weekdays || [],
+            }}
+            labels={{
+              title: vocab.showHours ? V.hoursTitle : V.chargeTitle,
+              hint: vocab.showHours ? V.hoursHint : V.chargeHint,
+              serviceChargePercent: t("serviceChargePercent"),
+              serviceChargeHint: t("serviceChargeHint"),
+              saveServiceCharge: t("saveServiceCharge"),
+              openHour: t("openHour"),
+              closeHour: t("closeHour"),
+              weeklyOff: t("weeklyOff"),
+              mon: t("mon"),
+              tue: t("tue"),
+              wed: t("wed"),
+              thu: t("thu"),
+              fri: t("fri"),
+              sat: t("sat"),
+              sun: t("sun"),
+              holidayNote: V.holidayNote,
+              saveHours: V.saveHours,
+            }}
+          />
 
           <ClinicLogoEditor
             initialUrl={org.logo_url}
@@ -794,264 +562,6 @@ export default async function AdminPage({
             ) : null}
           </div>
 
-      {isSuper ? (
-        <BranchScorecard
-          variant={vocab.scorecard === "pos" ? "retail" : "clinic"}
-          title={t("scorecardTitle")}
-          subtitle={V.scorecardHint}
-          rows={scoreRows}
-          labels={{
-            branch: t("scorecardBranch"),
-            incomeToday: t("scorecardIncomeToday"),
-            incomeMonth: t("scorecardIncomeMonth"),
-            unpaid: t("scorecardUnpaid"),
-            appointmentsToday: t("scorecardApptsToday"),
-            noShow: t("scorecardNoShow"),
-            thisClinic: V.thisBranch,
-            txnToday: t("scorecardTxnToday"),
-            lowStock: t("scorecardLowStock"),
-          }}
-        />
-      ) : null}
-
-      {branchOrgs.map((branch, idx) => (
-        <BranchGroup
-          key={branch.id}
-          title={`${idx + 1}. ${branch.name}${
-            branch.id === orgId ? ` (${V.thisBranch})` : ""
-          }`}
-          defaultOpen={idx === 0}
-          toneIndex={idx}
-        >
-          <div className="stack" style={{ gap: "0.85rem" }}>
-            <BranchClinicSettings
-              branchId={branch.id}
-              showHours={vocab.showHours}
-              settings={{
-                serviceChargePercent: branch.service_charge_percent,
-                openHour: branch.clinic_open_hour,
-                closeHour: branch.clinic_close_hour,
-                closedWeekdays: branch.closed_weekdays,
-              }}
-              labels={{
-                title: vocab.showHours ? V.hoursTitle : V.chargeTitle,
-                hint: vocab.showHours ? V.hoursHint : V.chargeHint,
-                serviceChargePercent: t("serviceChargePercent"),
-                serviceChargeHint: t("serviceChargeHint"),
-                saveServiceCharge: t("saveServiceCharge"),
-                openHour: t("openHour"),
-                closeHour: t("closeHour"),
-                weeklyOff: t("weeklyOff"),
-                mon: t("mon"),
-                tue: t("tue"),
-                wed: t("wed"),
-                thu: t("thu"),
-                fri: t("fri"),
-                sat: t("sat"),
-                sun: t("sun"),
-                holidayNote: V.holidayNote,
-                saveHours: V.saveHours,
-              }}
-            />
-            <ExpandSection
-              title={isRetail ? t("categoriesTitleRetail") : t("categoriesTitle")}
-              defaultOpen
-            >
-              <ActionForm
-                action={
-                  branch.id === orgId
-                    ? upsertServiceCategoryAction
-                    : upsertBranchServiceCategoryAction
-                }
-                className="stack"
-              >
-                {branch.id !== orgId ? (
-                  <input type="hidden" name="target_org_id" value={branch.id} />
-                ) : null}
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-                    gap: "0.65rem",
-                  }}
-                >
-                  <div className="field">
-                    <label>{t("categoryName")}</label>
-                    <input name="name" required className="input" />
-                  </div>
-                  <div className="field">
-                    <label>{t("description")}</label>
-                    <input name="description" className="input" />
-                  </div>
-                </div>
-                <button type="submit" className="btn btn-soft">
-                  {t("addCategory")}
-                </button>
-              </ActionForm>
-              <FilterableRows placeholder={t("searchCategories")}>
-                {(branch.categories || []).map((c) => (
-                  <tr
-                    key={c.id}
-                    data-search={`${c.name} ${c.description || ""}`.toLowerCase()}
-                  >
-                    <td>
-                      <span className="badge">{c.name}</span>
-                    </td>
-                    <td>{c.description || "—"}</td>
-                    {branch.id === orgId ? (
-                      <td>
-                        <form
-                          action={async () => {
-                            "use server";
-                            await deleteServiceCategoryAction(c.id);
-                          }}
-                        >
-                          <button type="submit" className="btn btn-ghost">
-                            {t("delete")}
-                          </button>
-                        </form>
-                      </td>
-                    ) : (
-                      <td />
-                    )}
-                  </tr>
-                ))}
-              </FilterableRows>
-            </ExpandSection>
-
-            <ExpandSection title={isRetail ? t("servicesTitleRetail") : t("servicesTitle")}>
-              <ActionForm
-                action={
-                  branch.id === orgId
-                    ? upsertServiceItemAction
-                    : upsertBranchServiceItemAction
-                }
-                className="stack"
-              >
-                {branch.id !== orgId ? (
-                  <input type="hidden" name="target_org_id" value={branch.id} />
-                ) : null}
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-                    gap: "0.65rem",
-                  }}
-                >
-                  <div className="field">
-                    <label>{t("serviceName")}</label>
-                    <input name="name" required className="input" />
-                  </div>
-                  <div className="field">
-                    <label>{t("assignCategory")}</label>
-                    <select name="category_id" required className="select" defaultValue="">
-                      <option value="" disabled>
-                        —
-                      </option>
-                      {(branch.categories || []).map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="field">
-                    <label>{t("price")}</label>
-                    <input
-                      name="unit_price"
-                      type="number"
-                      step="0.01"
-                      defaultValue={0}
-                      className="input"
-                    />
-                  </div>
-                </div>
-                <button type="submit" className="btn btn-soft">
-                  {t("addService")}
-                </button>
-              </ActionForm>
-              <FilterableRows placeholder={t("searchServices")}>
-                {(branch.services || []).map((s) => (
-                  <tr
-                    key={s.id}
-                    data-search={`${s.name} ${s.service_categories?.name || s.category || ""}`.toLowerCase()}
-                  >
-                    <td>{s.name}</td>
-                    <td>{s.service_categories?.name || s.category}</td>
-                    <td>{formatCurrency(Number(s.unit_price || 0))}</td>
-                    {branch.id === orgId ? (
-                      <td>
-                        <form
-                          action={async () => {
-                            "use server";
-                            await deleteServiceItemAction(s.id);
-                          }}
-                        >
-                          <button type="submit" className="btn btn-ghost">
-                            {t("delete")}
-                          </button>
-                        </form>
-                      </td>
-                    ) : (
-                      <td />
-                    )}
-                  </tr>
-                ))}
-              </FilterableRows>
-            </ExpandSection>
-
-            <TeamMembersSection
-              branchId={branch.id}
-              isOwnBranch={branch.id === orgId}
-              currentUserId={currentUserId}
-              assignableRoles={rolesCanAssign}
-              kickableRoles={rolesCanKick}
-              defaultOpen={branch.id === orgId}
-              members={(branch.members || []).map((m) => {
-                const profile = Array.isArray(m.profiles)
-                  ? m.profiles[0]
-                  : m.profiles;
-                return {
-                  id: m.id,
-                  user_id: m.user_id,
-                  role: m.role as MembershipRole,
-                  job_title: m.job_title,
-                  profiles: profile
-                    ? { full_name: profile.full_name, email: profile.email }
-                    : null,
-                };
-              })}
-              labels={{
-                title: t("staffTitle"),
-                hint: V.addMemberHint,
-                username: t("staffUsername"),
-                name: t("staffName"),
-                password: t("staffPassword"),
-                passwordHint: t("staffPasswordHint"),
-                role: t("staffRole"),
-                jobTitle: t("jobTitle"),
-                jobTitlePlaceholder: V.staffHint,
-                add: t("addStaff"),
-                search: t("searchStaff"),
-                email: t("staffEmail"),
-                kickCol: t("kickStaff"),
-                kick: t("kick"),
-              }}
-            />
-          </div>
-        </BranchGroup>
-      ))}
-
-      <AdminActivityLog
-        title={t("activity")}
-        hint={t("activityHint")}
-        logs={(activities || []).map((a) => ({
-          id: a.id,
-          actor_name: a.actor_name,
-          summary: a.summary,
-          created_at: a.created_at,
-        }))}
-      />
     </div>
   );
 }

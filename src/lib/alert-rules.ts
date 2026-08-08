@@ -50,11 +50,10 @@ async function loadSettings(
   try {
     const { data, error } = await supabase
       .from("organizations")
-      .select("ops_brain_enabled, alert_settings, locale_default")
+      .select("alert_settings, locale_default")
       .eq("id", orgId)
       .maybeSingle();
     if (error || !data) return null;
-    if (data.ops_brain_enabled === false) return null;
     const raw = (data.alert_settings || {}) as Record<string, unknown>;
     const num = (value: unknown, fallback: number) => {
       const parsed = Number(value);
