@@ -137,9 +137,16 @@ export function DashboardAiPanel({
   // differently, and rendering it on both sides breaks hydration.
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
 
-  useEffect(() => {
+  // Rebuild insights during render when new data arrives (no effect cascade).
+  const [prevData, setPrevData] = useState(data);
+  if (data !== prevData) {
+    setPrevData(data);
     setTips(buildInsights(data));
-    setUpdatedAt(new Date());
+  }
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setUpdatedAt(new Date()));
+    return () => cancelAnimationFrame(id);
   }, [data]);
 
   return (

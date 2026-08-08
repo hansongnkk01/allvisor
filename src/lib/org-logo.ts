@@ -23,7 +23,6 @@ export async function resolveOrgLogoUrl(
   }
   if (storedUrl) return storedUrl;
 
-  const path = orgLogoStoragePath(orgId);
   try {
     const { data: files, error } = await client.storage.from("org-logos").list(orgId, {
       search: "logo",

@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "@/i18n/navigation";
+import { useMounted } from "@/lib/use-mounted";
 import {
   addDays,
   eachDayOfInterval,
@@ -49,14 +50,6 @@ type PatientOpt = {
   allergies?: string | null;
 };
 type CategoryOpt = { id: string; name: string };
-
-const STATUSES: AppointmentStatus[] = [
-  "scheduled",
-  "confirmed",
-  "completed",
-  "cancelled",
-  "no_show",
-];
 
 /** Statuses shown in the dropdown (completed uses the tick button). */
 const DROPDOWN_STATUSES: AppointmentStatus[] = [
@@ -191,13 +184,9 @@ export function AppointmentBoard({
   const [notes, setNotes] = useState("");
   const [bookError, setBookError] = useState<string | null>(null);
   const [mouse, setMouse] = useState({ x: 80, y: 80 });
-  const [mounted, setMounted] = useState(false);
+  const mounted = useMounted();
   const [floatSize, setFloatSize] = useState({ w: FLOAT_W, h: 280 });
   const floatRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const bookingActive = startSlot != null || endSlot != null;
   // Follow cursor while picking times; freeze once end slot is chosen.

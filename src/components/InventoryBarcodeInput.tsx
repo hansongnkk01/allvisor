@@ -20,7 +20,7 @@ export function InventoryBarcodeInput({
       <label>{label}</label>
       <input
         ref={(el) => {
-          if (hid) hid.barcodeRef.current = el;
+          hid?.registerBarcode(el);
         }}
         name={name}
         className="input"

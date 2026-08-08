@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "@/i18n/navigation";
+import { useMounted } from "@/lib/use-mounted";
 import {
   logInvoiceEarlyExitAction,
   revokeInvoiceAction,
@@ -190,13 +191,11 @@ export function InvoicesWorkspace({
   const [preview, setPreview] = useState<PreviewPayload | null>(null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const [mounted, setMounted] = useState(false);
+  const mounted = useMounted();
   const [exitOpen, setExitOpen] = useState(false);
   const [exitReason, setExitReason] = useState("");
   const [exitError, setExitError] = useState<string | null>(null);
   const [exitPending, startExit] = useTransition();
-
-  useEffect(() => setMounted(true), []);
 
   const days = useMemo(() => {
     const set = new Set(invoices.map((i) => dayKey(i.created_at)));
@@ -233,9 +232,15 @@ export function InvoicesWorkspace({
     );
   }
 
+  // Clearing the selection resets the preview during render (no effect cascade).
+  const [prevPreviewId, setPrevPreviewId] = useState(previewId);
+  if (previewId !== prevPreviewId) {
+    setPrevPreviewId(previewId);
+    if (!previewId) setPreview(null);
+  }
+
   useEffect(() => {
     if (!previewId) {
-      setPreview(null);
       return;
     }
     let cancelled = false;

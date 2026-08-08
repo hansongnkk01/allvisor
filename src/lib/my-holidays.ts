@@ -37,7 +37,7 @@ const HOLIDAYS: MyHoliday[] = [
   { date: "2027-12-25", nameEn: "Christmas Day", nameMs: "Hari Krismas" },
 ];
 
-export function getMyHolidayOn(date: Date, locale: string = "ms"): MyHoliday | null {
+export function getMyHolidayOn(date: Date, _locale: string = "ms"): MyHoliday | null {
   const key = formatYmd(date);
   const hit = HOLIDAYS.find((h) => h.date === key);
   return hit || null;

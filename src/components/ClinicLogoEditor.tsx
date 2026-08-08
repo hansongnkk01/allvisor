@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useRef, useState, useTransition } from "react";
 import { useRouter } from "@/i18n/navigation";
 import { ClinicLogoMark, type LogoShape } from "@/components/ClinicLogoMark";
 import { removeOrgLogoAction, saveOrgLogoAction } from "@/app/actions";
@@ -49,13 +49,17 @@ export function ClinicLogoEditor({
   );
   const fileRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
+  // Sync prop → local state during render when the parent loads a new logo.
+  const [prevUrl, setPrevUrl] = useState(initialUrl);
+  if (initialUrl !== prevUrl) {
+    setPrevUrl(initialUrl);
     setSavedUrl(initialUrl || "");
-  }, [initialUrl]);
-
-  useEffect(() => {
+  }
+  const [prevShape, setPrevShape] = useState(initialShape);
+  if (initialShape !== prevShape) {
+    setPrevShape(initialShape);
     setShape(initialShape === "square" ? "square" : "round");
-  }, [initialShape]);
+  }
 
   function onPick(file: File | null) {
     setError(null);

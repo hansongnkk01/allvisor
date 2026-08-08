@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { getPatientTimelineAction } from "@/app/actions";
 import { PatientName } from "@/components/PatientName";
 import { PatientSafetyBanner } from "@/components/PatientSafetyBanner";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
+import { useMounted } from "@/lib/use-mounted";
 import type { Customer } from "@/lib/types";
 
 export type TimelineLabels = {
@@ -55,12 +56,10 @@ export function PatientTimelineButton({
   labels: TimelineLabels;
 }) {
   const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useMounted();
   const [pending, startTransition] = useTransition();
   const [data, setData] = useState<TimelineData | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => setMounted(true), []);
 
   function openTimeline() {
     setOpen(true);

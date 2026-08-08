@@ -18,6 +18,7 @@ import {
 type InventoryHidContextValue = {
   barcodeRef: RefObject<HTMLInputElement | null>;
   searchRef: RefObject<HTMLInputElement | null>;
+  registerBarcode: (el: HTMLInputElement | null) => void;
   registerSearch: (el: HTMLInputElement | null, setQuery: (q: string) => void) => void;
 };
 
@@ -31,6 +32,10 @@ export function InventoryHidProvider({ children }: { children: ReactNode }) {
   const barcodeRef = useRef<HTMLInputElement | null>(null);
   const searchRef = useRef<HTMLInputElement | null>(null);
   const setSearchQueryRef = useRef<((q: string) => void) | null>(null);
+
+  function registerBarcode(el: HTMLInputElement | null) {
+    barcodeRef.current = el;
+  }
 
   function registerSearch(el: HTMLInputElement | null, setQuery: (q: string) => void) {
     searchRef.current = el;
@@ -79,7 +84,7 @@ export function InventoryHidProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <InventoryHidContext.Provider value={{ barcodeRef, searchRef, registerSearch }}>
+    <InventoryHidContext.Provider value={{ barcodeRef, searchRef, registerBarcode, registerSearch }}>
       {children}
     </InventoryHidContext.Provider>
   );

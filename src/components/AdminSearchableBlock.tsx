@@ -5,7 +5,7 @@ import { SearchField } from "@/components/ListControls";
 
 export function AdminSearchableBlock({
   searchPlaceholder,
-  searchText,
+  searchText: _searchText,
   children,
 }: {
   searchPlaceholder: string;

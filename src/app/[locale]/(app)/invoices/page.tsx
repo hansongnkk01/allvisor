@@ -1,6 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { requireOrg } from "@/lib/org";
-import { hasCapability, isTuitionNiche, getNicheVocab, vocabLabels } from "@/lib/niches";
+import { getNicheVocab, vocabLabels } from "@/lib/niches";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { SectionActivityLog } from "@/components/SectionActivityLog";

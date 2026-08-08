@@ -1,13 +1,22 @@
 import { dayBoundsMY, formatDayKeyMY } from "@/lib/datetime-my";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
  * Rule-based daily scoring. Deliberately transparent: every input is stored next
  * to the score so an owner can show a staff member exactly why the number moved.
  */
 
-type MinimalSupabase = {
-  from: (table: string) => any;
+/** Accepts both the request-scoped server client and the service-role client. */
+type MinimalSupabase = Pick<SupabaseClient, "from">;
+
+type ActivityLogRow = {
+  actor_id: string | null;
+  action: string;
+  entity_type: string | null;
+  entity_id: string | null;
 };
+type TicketStatusRow = { created_by: string | null; status: string };
+type InvoiceTotalRow = { id: string; total: number | string | null };
 
 /** Actions that mean "this person closed a sale". */
 const SALE_ACTIONS = new Set(["invoice.create", "pos.checkout"]);
@@ -77,14 +86,14 @@ export async function computeStaffScores({
       .limit(5000),
   ]);
 
-  const rows = (logs || []).filter((log: any) => log.actor_id);
+  const rows = ((logs || []) as ActivityLogRow[]).filter((log) => log.actor_id);
   if (!rows.length && !(tickets || []).length) return [];
 
   const saleInvoiceIds = [
     ...new Set(
       rows
-        .filter((log: any) => SALE_ACTIONS.has(log.action) && log.entity_type === "invoice")
-        .map((log: any) => String(log.entity_id))
+        .filter((log) => SALE_ACTIONS.has(log.action) && log.entity_type === "invoice")
+        .map((log) => String(log.entity_id))
         .filter(Boolean)
     ),
   ];
@@ -95,10 +104,10 @@ export async function computeStaffScores({
         .select("id, total")
         .eq("organization_id", orgId)
         .in("id", saleInvoiceIds)
-    : { data: [] as { id: string; total: number }[] };
+    : { data: [] as InvoiceTotalRow[] };
 
   const totalByInvoice = new Map<string, number>(
-    (invoices || []).map((inv: any) => [String(inv.id), Number(inv.total || 0)])
+    ((invoices || []) as InvoiceTotalRow[]).map((inv) => [String(inv.id), Number(inv.total || 0)])
   );
 
   type Bucket = {
@@ -127,7 +136,7 @@ export async function computeStaffScores({
     if (REFUND_ACTIONS.has(log.action)) entry.refunds += 1;
   }
 
-  for (const ticket of tickets || []) {
+  for (const ticket of (tickets || []) as TicketStatusRow[]) {
     if (!ticket.created_by || ticket.status !== "void") continue;
     bucket(String(ticket.created_by)).voids += 1;
   }

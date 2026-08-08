@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 import { ActionForm } from "@/components/ActionForm";
 import { recordPaymentAction } from "@/app/actions";
 import { formatCurrency } from "@/lib/utils";
@@ -33,9 +33,12 @@ export function RecordPaymentForm({
 }) {
   const [amount, setAmount] = useState(String(Number(balance.toFixed(2))));
 
-  useEffect(() => {
+  // Re-seed the amount when a different balance arrives (adjust during render).
+  const [prevBalance, setPrevBalance] = useState(balance);
+  if (balance !== prevBalance) {
+    setPrevBalance(balance);
     setAmount(String(Number(balance.toFixed(2))));
-  }, [balance]);
+  }
 
   if (compact) {
     return (

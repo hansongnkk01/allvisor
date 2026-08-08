@@ -1,4 +1,5 @@
 import type { MembershipRole } from "@/lib/types";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
  * Temporary code used while e-mail delivery is not wired up yet. Set
@@ -16,7 +17,7 @@ export function roleNeedsVerification(role: MembershipRole | string) {
   return role !== "owner";
 }
 
-type MinimalSupabase = { from: (table: string) => any };
+type MinimalSupabase = Pick<SupabaseClient, "from">;
 
 /**
  * Reads the verification state without breaking installs where migration 026 has

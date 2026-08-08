@@ -77,7 +77,7 @@ import {
   demoTeam,
 } from "@/lib/demo-dashboard-data";
 import { getNicheVocab, vocabLabels } from "@/lib/niches";
-import { formatCurrency, formatDateTime } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
 import type { Niche } from "@/lib/types";
 
 type Props = {
@@ -517,7 +517,7 @@ function isoDaysAgo(days: number, hour = 10, minute = 0) {
   return d.toISOString();
 }
 
-function PosDemo({ niche, orgName }: { niche: Niche; orgName: string }) {
+function PosDemo({ niche, orgName: _orgName }: { niche: Niche; orgName: string }) {
   const t = useTranslations("POS");
   const products = useMemo(() => demoProducts(niche), [niche]);
   const customers = useMemo(

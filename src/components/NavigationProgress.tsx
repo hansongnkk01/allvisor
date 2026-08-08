@@ -9,11 +9,19 @@ export function NavigationProgress() {
   const [active, setActive] = useState(false);
   const [, startTransition] = useTransition();
 
-  useEffect(() => {
+  // Flash the bar when the route changes (adjust during render)…
+  const [prevPath, setPrevPath] = useState(pathname);
+  if (pathname !== prevPath) {
+    setPrevPath(pathname);
     setActive(true);
+  }
+
+  // …and fade it out shortly after.
+  useEffect(() => {
+    if (!active) return;
     const t = setTimeout(() => setActive(false), 280);
     return () => clearTimeout(t);
-  }, [pathname]);
+  }, [active]);
 
   useEffect(() => {
     const onClick = (e: MouseEvent) => {

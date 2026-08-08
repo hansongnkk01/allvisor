@@ -216,9 +216,11 @@ export function HomeDashboardPreview({
   const phaseRef = useRef(phase);
   const centerIdxRef = useRef(centerIdx);
   const onNicheChangeRef = useRef(onNicheChange);
-  phaseRef.current = phase;
-  centerIdxRef.current = centerIdx;
-  onNicheChangeRef.current = onNicheChange;
+  useEffect(() => {
+    phaseRef.current = phase;
+    centerIdxRef.current = centerIdx;
+    onNicheChangeRef.current = onNicheChange;
+  });
 
   /** Fixed 5-slot strip; viewport shows the middle 3. Idle offset = -1 slot. */
   const carouselItems = useMemo(
@@ -230,15 +232,19 @@ export function HomeDashboardPreview({
     return -px;
   }
 
-  useEffect(() => {
+  // Adjust-on-change during render (React-endorsed): resets the view whenever
+  // the niche or audience flips, and re-centres the carousel on external niche
+  // changes — without a post-render setState cascade.
+  const [prevNicheKey, setPrevNicheKey] = useState(`${niche}:${audience}`);
+  const nicheKey = `${niche}:${audience}`;
+  if (nicheKey !== prevNicheKey) {
+    setPrevNicheKey(nicheKey);
     setView("dashboard");
-  }, [niche, audience]);
-
-  useEffect(() => {
-    if (phase !== "idle") return;
-    const idx = NICHES.indexOf(niche);
-    if (idx >= 0 && idx !== centerIdx) setCenterIdx(idx);
-  }, [niche, phase, centerIdx]);
+    if (phase === "idle") {
+      const idx = NICHES.indexOf(niche);
+      if (idx >= 0 && idx !== centerIdx) setCenterIdx(idx);
+    }
+  }
 
   useEffect(() => {
     mainScrollRef.current?.scrollTo({ top: 0 });

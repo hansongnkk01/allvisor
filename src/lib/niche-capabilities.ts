@@ -87,8 +87,6 @@ const CARE_ADMIN: NavSectionDef = {
   keys: ["admin", "accounting", "lhdn"],
 };
 
-const SHARED_OPS_BASE = ["dashboard", "customers", "invoices"] as const;
-
 export const NICHE_DEFINITIONS: Record<Niche, NicheDefinition> = {
   clinic: {
     id: "clinic",

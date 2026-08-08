@@ -237,8 +237,6 @@ export async function upsertCustomerAction(formData: FormData) {
 
   const customerId = data?.id || id;
 
-  // Tuition: enrol subjects / classes from Students form
-  const { hasCapability } = await import("@/lib/niches");
   // Tuition only: enrol subjects / classes (gym also has class_schedule — skip)
   if (organization.niche === "tuition" && customerId) {
     const classIds = formData
@@ -4050,7 +4048,7 @@ export async function importMigrationDataAction(
       const patientName = String(r.patient_name || "").trim();
       const patientIc = String(r.patient_ic || "").trim().toLowerCase();
       const patientPhone = String(r.patient_phone || "").replace(/\D/g, "");
-      let customerId =
+      const customerId =
         (patientIc && byIc.get(patientIc)) ||
         (patientPhone && byPhone.get(patientPhone)) ||
         (patientName && byName.get(patientName.toLowerCase())) ||
