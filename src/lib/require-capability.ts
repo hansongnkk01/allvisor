@@ -6,7 +6,10 @@ import { hasCapability, type Capability } from "@/lib/niche-capabilities";
 export async function requireCapability(locale: string, capability: Capability) {
   const ctx = await getOrgContext();
   if (!ctx) {
-    redirect({ href: "/login", locale });
+    // Signed-in but no org yet → onboarding; signed-out → login.
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    redirect({ href: user ? "/onboarding" : "/login", locale });
   }
   if (!hasCapability(ctx!.organization.niche, capability)) {
     redirect({ href: "/dashboard", locale });

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isCronAuthorized } from "@/lib/cron-auth";
 import { emailIsConfigured, sendEmail } from "@/lib/email/send";
 import {
   SEQUENCE_LENGTH,
@@ -31,10 +32,7 @@ type LeadRow = {
  * Add ?dry=1 to see exactly who would be emailed without sending anything.
  */
 export async function GET(request: Request) {
-  const secret = process.env.CRON_SECRET;
-  const authorized =
-    !!secret && request.headers.get("authorization") === `Bearer ${secret}`;
-  if (!authorized) {
+  if (!isCronAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -99,6 +97,9 @@ export async function GET(request: Request) {
   );
 
   let sent = 0;
+  // Mask emails in the response: cron output lands in deploy logs, and lead
+  // PII does not belong there. Lead ids are enough to trace a failure.
+  const mask = (email: string) => email.replace(/^(.{1,2}).*(@.*)$/, "$1***$2");
   const planned: { email: string; step: number; subject: string }[] = [];
   const failures: string[] = [];
 
@@ -116,7 +117,7 @@ export async function GET(request: Request) {
     if (!message) continue;
 
     if (dryRun) {
-      planned.push({ email: lead.email, step, subject: message.subject });
+      planned.push({ email: mask(lead.email), step, subject: message.subject });
       continue;
     }
 
@@ -146,7 +147,7 @@ export async function GET(request: Request) {
       // Release the claim so the next run retries instead of losing the step.
       await admin.from("marketing_emails").delete().eq("lead_id", lead.id).eq("step", step);
       failures.push(
-        `${lead.email} step ${step}: ${result.ok ? "sender not configured" : result.error}`,
+        `lead ${lead.id} step ${step}: ${result.ok ? "sender not configured" : result.error}`,
       );
     }
   }

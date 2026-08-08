@@ -78,6 +78,17 @@ export async function addTaskAction(formData: FormData) {
   const assignedTo = String(formData.get("assigned_to") || "").trim() || null;
   const dueDate = String(formData.get("due_date") || "").trim() || null;
 
+  // The assignee must be a member of this org — never trust a client-sent id.
+  if (assignedTo) {
+    const { data: assigneeMember } = await supabase
+      .from("memberships")
+      .select("id")
+      .eq("organization_id", organization.id)
+      .eq("user_id", assignedTo)
+      .maybeSingle();
+    if (!assigneeMember) return { error: "Assignee is not in your team" };
+  }
+
   const { error } = await supabase.from("tasks").insert({
     organization_id: organization.id,
     title,

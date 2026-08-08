@@ -118,10 +118,17 @@ export async function savePosTicketAction(formData: FormData) {
         .update(payload)
         .eq("id", ticketId)
         .eq("organization_id", organization.id)
+        .eq("status", "held")
         .select("id, ticket_number")
         .single()
     : await supabase.from("pos_tickets").insert(payload).select("id, ticket_number").single();
-  if (result.error || !result.data) return { error: result.error?.message || "Could not save ticket" };
+  if (result.error || !result.data) {
+    return {
+      error: ticketId
+        ? "Ticket is no longer editable (already completed or voided)"
+        : result.error?.message || "Could not save ticket",
+    };
+  }
   if (ticketId) await supabase.from("pos_ticket_lines").delete().eq("ticket_id", result.data.id);
   const { error: linesError } = await supabase.from("pos_ticket_lines").insert(
     lines.map((line) => ({
@@ -142,12 +149,19 @@ export async function voidPosTicketAction(formData: FormData) {
   const { supabase, organization, profile } = await requireRetailMember();
   const id = String(formData.get("ticket_id") || "");
   if (!id) return { error: "Ticket required" };
-  const { error } = await supabase
+  // Only held tickets can be voided — a completed sale must go through the
+  // refund flow so money and stock are reversed properly.
+  const { data: voided, error } = await supabase
     .from("pos_tickets")
     .update({ status: "void", updated_at: new Date().toISOString() })
     .eq("id", id)
-    .eq("organization_id", organization.id);
+    .eq("organization_id", organization.id)
+    .eq("status", "held")
+    .select("id");
   if (error) return { error: error.message };
+  if (!voided || !voided.length) {
+    return { error: "Only held tickets can be voided — use refund for completed sales." };
+  }
   // Fire-and-forget: the AI supervisor re-checks this staff member's rates.
   void (async () => {
     try {
@@ -347,6 +361,15 @@ export async function addCashMovementAction(formData: FormData) {
   const type = String(formData.get("type") || "in") === "out" ? "out" : "in";
   const amount = positiveNumber(formData.get("amount"));
   if (!sessionId || !amount) return { error: "Session and positive amount required" };
+  // Movements only make sense against an open session of this org.
+  const { data: session } = await supabase
+    .from("cash_sessions")
+    .select("id")
+    .eq("id", sessionId)
+    .eq("organization_id", organization.id)
+    .eq("status", "open")
+    .maybeSingle();
+  if (!session) return { error: "Cash session is not open" };
   const { error } = await supabase.from("cash_movements").insert({
     organization_id: organization.id,
     session_id: sessionId,
@@ -367,7 +390,7 @@ export async function closeCashSessionAction(formData: FormData) {
   const closingCount = Number(formData.get("closing_count") || 0);
   const expected = Number(formData.get("expected_cash") || 0);
   if (!sessionId || closingCount < 0) return { error: "Valid counted cash required" };
-  const { error } = await supabase
+  const { data: closed, error } = await supabase
     .from("cash_sessions")
     .update({
       closing_count: closingCount,
@@ -381,8 +404,10 @@ export async function closeCashSessionAction(formData: FormData) {
     })
     .eq("id", sessionId)
     .eq("organization_id", organization.id)
-    .eq("status", "open");
+    .eq("status", "open")
+    .select("id");
   if (error) return { error: error.message };
+  if (!closed || !closed.length) return { error: "Cash session is already closed" };
   // Fire-and-forget: the AI supervisor flags out-of-limit variances.
   void (async () => {
     try {
@@ -581,21 +606,10 @@ export async function createStockTransferAction(formData: FormData) {
       quantity: line.quantity,
     }))
   );
-  for (const line of lines) {
-    const product = byId.get(line.product_id)!;
-    await supabase
-      .from("products")
-      .update({ quantity: Number(product.quantity) - line.quantity })
-      .eq("id", product.id);
-    await supabase.from("stock_movements").insert({
-      organization_id: organization.id,
-      product_id: product.id,
-      type: "out",
-      quantity: line.quantity,
-      note: number,
-      created_by: profile.id,
-    });
-  }
+  // Stock stays inside the org (locations are labels, not separate pools), so
+  // the global quantity must NOT change — deducting here silently lost stock.
+  // The transfer document + lines above are the audit trail. To send stock OUT
+  // of the business, use a stock adjustment instead.
   revalidateApp("/logistics", "/inventory", "/pos");
   return { success: true };
 }

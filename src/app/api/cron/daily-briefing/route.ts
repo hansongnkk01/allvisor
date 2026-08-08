@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isCronAuthorized } from "@/lib/cron-auth";
 import { generateBriefing } from "@/lib/briefing";
 import { sendToChannels } from "@/lib/notify";
 
@@ -11,10 +12,7 @@ export const maxDuration = 300;
  * Runs with the service role; Vercel Cron calls it with the CRON_SECRET bearer.
  */
 export async function GET(request: Request) {
-  const secret = process.env.CRON_SECRET;
-  const authorized =
-    !!secret && request.headers.get("authorization") === `Bearer ${secret}`;
-  if (!authorized) {
+  if (!isCronAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

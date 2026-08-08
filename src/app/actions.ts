@@ -230,7 +230,7 @@ export async function upsertCustomerAction(formData: FormData) {
   }
 
   const { data, error } = id
-    ? await supabase.from("customers").update(payload).eq("id", id).select("id").single()
+    ? await supabase.from("customers").update(payload).eq("id", id).eq("organization_id", organization.id).select("id").single()
     : await supabase.from("customers").insert(payload).select("id").single();
 
   if (error) return { error: error.message };
@@ -300,6 +300,7 @@ export async function deleteCustomerAction(id: string) {
     .from("customers")
     .select("name")
     .eq("id", id)
+    .eq("organization_id", organization.id)
     .maybeSingle();
 
   if (customer) {
@@ -312,7 +313,7 @@ export async function deleteCustomerAction(id: string) {
     });
   }
 
-  const { error } = await supabase.from("customers").delete().eq("id", id);
+  const { error } = await supabase.from("customers").delete().eq("id", id).eq("organization_id", organization.id);
   if (error) return { error: error.message };
 
   const { vocabLabels } = await import("@/lib/niches");
@@ -436,7 +437,7 @@ export async function upsertProductAction(formData: FormData) {
   if (!payload.name) return { error: "Name required" };
 
   const { data, error } = id
-    ? await supabase.from("products").update(payload).eq("id", id).select("id").single()
+    ? await supabase.from("products").update(payload).eq("id", id).eq("organization_id", organization.id).select("id").single()
     : await supabase.from("products").insert(payload).select("id").single();
 
   if (error) {
@@ -444,7 +445,7 @@ export async function upsertProductAction(formData: FormData) {
       // Retry without barcode if migration 018 not applied yet
       const { barcode: _b, ...withoutBarcode } = payload;
       const retry = id
-        ? await supabase.from("products").update(withoutBarcode).eq("id", id).select("id").single()
+        ? await supabase.from("products").update(withoutBarcode).eq("id", id).eq("organization_id", organization.id).select("id").single()
         : await supabase.from("products").insert(withoutBarcode).select("id").single();
       if (retry.error) return { error: retry.error.message };
       await logActivity({
@@ -487,6 +488,7 @@ export async function adjustStockAction(formData: FormData) {
     .from("products")
     .select("*")
     .eq("id", productId)
+    .eq("organization_id", organization.id)
     .single();
   if (!product) return { error: "Product not found" };
 
@@ -508,7 +510,8 @@ export async function adjustStockAction(formData: FormData) {
   const { error } = await supabase
     .from("products")
     .update({ quantity: nextQty })
-    .eq("id", productId);
+    .eq("id", productId)
+    .eq("organization_id", organization.id);
   if (error) return { error: error.message };
 
   await logActivity({
@@ -772,6 +775,17 @@ export async function createInvoiceAction(formData: FormData) {
 
   if (!lines.length) return { error: "Add at least one invoice line" };
 
+  // A linked customer must belong to this org — never trust a client-sent id.
+  if (customerId) {
+    const { data: ownedCustomer } = await supabase
+      .from("customers")
+      .select("id")
+      .eq("id", customerId)
+      .eq("organization_id", organization.id)
+      .maybeSingle();
+    if (!ownedCustomer) return { error: "Customer not found" };
+  }
+
   const servicesTotal = lines.reduce(
     (sum, line) => sum + line.quantity * line.unit_price,
     0
@@ -894,8 +908,16 @@ export async function recordPaymentAction(formData: FormData) {
     .from("invoices")
     .select("*")
     .eq("id", invoiceId)
+    .eq("organization_id", organization.id)
     .single();
   if (!invoice) return { error: "Invoice not found" };
+
+  // Never accept more than the outstanding balance — overpaying would mark the
+  // invoice paid while inflating the ledger.
+  const balance = Number(invoice.total) - Number(invoice.amount_paid || 0);
+  if (amount > balance + 0.001) {
+    return { error: `Amount exceeds the outstanding balance (RM ${balance.toFixed(2)})` };
+  }
 
   const { error: payError } = await supabase.from("payments").insert({
     organization_id: organization.id,
@@ -922,7 +944,8 @@ export async function recordPaymentAction(formData: FormData) {
       status,
       ...(titleNext !== invoice.title ? { title: titleNext } : {}),
     })
-    .eq("id", invoiceId);
+    .eq("id", invoiceId)
+    .eq("organization_id", organization.id);
 
   if (invoice.status !== status) {
     await supabase.from("invoice_status_logs").insert({
@@ -956,7 +979,7 @@ export async function recordPaymentAction(formData: FormData) {
 
   // Fully paid → auto-submit to LHDN (errors returned as object, not thrown)
   if (status === "paid") {
-    const lhdn = await submitInvoiceToLhdnAction(invoiceId);
+    const lhdn = await submitInvoiceToLhdn(invoiceId);
     if (lhdn && "error" in lhdn && lhdn.error) {
       await logActivity({
         action: "invoice.lhdn_auto_failed",
@@ -1035,6 +1058,16 @@ export async function createAppointmentAction(formData: FormData) {
   if (!payload.customer_id || !payload.title || !startsAt || !endsAt) {
     return { error: "Missing appointment fields" };
   }
+
+  // The customer must belong to this org — never trust a client-sent id.
+  const { data: ownedCustomer } = await supabase
+    .from("customers")
+    .select("id")
+    .eq("id", payload.customer_id)
+    .eq("organization_id", organization.id)
+    .maybeSingle();
+  if (!ownedCustomer) return { error: "Customer not found" };
+
   if (new Date(endsAt).getTime() <= new Date(startsAt).getTime()) {
     return { error: "End time must be after start time" };
   }
@@ -1058,8 +1091,14 @@ export async function createAppointmentAction(formData: FormData) {
 }
 
 export async function updateAppointmentStatusAction(id: string, status: AppointmentStatus) {
-  const { supabase } = await requireMember();
-  const { error } = await supabase.from("appointments").update({ status }).eq("id", id);
+  const { supabase, organization } = await requireMember();
+  const allowed: AppointmentStatus[] = ["scheduled", "confirmed", "completed", "cancelled", "no_show"];
+  if (!allowed.includes(status)) return { error: "Invalid status" };
+  const { error } = await supabase
+    .from("appointments")
+    .update({ status })
+    .eq("id", id)
+    .eq("organization_id", organization.id);
   if (error) return { error: error.message };
 
   await logActivity({
@@ -1444,7 +1483,7 @@ export async function updateInvoiceExtrasAction(formData: FormData) {
 }
 
 export async function updateAppointmentAction(formData: FormData) {
-  const { supabase } = await requireMember();
+  const { supabase, organization } = await requireMember();
   const id = String(formData.get("id") || "");
   if (!id) return { error: "Missing appointment id" };
 
@@ -1469,7 +1508,8 @@ export async function updateAppointmentAction(formData: FormData) {
       notes,
       status,
     })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("organization_id", organization.id);
 
   if (error) return { error: error.message };
 
@@ -1485,8 +1525,8 @@ export async function updateAppointmentAction(formData: FormData) {
 }
 
 export async function deleteAppointmentAction(id: string) {
-  const { supabase } = await requireMember();
-  const { error } = await supabase.from("appointments").delete().eq("id", id);
+  const { supabase, organization } = await requireMember();
+  const { error } = await supabase.from("appointments").delete().eq("id", id).eq("organization_id", organization.id);
   if (error) return { error: error.message };
 
   await logActivity({
@@ -1717,7 +1757,11 @@ export async function posCheckoutAction(formData: FormData) {
 }
 
 export async function createExpenseAction(formData: FormData) {
-  const { supabase, organization } = await requireMember();
+  const { supabase, organization, membership } = await requireMember();
+  // Money out is a Manager Zone action: leadership, or anyone who unlocked it.
+  if (!canAccessSensitive(membership.role) && !(await isSectionUnlocked("accounting"))) {
+    return { error: "Forbidden — unlock the Manager Zone to record cash out." };
+  }
   const category = String(formData.get("category") || "").trim();
   const description = String(formData.get("description") || "") || null;
   const amount = Number(formData.get("amount") || 0);
@@ -1761,7 +1805,11 @@ export async function createExpenseAction(formData: FormData) {
 }
 
 export async function createIncomeAction(formData: FormData) {
-  const { supabase, organization } = await requireMember();
+  const { supabase, organization, membership } = await requireMember();
+  // Same gate as expenses: manual money-in must not be open to every cashier.
+  if (!canAccessSensitive(membership.role) && !(await isSectionUnlocked("accounting"))) {
+    return { error: "Forbidden — unlock the Manager Zone to record cash in." };
+  }
   const category = String(formData.get("category") || "").trim() || "Other income";
   const description = String(formData.get("description") || "").trim() || category;
   const amount = Number(formData.get("amount") || 0);
@@ -2022,6 +2070,10 @@ export async function upgradePlanAction(plan: SubscriptionPlan) {
   const unlocked = await isAdminUnlocked();
   if (!unlocked) return { error: "Admin unlock required" };
 
+  if (!["free", "starter", "growth", "pro"].includes(plan)) {
+    return { error: "Invalid plan" };
+  }
+
   const { error } = await supabase
     .from("organizations")
     .update({
@@ -2059,6 +2111,8 @@ export async function addStaffAction(formData: FormData) {
   const allowedRoles = assignableStaffRoles(membership.role);
   if (!allowedRoles.includes(role)) return { error: "Invalid role for your account" };
   if (!email) return { error: "Username (registered email) required" };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "Invalid email format" };
+  if (password && password.length < 6) return { error: "Password must be at least 6 characters" };
 
   const admin = await getServiceAdmin();
   if (!admin) {
@@ -2430,7 +2484,9 @@ export async function upsertBranchServiceItemAction(formData: FormData) {
     .from("service_categories")
     .select("name")
     .eq("id", categoryId)
+    .eq("organization_id", targetOrgId)
     .maybeSingle();
+  if (!category) return { error: "Category not found in the target branch" };
 
   const { error } = await admin.from("service_items").insert({
     organization_id: targetOrgId,
@@ -2598,7 +2654,12 @@ export async function kickBranchStaffAction(formData: FormData) {
   return { success: true };
 }
 
-export async function submitInvoiceToLhdnAction(invoiceId: string) {
+/**
+ * Internal submit path — no zone gate, because recordPaymentAction auto-submits
+ * on full payment and cashiers must not hit a wall there. The exported action
+ * below is the gated entry point for manual submissions from the LHDN page.
+ */
+async function submitInvoiceToLhdn(invoiceId: string) {
   const { supabase, organization } = await requireMember();
 
   if (!canUseLhdn(organization.subscription_plan, organization.subscription_status)) {
@@ -2634,6 +2695,7 @@ export async function submitInvoiceToLhdnAction(invoiceId: string) {
     .from("invoices")
     .select("*, customers(*), invoice_lines(*)")
     .eq("id", invoiceId)
+    .eq("organization_id", organization.id)
     .single();
 
   if (!invoice) return { error: "Invoice not found" };
@@ -2783,8 +2845,20 @@ export async function submitInvoiceToLhdnAction(invoiceId: string) {
       };
 }
 
+/** Manual LHDN submission from the UI — gated by role or Manager Zone unlock. */
+export async function submitInvoiceToLhdnAction(invoiceId: string) {
+  const { membership } = await requireMember();
+  if (!canAccessSensitive(membership.role) && !(await isSectionUnlocked("lhdn"))) {
+    return { error: "Forbidden — unlock the Manager Zone to submit to LHDN." };
+  }
+  return submitInvoiceToLhdn(invoiceId);
+}
+
 export async function refreshLhdnDocumentStatusAction(invoiceId: string) {
-  const { supabase, organization } = await requireMember();
+  const { supabase, organization, membership } = await requireMember();
+  if (!canAccessSensitive(membership.role) && !(await isSectionUnlocked("lhdn"))) {
+    return { error: "Forbidden — unlock the Manager Zone to refresh LHDN status." };
+  }
 
   if (!canUseLhdn(organization.subscription_plan, organization.subscription_status)) {
     return { error: "Plan does not include LHDN e-Invoice" };
@@ -2840,7 +2914,8 @@ export async function refreshLhdnDocumentStatusAction(invoiceId: string) {
   await supabase
     .from("invoices")
     .update({ lhdn_status: details.status })
-    .eq("id", invoiceId);
+    .eq("id", invoiceId)
+    .eq("organization_id", organization.id);
 
   await logActivity({
     action: "lhdn.refresh_status",
@@ -3110,7 +3185,7 @@ export async function revokeInvoiceAction(invoiceId: string) {
  * instead of only mutating the original. Invoice numbers stay unique via suffix.
  */
 export async function updateInvoiceStatusAction(formData: FormData) {
-  const { supabase, organization, profile } = await requireMember();
+  const { supabase, organization, profile, membership } = await requireMember();
   const invoiceId = String(formData.get("invoice_id") || "");
   const toStatus = String(formData.get("status") || "") as InvoiceStatus;
   const note = String(formData.get("note") || "").trim() || null;
@@ -3120,10 +3195,20 @@ export async function updateInvoiceStatusAction(formData: FormData) {
     return { error: "Invalid status update" };
   }
 
+  // Marking paid here books income without a payment — leadership/zone only.
+  if (
+    toStatus === "paid" &&
+    !canAccessSensitive(membership.role) &&
+    !(await isSectionUnlocked("accounting"))
+  ) {
+    return { error: "Forbidden — only leadership can mark an invoice paid directly." };
+  }
+
   const { data: invoice } = await supabase
     .from("invoices")
     .select("*, invoice_lines(*)")
     .eq("id", invoiceId)
+    .eq("organization_id", organization.id)
     .single();
   if (!invoice) return { error: "Invoice not found" };
   if (invoice.status === toStatus) return { success: true };
@@ -3428,6 +3513,9 @@ export async function changeAdminPasswordAction(formData: FormData) {
 export async function getDefaultAdminPasswordHint() {
   const ctx = await getOrgContext();
   if (!ctx) return "";
+  // The default zone password is a secret: only owner/admin may see the hint.
+  // Showing it on the lock screen to every member would defeat the lock.
+  if (!canManageOrgSettings(ctx.membership.role)) return "";
   if (ctx.organization.admin_password_hash) return "(custom password set)";
   return defaultAdminPassword(ctx.organization.name, ctx.organization.created_at);
 }

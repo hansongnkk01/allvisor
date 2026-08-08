@@ -10,7 +10,10 @@ import { canAccessOwnerArea } from "@/lib/roles";
 export async function requireOwner(locale: string) {
   const ctx = await getOrgContext();
   if (!ctx) {
-    redirect({ href: "/login", locale });
+    // Signed-in but no org yet → onboarding; signed-out → login.
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    redirect({ href: user ? "/onboarding" : "/login", locale });
   }
   if (!canAccessOwnerArea(ctx!.membership.role)) {
     redirect({ href: "/staff-dashboard", locale });

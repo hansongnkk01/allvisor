@@ -130,8 +130,11 @@ export async function buildBriefingContext(
   return {
     day: todayKey,
     orgName,
-    salesToday: (paymentsRes?.data || []).reduce((sum, row) => sum + Number(row.amount), 0),
-    txnToday: (paymentsRes?.data || []).length,
+    // Refund rows are negative amounts — count only real takings as "sales".
+    salesToday: (paymentsRes?.data || [])
+      .filter((row) => Number(row.amount) > 0)
+      .reduce((sum, row) => sum + Number(row.amount), 0),
+    txnToday: (paymentsRes?.data || []).filter((row) => Number(row.amount) > 0).length,
     incomeMonth: (ledgerRes?.data || [])
       .filter((row) => row.entry_type === "income")
       .reduce((sum, row) => sum + Number(row.amount), 0),

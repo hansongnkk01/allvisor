@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isCronAuthorized } from "@/lib/cron-auth";
 import { formatDayKeyMY } from "@/lib/datetime-my";
 import { computeStaffScores, saveStaffScores } from "@/lib/staff-scores";
 
@@ -10,10 +11,7 @@ export const maxDuration = 60;
  * has no user session; Vercel Cron calls it with the CRON_SECRET bearer token.
  */
 export async function GET(request: Request) {
-  const secret = process.env.CRON_SECRET;
-  const authorized =
-    !!secret && request.headers.get("authorization") === `Bearer ${secret}`;
-  if (!authorized) {
+  if (!isCronAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

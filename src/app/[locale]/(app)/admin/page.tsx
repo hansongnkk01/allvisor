@@ -68,9 +68,11 @@ export default async function AdminPage({
         <PageHeader title={t("title")} subtitle={t("lockSubtitle")} />
         <div className="surface" style={{ padding: "1.25rem", maxWidth: 480 }}>
           <p className="muted">{t("lockHint")}</p>
-          <p className="muted" style={{ fontSize: "0.85rem" }}>
-            {t("defaultPasswordHelp")}: <code>{hint}</code>
-          </p>
+          {hint ? (
+            <p className="muted" style={{ fontSize: "0.85rem" }}>
+              {t("defaultPasswordHelp")}: <code>{hint}</code>
+            </p>
+          ) : null}
           <ActionForm action={unlockAdminAction} className="stack">
             <div className="field">
               <label>{t("password")}</label>
