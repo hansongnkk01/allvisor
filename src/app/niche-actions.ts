@@ -145,7 +145,7 @@ export async function createJobCardAction(formData: FormData) {
 export async function createMembershipAction(formData: FormData) {
   return insertSimple(
     "memberships",
-    "memberships",
+    "gym_memberships",
     {
       customer_id: String(formData.get("customer_id") || ""),
       plan_name: String(formData.get("plan_name") || "").trim(),

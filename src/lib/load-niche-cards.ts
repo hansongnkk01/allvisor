@@ -536,7 +536,7 @@ const buildGrading: Builder = async ({ supabase, orgId }) => {
 
 const buildMemberships: Builder = async ({ supabase, orgId, now }) => {
   const { data } = await supabase
-    .from("memberships")
+    .from("gym_memberships")
     .select("id, plan_name, ends_on, status, customers(name)")
     .eq("organization_id", orgId)
     .eq("status", "active")

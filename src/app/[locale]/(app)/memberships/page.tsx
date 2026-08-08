@@ -7,7 +7,7 @@ export default function Page({ params }: { params: Promise<{ locale: string }> }
     capability: "memberships",
     title: "Memberships",
     subtitle: "Gym membership plans.",
-    table: "memberships",
+    table: "gym_memberships",
     columns: ["customer_id","plan_name","starts_on","ends_on","status"],
     fields: [
   {

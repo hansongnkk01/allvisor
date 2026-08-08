@@ -151,7 +151,10 @@ create policy "job_card_lines_all" on public.job_card_lines
   with check (exists (select 1 from public.job_cards j where j.id = job_id and public.is_org_member(j.organization_id)));
 
 -- ─── Gym ─────────────────────────────────────────────────────────────────────
-create table if not exists public.memberships (
+-- NOTE: the core `memberships` table (org staff membership) already exists from
+-- 001 — the gym table must use its own name. 034 creates it for databases that
+-- already applied the original 020 (where this block silently no-opped).
+create table if not exists public.gym_memberships (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references public.organizations (id) on delete cascade,
   customer_id uuid not null references public.customers (id) on delete cascade,
@@ -167,10 +170,10 @@ create table if not exists public.gym_checkins (
   customer_id uuid not null references public.customers (id) on delete cascade,
   checked_in_at timestamptz not null default now()
 );
-alter table public.memberships enable row level security;
+alter table public.gym_memberships enable row level security;
 alter table public.gym_checkins enable row level security;
-drop policy if exists "memberships_all" on public.memberships;
-create policy "memberships_all" on public.memberships
+drop policy if exists "gym_memberships_all" on public.gym_memberships;
+create policy "gym_memberships_all" on public.gym_memberships
   for all using (public.is_org_member(organization_id)) with check (public.is_org_member(organization_id));
 drop policy if exists "gym_checkins_all" on public.gym_checkins;
 create policy "gym_checkins_all" on public.gym_checkins

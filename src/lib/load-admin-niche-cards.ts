@@ -576,7 +576,7 @@ const buildTeacherPayroll: Builder = async ({ supabase, orgId }) => {
 
 const buildMembershipChurn: Builder = async ({ supabase, orgId, now }) => {
   const { data } = await supabase
-    .from("memberships")
+    .from("gym_memberships")
     .select("id, status, ends_on, plan_name")
     .eq("organization_id", orgId)
     .limit(2000);
