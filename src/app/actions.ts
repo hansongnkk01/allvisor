@@ -520,6 +520,29 @@ export async function adjustStockAction(formData: FormData) {
     entityId: productId,
   });
 
+  // Fire-and-forget: stock leaving without a sale is an AI supervisor signal.
+  if (type !== "in") {
+    void (async () => {
+      try {
+        const { runAfterStockAdjust } = await import("@/lib/alert-rules");
+        await runAfterStockAdjust({
+          supabase,
+          orgId: organization.id,
+          staffId: profile.id,
+          staffName: profile.full_name || profile.email || "Staff",
+          items: [
+            {
+              productId,
+              name: String(product.name || "Item"),
+              qty: quantity,
+              unitPrice: Number(product.unit_price || 0),
+            },
+          ],
+        });
+      } catch {}
+    })();
+  }
+
   revalidateApp("/inventory", "/pos", "/dashboard", "/staff");
   return { success: true };
 }
@@ -535,7 +558,7 @@ export async function bulkAdjustStockAction(formData: FormData) {
 
   const { data: products, error: fetchErr } = await supabase
     .from("products")
-    .select("id, name, quantity")
+    .select("id, name, quantity, unit_price")
     .eq("organization_id", organization.id)
     .in("id", productIds);
   if (fetchErr) return { error: fetchErr.message };
@@ -588,6 +611,27 @@ export async function bulkAdjustStockAction(formData: FormData) {
     entityType: "product",
     entityId: null,
   });
+
+  // Fire-and-forget: stock leaving without a sale is an AI supervisor signal.
+  if (type !== "in") {
+    void (async () => {
+      try {
+        const { runAfterStockAdjust } = await import("@/lib/alert-rules");
+        await runAfterStockAdjust({
+          supabase,
+          orgId: organization.id,
+          staffId: profile.id,
+          staffName: profile.full_name || profile.email || "Staff",
+          items: updates.map((u) => ({
+            productId: u.id,
+            name: u.name,
+            qty: quantity,
+            unitPrice: Number(byId.get(u.id)?.unit_price || 0),
+          })),
+        });
+      } catch {}
+    })();
+  }
 
   revalidateApp("/inventory", "/pos", "/dashboard", "/staff");
   return { success: true };

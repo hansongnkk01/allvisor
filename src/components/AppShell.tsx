@@ -50,6 +50,7 @@ import {
   TrendingUp,
   PiggyBank,
   Megaphone,
+  BellRing,
   Menu,
   X,
 } from "lucide-react";
@@ -65,6 +66,7 @@ import type { Audience, Niche } from "@/lib/types";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { NavigationProgress } from "./NavigationProgress";
 import { ExitAdminZoneButton } from "./ExitAdminZoneButton";
+import { AiChatWidget } from "@/components/AiChatWidget";
 import { BrandLogo } from "@/components/BrandLogo";
 import { ClinicLogoMark, type LogoShape } from "@/components/ClinicLogoMark";
 import { signOutAction } from "@/app/actions";
@@ -118,6 +120,7 @@ const icons: Record<string, ReactNode> = {
   cashflow: <PiggyBank size={18} />,
   money: <PiggyBank size={18} />,
   marketing: <Megaphone size={18} />,
+  alerts: <BellRing size={18} />,
 };
 
 function NavItem({
@@ -191,6 +194,7 @@ export function AppShell({
   role,
   audience = "staff",
   adminZoneUnlocked = false,
+  opsBrainEnabled = false,
   children,
 }: {
   niche: Niche;
@@ -200,6 +204,8 @@ export function AppShell({
   role?: string;
   audience?: Audience;
   adminZoneUnlocked?: boolean;
+  /** Owner chat widget mounts only for the admin audience with Ops Brain on. */
+  opsBrainEnabled?: boolean;
   children: React.ReactNode;
 }) {
   const t = useTranslations("Nav");
@@ -365,6 +371,8 @@ export function AppShell({
           <div className="app-content">{children}</div>
         </main>
       </div>
+
+      {audience === "admin" && opsBrainEnabled ? <AiChatWidget /> : null}
     </div>
   );
 }

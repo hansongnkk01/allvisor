@@ -421,7 +421,8 @@
     "money": "Money",
     "marketing": "Marketing",
     "careZone": "Care",
-    "studioZone": "Studio"
+    "studioZone": "Studio",
+    "alerts": "Alerts"
   },
   "Verify": {
     "title": "Confirm your account",
@@ -523,7 +524,47 @@
     "lhdnTitle": "LHDN e-Invoice",
     "lhdnPendingLabel": "Awaiting submission",
     "lhdnRejectedLabel": "Rejected",
-    "lhdnAllClear": "Nothing waiting. Every paid invoice is submitted."
+    "lhdnAllClear": "Nothing waiting. Every paid invoice is submitted.",
+    "alertsInboxTitle": "Alerts inbox",
+    "alertsInboxEmpty": "Nothing flagged. The AI supervisor is watching refunds, cash and stock.",
+    "openAlerts": "Open alerts",
+    "severity": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High"
+    },
+    "alertStatus": {
+      "open": "Open",
+      "investigating": "Investigating",
+      "resolved": "Resolved"
+    },
+    "markInvestigating": "Investigate",
+    "markResolved": "Resolve",
+    "tasksTitle": "Tasks",
+    "tasksEmpty": "No tasks yet. Add one, or let the AI supervisor assign work from alerts.",
+    "taskAddPlaceholder": "Add a task for the team…",
+    "taskAdd": "Add",
+    "taskDone": "Mark done",
+    "taskReopen": "Reopen",
+    "taskDue": "due",
+    "staffRankingTitle": "Staff ranking today",
+    "openTeam": "Team",
+    "rankingEmpty": "No scores yet today. Scores update automatically each night, or recalculate from the Team page.",
+    "rankingMistakes": "{count} refund/void",
+    "briefingTitle": "AI Briefing",
+    "briefingEmpty": "No briefing yet for today. It is generated automatically every night, or generate it now.",
+    "briefingGenerateNow": "Generate now",
+    "briefingRegenerate": "Regenerate",
+    "briefingCopyWhatsApp": "Copy for WhatsApp",
+    "briefingCopied": "Copied",
+    "briefingBasicMode": "Basic mode",
+    "briefingAiMode": "AI · {model}",
+    "briefingGeneratedAt": "Generated {time}",
+    "taskSource": {
+      "manual": "Manual",
+      "alert": "From alert",
+      "ai": "AI suggestion"
+    }
   },
   "DashCards": {
     "open": "Open",
@@ -1366,7 +1407,18 @@
     "todaySales": "Today's sales",
     "todaySalesEmpty": "No sales yet today.",
     "topSellers": "Top sellers (30 days)",
-    "topSellersEmpty": "No product sales yet."
+    "topSellersEmpty": "No product sales yet.",
+    "myTasksTitle": "My tasks",
+    "myTasksEmpty": "No tasks assigned to you. Nice and clear.",
+    "myTasksOpen": "{count} open",
+    "myTasksDone": "Mark done",
+    "myTasksReopen": "Reopen",
+    "myTasksDue": "due",
+    "myScoreTitle": "My score",
+    "myScoreToday": "Today",
+    "myScoreSales": "Sales",
+    "myScoreMistakes": "Refunds/voids",
+    "myScoreHint": "Scores compare today's work with the team: sales, transactions, average basket and refund/void activity."
   },
   "Customers": {
     "title": "Customers",
@@ -1752,10 +1804,49 @@
     "importAppointmentsTuition": "Schedule",
     "importNoRows": "No data rows found in the file.",
     "importSuccess": "Import complete",
-    "importPartial": "Import finished with some skipped rows"
+    "importPartial": "Import finished with some skipped rows",
+    "opsBrainTitle": "AI supervisor",
+    "opsBrainHint": "Watches refunds, cash and stock, raises alerts and assigns tasks. Turn it off to hide all of this for your business.",
+    "opsBrainEnable": "Switch on the AI supervisor",
+    "opsBrainDisable": "Switch off the AI supervisor",
+    "detectionTitle": "Detection rules",
+    "detectionHint": "The AI supervisor raises an alert when a number crosses these limits.",
+    "refundRateLabel": "Refund/void rate limit (%)",
+    "cashVarianceLabel": "Cash variance limit (RM)",
+    "stockValueLabel": "Unsold stock-out limit (RM)",
+    "saveThresholds": "Save detection rules",
+    "notifTitle": "Briefing notifications",
+    "notifHint": "The daily AI briefing is generated every night and sent to the enabled channels. Telegram delivers automatically (format: botToken:chatId).",
+    "telegramTargetLabel": "Telegram (botToken:chatId)",
+    "whatsappTargetLabel": "WhatsApp number",
+    "notifSave": "Save channel",
+    "notifEnable": "Enable {kind}",
+    "notifDisable": "Disable {kind}",
+    "notifLastSent": "Last sent {time}",
+    "notifNeverSent": "Not sent yet",
+    "notifLastError": "Last error: {error}",
+    "notifWhatsAppNote": "WhatsApp sends are coming — for now, copy the briefing from the dashboard card."
   },
   "Inventory": {
     "title": "Inventory",
+    "smartReorderTitle": "Reorder suggestions",
+    "smartReorderHint": "Based on 30-day sales velocity, 7-day lead time and 20% safety stock.",
+    "smartOnHand": "On hand",
+    "smartPerDay": "Sold/day",
+    "smartOrderQty": "Order",
+    "smartReorderEmpty": "No reorder needed — fast movers are all above their lead-time level.",
+    "smartDeadTitle": "Dead stock (30+ days)",
+    "smartDeadHint": "No units sold in 30 days. Consider a promotion or bundle to free up cash.",
+    "smartDeadValue": "Idle value",
+    "smartDeadEmpty": "No dead stock. Everything on the shelf has sold within 30 days.",
+    "cycleTitle": "Cycle count",
+    "cycleHint": "Count a few high-value items daily instead of closing for a full stocktake. Differences adjust stock through the normal logged flow.",
+    "cycleStart": "Start today's count",
+    "cyclePendingEmpty": "No pending count. Start one to get today's picks.",
+    "cycleExpected": "Expected",
+    "cycleCounted": "Counted",
+    "cycleSubmit": "Submit",
+    "cycleRecentDone": "Recently completed",
     "add": "Add item",
     "name": "Name",
     "sku": "SKU",
@@ -1930,5 +2021,29 @@
     "back": "Back",
     "noData": "No data",
     "confirm": "Confirm"
+  },
+  "Alerts": {
+    "pageTitle": "Alerts",
+    "pageSubtitle": "Everything the AI supervisor flagged — refunds, cash gaps, stock movement.",
+    "autoHandled": "Handled automatically",
+    "filter": {
+      "all": "All",
+      "open": "Open",
+      "investigating": "Investigating",
+      "resolved": "Resolved"
+    },
+    "emptyTitle": "All clear",
+    "emptyBody": "No alerts in this view. When the AI supervisor spots something, it lands here."
+  },
+  "AiChat": {
+    "openLabel": "Ask the AI supervisor",
+    "title": "Ask the AI",
+    "subtitle": "Answers from your real shop data only",
+    "placeholder": "e.g. How are sales today?",
+    "send": "Send",
+    "close": "Close",
+    "thinking": "Checking your numbers…",
+    "emptyState": "Ask about sales, profit, alerts, staff performance, stock or tasks. Every answer comes from your live data — nothing is invented.",
+    "errorReply": "Sorry, I could not answer just now. Please try again."
   }
 }

@@ -51,6 +51,7 @@ import {
   TrendingUp,
   PiggyBank,
   Megaphone,
+  BellRing,
 } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { ClinicLogoMark } from "@/components/ClinicLogoMark";
@@ -69,7 +70,9 @@ import type { Audience, Niche } from "@/lib/types";
 export type PreviewNiche = Niche;
 
 function isOwnerView(view: string) {
-  return (OWNER_NAV_KEYS as readonly string[]).includes(view);
+  // "alerts" stays out of OWNER_NAV_KEYS (managers may open it), but in the demo
+  // it is rendered by the owner page set.
+  return view === "alerts" || (OWNER_NAV_KEYS as readonly string[]).includes(view);
 }
 
 const AUTO_NEXT_MS = 3000;
@@ -131,6 +134,7 @@ const icons: Record<string, ReactNode> = {
   cashflow: <PiggyBank size={18} />,
   money: <PiggyBank size={18} />,
   marketing: <Megaphone size={18} />,
+  alerts: <BellRing size={18} />,
 };
 
 function SectionLabel({ children, first }: { children: ReactNode; first?: boolean }) {

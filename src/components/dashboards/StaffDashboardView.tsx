@@ -14,6 +14,8 @@ import {
   DashboardTopSellers,
 } from "@/components/DashboardLists";
 import { NicheCardGrid } from "@/components/dashboards/NicheCardGrid";
+import { StaffMyTasksCard } from "@/components/dashboards/StaffMyTasksCard";
+import { StaffMyScoreCard } from "@/components/dashboards/StaffMyScoreCard";
 import { hasCapability, vocabLabels } from "@/lib/niches";
 import { formatCurrency } from "@/lib/utils";
 import { lhdnOutstanding, type SharedDashboardData } from "@/lib/dashboard-data";
@@ -188,6 +190,13 @@ export function StaffDashboardView({ data }: { data: SharedDashboardData }) {
           empty={t("topSellersEmpty")}
           rows={data.topSellers}
         />
+      ) : null}
+
+      {data.opsBrainEnabled && (data.myScore || data.myTasks) ? (
+        <div className="fluid-grid">
+          {data.myScore ? <StaffMyScoreCard score={data.myScore} /> : null}
+          {data.myTasks ? <StaffMyTasksCard tasks={data.myTasks} demo={data.demo} /> : null}
+        </div>
       ) : null}
     </div>
   );

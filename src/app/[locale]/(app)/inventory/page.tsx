@@ -6,6 +6,9 @@ import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { ActionForm } from "@/components/ActionForm";
 import { upsertProductAction } from "@/app/actions";
+import { startCycleCountAction, submitCycleCountAction } from "@/app/ops-actions";
+import { computeSmartInventory } from "@/lib/smart-inventory";
+import { formatCurrency } from "@/lib/utils";
 import { InventoryStockTable } from "@/components/InventoryStockTable";
 import { InventoryHidProvider } from "@/components/InventoryHidProvider";
 import { InventoryBarcodeInput } from "@/components/InventoryBarcodeInput";
@@ -109,12 +112,217 @@ export default async function InventoryPage({
   const V = vocabLabels(ctx.organization.niche, locale);
   const isCommerce = hasCapability(ctx.organization.niche, "pos");
 
+  // Ops Brain smart-inventory slices. Everything soft-fails: a pending
+  // migration hides the sections instead of breaking the stock page.
+  let opsBrainEnabled = false;
+  try {
+    const { data: flagRow, error: flagError } = await supabase
+      .from("organizations")
+      .select("ops_brain_enabled")
+      .eq("id", ctx.organization.id)
+      .maybeSingle();
+    opsBrainEnabled = !flagError && flagRow?.ops_brain_enabled === true;
+  } catch {
+    opsBrainEnabled = false;
+  }
+
+  type CountRow = {
+    id: string;
+    product_id: string;
+    expected_qty: number;
+    counted_qty: number | null;
+    status: "pending" | "submitted";
+    created_at: string;
+    products?: { name?: string | null } | { name?: string | null }[] | null;
+  };
+  const countName = (row: CountRow) => {
+    const product = Array.isArray(row.products) ? row.products[0] : row.products;
+    return String(product?.name || "Item");
+  };
+
+  let smart: Awaited<ReturnType<typeof computeSmartInventory>> = null;
+  let pendingCounts: CountRow[] = [];
+  let recentCounts: CountRow[] = [];
+  if (opsBrainEnabled) {
+    smart = await computeSmartInventory(supabase, ctx.organization.id, new Date());
+    try {
+      const { data: countRows, error: countError } = await supabase
+        .from("stock_counts")
+        .select("id, product_id, expected_qty, counted_qty, status, created_at, products(name)")
+        .eq("organization_id", ctx.organization.id)
+        .order("created_at", { ascending: false })
+        .limit(30);
+      if (!countError) {
+        const all = (countRows || []) as CountRow[];
+        pendingCounts = all.filter((row) => row.status === "pending");
+        recentCounts = all.filter((row) => row.status === "submitted").slice(0, 5);
+      }
+    } catch {
+      pendingCounts = [];
+    }
+  }
+
   return (
     <div className="stack" style={{ gap: "1.25rem" }}>
       <PageHeader
         title={t("title")}
         subtitle={V.inventorySubtitle}
       />
+
+      {opsBrainEnabled && smart ? (
+        <div className="fluid-grid">
+          <section className="surface" style={{ padding: "1.25rem" }}>
+            <h3 style={{ marginTop: 0 }}>{t("smartReorderTitle")}</h3>
+            <p className="muted" style={{ marginTop: 0, fontSize: "0.82rem" }}>
+              {t("smartReorderHint")}
+            </p>
+            {smart.reorder.length === 0 ? (
+              <p className="muted" style={{ marginBottom: 0 }}>
+                {t("smartReorderEmpty")}
+              </p>
+            ) : (
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>{t("name")}</th>
+                    <th>{t("smartOnHand")}</th>
+                    <th>{t("smartPerDay")}</th>
+                    <th>{t("smartOrderQty")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {smart.reorder.map((row) => (
+                    <tr key={row.productId}>
+                      <td>{row.name}</td>
+                      <td>{row.onHand}</td>
+                      <td>{row.perDay}</td>
+                      <td>
+                        <strong>{row.suggestedQty}</strong>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </section>
+
+          <section className="surface" style={{ padding: "1.25rem" }}>
+            <h3 style={{ marginTop: 0 }}>{t("smartDeadTitle")}</h3>
+            <p className="muted" style={{ marginTop: 0, fontSize: "0.82rem" }}>
+              {t("smartDeadHint")}
+            </p>
+            {smart.deadStock.length === 0 ? (
+              <p className="muted" style={{ marginBottom: 0 }}>
+                {t("smartDeadEmpty")}
+              </p>
+            ) : (
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>{t("name")}</th>
+                    <th>{t("smartOnHand")}</th>
+                    <th>{t("smartDeadValue")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {smart.deadStock.map((row) => (
+                    <tr key={row.productId}>
+                      <td>{row.name}</td>
+                      <td>{row.onHand}</td>
+                      <td>{formatCurrency(row.value)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </section>
+        </div>
+      ) : null}
+
+      {opsBrainEnabled ? (
+        <section className="surface" style={{ padding: "1.25rem" }}>
+          <div
+            className="row"
+            style={{ justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}
+          >
+            <div style={{ maxWidth: 560 }}>
+              <h3 style={{ margin: 0 }}>{t("cycleTitle")}</h3>
+              <p className="muted" style={{ margin: "0.25rem 0 0", fontSize: "0.82rem" }}>
+                {t("cycleHint")}
+              </p>
+            </div>
+            <ActionForm action={startCycleCountAction}>
+              <button type="submit" className="btn btn-soft">
+                {t("cycleStart")}
+              </button>
+            </ActionForm>
+          </div>
+
+          {pendingCounts.length === 0 ? (
+            <p className="muted" style={{ marginBottom: 0 }}>{t("cyclePendingEmpty")}</p>
+          ) : (
+            <div className="stack" style={{ gap: "0.45rem", marginTop: "0.75rem" }}>
+              {pendingCounts.map((row) => (
+                <ActionForm
+                  key={row.id}
+                  action={submitCycleCountAction}
+                  className="row"
+                  style={{ gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}
+                >
+                  <input type="hidden" name="count_id" value={row.id} />
+                  <strong style={{ flex: 1, minWidth: 140 }}>{countName(row)}</strong>
+                  <span className="muted" style={{ fontSize: "0.8rem", whiteSpace: "nowrap" }}>
+                    {t("cycleExpected")}: {row.expected_qty}
+                  </span>
+                  <input
+                    name="counted_qty"
+                    type="number"
+                    min={0}
+                    step="any"
+                    required
+                    defaultValue={row.expected_qty}
+                    className="input"
+                    style={{ width: 110 }}
+                    aria-label={t("cycleCounted")}
+                  />
+                  <button type="submit" className="btn btn-primary" style={{ padding: "0.35rem 0.8rem" }}>
+                    {t("cycleSubmit")}
+                  </button>
+                </ActionForm>
+              ))}
+            </div>
+          )}
+
+          {recentCounts.length > 0 ? (
+            <div style={{ marginTop: "0.9rem" }}>
+              <div className="muted" style={{ fontSize: "0.78rem", marginBottom: "0.3rem" }}>
+                {t("cycleRecentDone")}
+              </div>
+              <div className="stack" style={{ gap: "0.25rem" }}>
+                {recentCounts.map((row) => {
+                  const diff = Math.round((Number(row.counted_qty) - Number(row.expected_qty)) * 1000) / 1000;
+                  return (
+                    <div key={row.id} className="row" style={{ gap: "0.5rem", fontSize: "0.82rem" }}>
+                      <span style={{ flex: 1, minWidth: 0 }}>{countName(row)}</span>
+                      <span className="muted">
+                        {row.expected_qty} → {row.counted_qty}
+                      </span>
+                      <span
+                        style={{
+                          fontWeight: 700,
+                          color: diff === 0 ? "var(--success, #16a34a)" : "var(--warn, #d97706)",
+                        }}
+                      >
+                        {diff === 0 ? "✓" : diff > 0 ? `+${diff}` : diff}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
 
       <FrequentlyUsedStock
         title={t("frequentlyUsed")}

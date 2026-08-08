@@ -9,6 +9,7 @@ import {
 } from "@/lib/performance-range";
 import { RevenueTrendChart } from "@/components/dashboards/RevenueTrendChart";
 import { ScoreBar } from "@/components/dashboards/ScoreBar";
+import { SeverityChip } from "@/components/dashboards/OpsCards";
 import { staffRoleLabel } from "@/lib/roles";
 import { vocabLabels } from "@/lib/niches";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
@@ -528,6 +529,60 @@ function MarketingDemo({ insights, niche }: { insights: AdminInsights; niche: Ni
   );
 }
 
+function AlertsDemo({ insights }: { insights: AdminInsights }) {
+  const t = useTranslations("Alerts");
+  const tOwner = useTranslations("Owner");
+  const locale = useLocale();
+  const FILTERS = ["all", "open", "investigating", "resolved"] as const;
+  const [filter, setFilter] = useState<(typeof FILTERS)[number]>("all");
+  const shown = insights.alerts.filter(
+    (alert) => filter === "all" || alert.status === filter
+  );
+
+  return (
+    <div className="stack" style={{ gap: "1.25rem" }}>
+      <PageHeader title={t("pageTitle")} subtitle={t("pageSubtitle")} />
+      <div className="row" style={{ gap: "0.4rem", flexWrap: "wrap" }}>
+        {FILTERS.map((value) => (
+          <button
+            key={value}
+            type="button"
+            className={filter === value ? "btn btn-soft" : "btn btn-ghost"}
+            onClick={() => setFilter(value)}
+          >
+            {t(`filter.${value}` as "filter.all")}
+          </button>
+        ))}
+      </div>
+      <div className="stack" style={{ gap: "0.55rem" }}>
+        {shown.map((alert) => (
+          <section key={alert.id} className="surface" style={{ padding: "0.85rem 1rem" }}>
+            <div className="row" style={{ gap: "0.45rem", alignItems: "center" }}>
+              <SeverityChip severity={alert.severity} />
+              <strong style={{ flex: 1, minWidth: 0 }}>{alert.title}</strong>
+            </div>
+            <p className="muted" style={{ margin: "0.3rem 0 0", fontSize: "0.86rem" }}>
+              {alert.message}
+            </p>
+            <div className="muted" style={{ marginTop: "0.35rem", fontSize: "0.75rem" }}>
+              {alert.staffName ? `${alert.staffName} · ` : ""}
+              {formatDateTime(alert.created_at, locale)}
+              {alert.status !== "open"
+                ? ` · ${tOwner(`alertStatus.${alert.status}` as "alertStatus.open")}`
+                : ""}
+            </div>
+          </section>
+        ))}
+        {shown.length === 0 ? (
+          <p className="muted" style={{ margin: 0 }}>
+            {t("emptyBody")}
+          </p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 export function HomeDemoOwnerPage({
   view,
   niche,
@@ -539,6 +594,7 @@ export function HomeDemoOwnerPage({
   insights: AdminInsights;
   now: Date;
 }) {
+  if (view === "alerts") return <AlertsDemo insights={insights} />;
   if (view === "performance") return <PerformanceDemo insights={insights} />;
   if (view === "money" || view === "cashflow") return <MoneyDemo insights={insights} now={now} />;
   if (view === "marketing") return <MarketingDemo insights={insights} niche={niche} />;

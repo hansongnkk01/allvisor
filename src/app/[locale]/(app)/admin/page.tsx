@@ -21,6 +21,11 @@ import {
   upsertServiceCategoryAction,
   upsertServiceItemAction,
 } from "@/app/actions";
+import { setOpsBrainEnabledAction, updateAlertSettingsAction } from "@/app/ops-actions";
+import {
+  saveNotificationChannelAction,
+  setNotificationChannelEnabledAction,
+} from "@/app/ops-actions";
 import { DataImportPanel } from "@/components/DataImportPanel";
 import { AdminActivityLog } from "@/components/AdminActivityLog";
 import { FilterableRows } from "@/components/FilterableRows";
@@ -29,7 +34,7 @@ import { BranchClinicSettings } from "@/components/BranchClinicSettings";
 import { BranchScorecard, type BranchScoreRow } from "@/components/BranchScorecard";
 import { ClinicLogoEditor } from "@/components/ClinicLogoEditor";
 import { TeamMembersSection } from "@/components/TeamMembersSection";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { dayBoundsMY, formatDayKeyMY } from "@/lib/datetime-my";
 import { defaultAdminPassword } from "@/lib/admin-lock";
 import {
@@ -236,6 +241,51 @@ export default async function AdminPage({
 
   const isSuper = branchOrgs.length > 1;
   const org = ctx.organization;
+  // The cached org context does not select these columns (migration-safe); read
+  // them directly so the toggles reflect reality. Missing columns = defaults.
+  let opsBrainEnabled = true;
+  let alertSettings = { refund_rate_percent: 8, cash_variance_rm: 20, stock_leak_rm: 100 };
+  try {
+    const { data: flagRow, error: flagError } = await supabase
+      .from("organizations")
+      .select("ops_brain_enabled, alert_settings")
+      .eq("id", org.id)
+      .maybeSingle();
+    if (!flagError) {
+      opsBrainEnabled = flagRow?.ops_brain_enabled !== false;
+      const raw = (flagRow?.alert_settings || {}) as Record<string, unknown>;
+      const num = (value: unknown, fallback: number) =>
+        Number.isFinite(Number(value)) && Number(value) > 0 ? Number(value) : fallback;
+      alertSettings = {
+        refund_rate_percent: num(raw.refund_rate_percent, 8),
+        cash_variance_rm: num(raw.cash_variance_rm, 20),
+        stock_leak_rm: num(raw.stock_leak_rm, 100),
+      };
+    }
+  } catch {
+    opsBrainEnabled = true;
+  }
+
+  // Notification channels (migration 031). Missing table = empty list.
+  type ChannelRow = {
+    kind: string;
+    target: string;
+    enabled: boolean;
+    last_sent_at: string | null;
+    last_error: string | null;
+  };
+  let channels: ChannelRow[] = [];
+  try {
+    const { data: channelRows, error: channelError } = await supabase
+      .from("notification_channels")
+      .select("kind, target, enabled, last_sent_at, last_error")
+      .eq("organization_id", orgId);
+    if (!channelError) channels = (channelRows || []) as ChannelRow[];
+  } catch {
+    channels = [];
+  }
+  const telegramChannel = channels.find((row) => row.kind === "telegram") ?? null;
+  const whatsappChannel = channels.find((row) => row.kind === "whatsapp") ?? null;
   const isClinic = hasCapability(org.niche, "appointments") || hasCapability(org.niche, "allergies");
   const isRetail = hasCapability(org.niche, "pos");
   const vocab = getNicheVocab(org.niche);
@@ -403,9 +453,173 @@ export default async function AdminPage({
         </div>
       ) : null}
 
+      {/* Detection thresholds: leadership tunes what the AI supervisor flags. */}
+      {opsBrainEnabled &&
+      (hasCapability(org.niche, "pos") ||
+        hasCapability(org.niche, "cash_drawer") ||
+        hasCapability(org.niche, "inventory")) ? (
+        <div className="surface" style={{ padding: "1.25rem" }}>
+          <h3 style={{ marginTop: 0 }}>{t("detectionTitle")}</h3>
+          <p className="muted">{t("detectionHint")}</p>
+          <ActionForm action={updateAlertSettingsAction} className="stack">
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                gap: "0.75rem",
+              }}
+            >
+              {hasCapability(org.niche, "pos") ? (
+                <div className="field">
+                  <label>{t("refundRateLabel")}</label>
+                  <input
+                    name="refund_rate_percent"
+                    type="number"
+                    min={1}
+                    max={100}
+                    step={0.5}
+                    className="input"
+                    defaultValue={alertSettings.refund_rate_percent}
+                  />
+                </div>
+              ) : null}
+              {hasCapability(org.niche, "cash_drawer") ? (
+                <div className="field">
+                  <label>{t("cashVarianceLabel")}</label>
+                  <input
+                    name="cash_variance_rm"
+                    type="number"
+                    min={1}
+                    step={1}
+                    className="input"
+                    defaultValue={alertSettings.cash_variance_rm}
+                  />
+                </div>
+              ) : null}
+              {hasCapability(org.niche, "inventory") ? (
+                <div className="field">
+                  <label>{t("stockValueLabel")}</label>
+                  <input
+                    name="stock_leak_rm"
+                    type="number"
+                    min={1}
+                    step={1}
+                    className="input"
+                    defaultValue={alertSettings.stock_leak_rm}
+                  />
+                </div>
+              ) : null}
+            </div>
+            <button type="submit" className="btn btn-soft" style={{ alignSelf: "flex-start" }}>
+              {t("saveThresholds")}
+            </button>
+          </ActionForm>
+        </div>
+      ) : null}
+
+      {/* Briefing delivery channels: Telegram sends for real, WhatsApp is a copy flow. */}
+      {opsBrainEnabled && canEditOrgSettings ? (
+        <div className="surface" style={{ padding: "1.25rem" }}>
+          <h3 style={{ marginTop: 0 }}>{t("notifTitle")}</h3>
+          <p className="muted">{t("notifHint")}</p>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+              gap: "0.75rem",
+            }}
+          >
+            <ActionForm action={saveNotificationChannelAction} className="stack">
+              <input type="hidden" name="kind" value="telegram" />
+              <div className="field">
+                <label>{t("telegramTargetLabel")}</label>
+                <input
+                  name="target"
+                  className="input"
+                  placeholder="123456:AA…:987654321"
+                  defaultValue={telegramChannel?.target || ""}
+                  required
+                />
+              </div>
+              <div className="row" style={{ gap: "0.5rem", alignItems: "center" }}>
+                <button type="submit" className="btn btn-soft">
+                  {t("notifSave")}
+                </button>
+                {telegramChannel ? (
+                  <span className="muted" style={{ fontSize: "0.78rem" }}>
+                    {telegramChannel.last_error
+                      ? t("notifLastError", { error: telegramChannel.last_error })
+                      : telegramChannel.last_sent_at
+                        ? t("notifLastSent", {
+                            time: formatDateTime(telegramChannel.last_sent_at, locale),
+                          })
+                        : t("notifNeverSent")}
+                  </span>
+                ) : null}
+              </div>
+            </ActionForm>
+
+            <ActionForm action={saveNotificationChannelAction} className="stack">
+              <input type="hidden" name="kind" value="whatsapp" />
+              <div className="field">
+                <label>{t("whatsappTargetLabel")}</label>
+                <input
+                  name="target"
+                  className="input"
+                  placeholder="+60123456789"
+                  defaultValue={whatsappChannel?.target || ""}
+                  required
+                />
+              </div>
+              <div className="row" style={{ gap: "0.5rem", alignItems: "center" }}>
+                <button type="submit" className="btn btn-soft">
+                  {t("notifSave")}
+                </button>
+                <span className="muted" style={{ fontSize: "0.78rem" }}>
+                  {t("notifWhatsAppNote")}
+                </span>
+              </div>
+            </ActionForm>
+          </div>
+
+          {telegramChannel || whatsappChannel ? (
+            <div className="row" style={{ gap: "0.5rem", marginTop: "0.75rem", flexWrap: "wrap" }}>
+              {[telegramChannel, whatsappChannel]
+                .filter((row): row is ChannelRow => Boolean(row))
+                .map((row) => (
+                  <ActionForm key={row.kind} action={setNotificationChannelEnabledAction}>
+                    <input type="hidden" name="kind" value={row.kind} />
+                    <input type="hidden" name="enabled" value={row.enabled ? "false" : "true"} />
+                    <button type="submit" className="btn btn-ghost">
+                      {row.enabled
+                        ? t("notifDisable", { kind: row.kind })
+                        : t("notifEnable", { kind: row.kind })}
+                    </button>
+                  </ActionForm>
+                ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       {/* Business identity, billing and the zone password stay with the owner. */}
       {canEditOrgSettings ? (
         <>
+      <div className="surface" style={{ padding: "1.25rem" }}>
+            <h3 style={{ marginTop: 0 }}>{t("opsBrainTitle")}</h3>
+            <p className="muted">{t("opsBrainHint")}</p>
+            <ActionForm action={setOpsBrainEnabledAction}>
+              <input
+                type="hidden"
+                name="enabled"
+                value={opsBrainEnabled ? "false" : "true"}
+              />
+              <button type="submit" className="btn btn-soft">
+                {opsBrainEnabled ? t("opsBrainDisable") : t("opsBrainEnable")}
+              </button>
+            </ActionForm>
+          </div>
+
       <div className="surface" style={{ padding: "1.25rem" }}>
             <h3 style={{ marginTop: 0 }}>{t("securityTitle")}</h3>
             <p className="muted">

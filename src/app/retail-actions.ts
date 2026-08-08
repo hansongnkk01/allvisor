@@ -139,7 +139,7 @@ export async function savePosTicketAction(formData: FormData) {
 }
 
 export async function voidPosTicketAction(formData: FormData) {
-  const { supabase, organization } = await requireRetailMember();
+  const { supabase, organization, profile } = await requireRetailMember();
   const id = String(formData.get("ticket_id") || "");
   if (!id) return { error: "Ticket required" };
   const { error } = await supabase
@@ -148,6 +148,18 @@ export async function voidPosTicketAction(formData: FormData) {
     .eq("id", id)
     .eq("organization_id", organization.id);
   if (error) return { error: error.message };
+  // Fire-and-forget: the AI supervisor re-checks this staff member's rates.
+  void (async () => {
+    try {
+      const { runAfterRefundOrVoid } = await import("@/lib/alert-rules");
+      await runAfterRefundOrVoid({
+        supabase,
+        orgId: organization.id,
+        staffId: profile.id,
+        staffName: actorName(profile),
+      });
+    } catch {}
+  })();
   revalidateApp("/pos");
   return { success: true };
 }
@@ -279,6 +291,18 @@ export async function refundInvoiceAction(formData: FormData) {
     entityType: "invoice",
     entityId: refund.id,
   });
+  // Fire-and-forget: the AI supervisor re-checks this staff member's rates.
+  void (async () => {
+    try {
+      const { runAfterRefundOrVoid } = await import("@/lib/alert-rules");
+      await runAfterRefundOrVoid({
+        supabase,
+        orgId: organization.id,
+        staffId: profile.id,
+        staffName: actorName(profile),
+      });
+    } catch {}
+  })();
   revalidateApp("/receipts", "/inventory", "/invoices", "/dashboard", "/accounting");
   return { success: true };
 }
@@ -359,6 +383,20 @@ export async function closeCashSessionAction(formData: FormData) {
     .eq("organization_id", organization.id)
     .eq("status", "open");
   if (error) return { error: error.message };
+  // Fire-and-forget: the AI supervisor flags out-of-limit variances.
+  void (async () => {
+    try {
+      const { runAfterCashClose } = await import("@/lib/alert-rules");
+      await runAfterCashClose({
+        supabase,
+        orgId: organization.id,
+        staffId: profile.id,
+        staffName: actorName(profile),
+        sessionId,
+        variance: closingCount - expected,
+      });
+    } catch {}
+  })();
   revalidateApp("/cash");
   return { success: true };
 }

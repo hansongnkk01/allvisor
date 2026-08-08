@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { RevenueTrendChart } from "@/components/dashboards/RevenueTrendChart";
 import { NicheCardGrid } from "@/components/dashboards/NicheCardGrid";
+import { AdminAlertsInboxCard, AdminAiBriefingCard, AdminStaffRankingCard, AdminTasksCard } from "@/components/dashboards/OpsCards";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import type { AdminInsights, SharedDashboardData } from "@/lib/dashboard-data";
 
@@ -312,4 +313,8 @@ export const ADMIN_CARD_COMPONENTS: Record<string, React.FC<AdminCardProps>> = {
   adminTeamBranches: AdminTeamBranchesCard,
   adminLhdn: AdminLhdnCard,
   adminMarketing: AdminMarketingCard,
+  adminAlertsInbox: AdminAlertsInboxCard,
+  adminTasks: AdminTasksCard,
+  adminStaffRanking: AdminStaffRankingCard,
+  adminAiBriefing: AdminAiBriefingCard,
 };

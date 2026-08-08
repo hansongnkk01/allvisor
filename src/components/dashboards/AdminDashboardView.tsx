@@ -45,7 +45,9 @@ export function AdminDashboardView({ data }: { data: SharedDashboardData }) {
   if (!insights) return <StaffDashboardView data={data} />;
 
   const rows = toRows(
-    cardsFor(data.niche, "admin").filter((card) => ADMIN_CARD_COMPONENTS[card.id])
+    cardsFor(data.niche, "admin", { opsBrainEnabled: data.opsBrainEnabled }).filter(
+      (card) => ADMIN_CARD_COMPONENTS[card.id]
+    )
   );
 
   return (

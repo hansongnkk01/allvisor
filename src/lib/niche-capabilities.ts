@@ -743,9 +743,13 @@ export const NAV_HREF: Record<string, string> = {
   performance: "/performance",
   money: "/money",
   marketing: "/marketing",
+  alerts: "/alerts",
 };
 
-/** Nav keys only ever shown to the owner audience. */
+/**
+ * Owner-audience-only nav keys. Alerts is deliberately NOT here: supervisors and
+ * managers work the same alert queue from their Manager Zone.
+ */
 export const OWNER_NAV_KEYS = ["team", "performance", "money", "marketing"] as const;
 
 /**
@@ -786,14 +790,18 @@ export function getNavSectionsForNiche(
 
   if (audience === "staff") {
     return base.map((section) =>
-      section.labelKey === "adminZone" ? { ...section, labelKey: "managerZone" } : section
+      section.labelKey === "adminZone"
+        ? // Managers work the alert queue from their zone; plain staff never get
+          // this far because the section itself is leadership-only.
+          { ...section, labelKey: "managerZone", keys: ["alerts", ...section.keys] }
+        : section
     );
   }
 
   const ownerSection: NavSectionDef = {
     id: "owner",
     labelKey: "ownerZone",
-    keys: [...OWNER_NAV_KEYS],
+    keys: ["alerts", ...OWNER_NAV_KEYS],
   };
   // The owner reads accounting inside Money, so the duplicate link is dropped here.
   const withoutAccounting = base.map((section) =>

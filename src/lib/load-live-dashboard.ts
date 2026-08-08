@@ -10,12 +10,41 @@ import {
   RECEIVABLE_OVERDUE_DAYS,
   REVENUE_TREND_DAYS,
   type AdminInsights,
+  type AlertRow,
+  type BriefingSlice,
   type DashboardAppointmentRow,
   type SharedDashboardData,
+  type StaffScoreEntry,
+  type TaskRow,
 } from "@/lib/dashboard-data";
 import type { Niche } from "@/lib/types";
 
 type ServerSupabase = Awaited<ReturnType<typeof createClient>>;
+
+/** A query that is allowed to fail (e.g. migration 029 not applied yet). */
+async function soft<T>(promise: PromiseLike<T>): Promise<T | null> {
+  try {
+    return await promise;
+  } catch {
+    return null;
+  }
+}
+
+/** Resolve display names for a set of user ids without FK-join assumptions. */
+async function profileNames(supabase: ServerSupabase, userIds: string[]) {
+  const names = new Map<string, string>();
+  if (!userIds.length) return names;
+  const result = await soft(
+    supabase.from("profiles").select("id, full_name, email").in("id", userIds)
+  );
+  for (const row of result?.data || []) {
+    names.set(
+      String(row.id),
+      (row.full_name as string | null) || (row.email as string | null) || "—"
+    );
+  }
+  return names;
+}
 
 type RawAppointment = {
   id: string;
@@ -51,12 +80,14 @@ async function loadAdminInsights({
   niche,
   locale,
   now,
+  opsBrainEnabled,
 }: {
   supabase: ServerSupabase;
   orgId: string;
   niche: Niche;
   locale: string;
   now: Date;
+  opsBrainEnabled: boolean;
 }): Promise<AdminInsights> {
   const { end: todayEnd } = dayBoundsMY(now);
   const { start: trendStart } = dayBoundsMY(
@@ -138,6 +169,102 @@ async function loadAdminInsights({
     }
   }
 
+  // Ops Brain slices — isolated so a missing alerts/tasks table can never
+  // take the owner dashboard down with it.
+  let alerts: AlertRow[] = [];
+  let tasks: TaskRow[] = [];
+  let staffRanking: StaffScoreEntry[] = [];
+  let briefing: BriefingSlice | null = null;
+  if (opsBrainEnabled) {
+    const todayKey = formatDayKeyMY(now);
+    const [alertsRes, tasksRes, scoresRes, briefingRes] = await Promise.all([
+      soft(
+        supabase
+          .from("alerts")
+          .select("id, type, severity, title, message, status, created_at, related_staff_id")
+          .eq("organization_id", orgId)
+          .in("status", ["open", "investigating"])
+          .order("created_at", { ascending: false })
+          .limit(6)
+      ),
+      soft(
+        supabase
+          .from("tasks")
+          .select("id, title, notes, status, source, due_date, created_at, assigned_to")
+          .eq("organization_id", orgId)
+          .order("created_at", { ascending: false })
+          .limit(8)
+      ),
+      soft(
+        supabase
+          .from("staff_scores")
+          .select("user_id, score, sales_amount, refund_count, void_count")
+          .eq("organization_id", orgId)
+          .eq("score_date", todayKey)
+          .order("score", { ascending: false })
+          .limit(5)
+      ),
+      soft(
+        supabase
+          .from("ai_briefings")
+          .select("content, model, for_date, generated_at")
+          .eq("organization_id", orgId)
+          .eq("kind", "daily")
+          .eq("for_date", todayKey)
+          .maybeSingle()
+      ),
+    ]);
+
+    const staffIds = (alertsRes?.data || [])
+      .map((row) => row.related_staff_id as string | null)
+      .filter((id): id is string => Boolean(id));
+    const assigneeIds = (tasksRes?.data || [])
+      .map((row) => row.assigned_to as string | null)
+      .filter((id): id is string => Boolean(id));
+    const scorerIds = (scoresRes?.data || []).map((row) => String(row.user_id));
+    const names = await profileNames(supabase, [
+      ...new Set([...staffIds, ...assigneeIds, ...scorerIds]),
+    ]);
+
+    alerts = (alertsRes?.data || []).map((row) => ({
+      id: row.id as string,
+      type: row.type as string,
+      severity: row.severity as AlertRow["severity"],
+      title: row.title as string,
+      message: row.message as string,
+      status: row.status as AlertRow["status"],
+      staffName: row.related_staff_id
+        ? names.get(String(row.related_staff_id)) ?? null
+        : null,
+      created_at: row.created_at as string,
+    }));
+    tasks = (tasksRes?.data || []).map((row) => ({
+      id: row.id as string,
+      title: row.title as string,
+      notes: (row.notes as string | null) ?? null,
+      status: row.status as TaskRow["status"],
+      source: row.source as TaskRow["source"],
+      due_date: (row.due_date as string | null) ?? null,
+      assigneeName: row.assigned_to ? names.get(String(row.assigned_to)) ?? null : null,
+      created_at: row.created_at as string,
+    }));
+    staffRanking = (scoresRes?.data || []).map((row) => ({
+      userId: String(row.user_id),
+      name: names.get(String(row.user_id)) || "—",
+      score: Number(row.score || 0),
+      sales: Number(row.sales_amount || 0),
+      mistakes: Number(row.refund_count || 0) + Number(row.void_count || 0),
+    }));
+    briefing = briefingRes?.data
+      ? {
+          content: String(briefingRes.data.content || ""),
+          model: String(briefingRes.data.model || "rules"),
+          for_date: String(briefingRes.data.for_date || ""),
+          generated_at: String(briefingRes.data.generated_at || ""),
+        }
+      : null;
+  }
+
   return {
     revenueTrend: [...amountByDay.entries()].map(([day, amount]) => ({ day, amount })),
     lastMonthIncome: (lastMonthLedger || [])
@@ -159,6 +286,10 @@ async function loadAdminInsights({
     teamSize: teamSize || 0,
     branchCount: branchCount || 0,
     marketing: marketingPlays(niche, locale),
+    alerts,
+    tasks,
+    staffRanking,
+    briefing,
   };
 }
 
@@ -175,6 +306,17 @@ export async function loadLiveDashboard(locale: string): Promise<SharedDashboard
   const now = new Date();
   const { start: todayStart, end: todayEnd } = dayBoundsMY(now);
   const monthStart = `${formatDayKeyMY(now).slice(0, 7)}-01`;
+
+  // Queried on its own: a missing column (migration 029 pending) turns the
+  // Ops Brain off instead of breaking the whole org lookup.
+  const flagRes = await soft(
+    supabase
+      .from("organizations")
+      .select("ops_brain_enabled")
+      .eq("id", orgId)
+      .maybeSingle()
+  );
+  const opsBrainEnabled = !flagRes?.error && flagRes?.data?.ops_brain_enabled !== false;
 
   const [
     { count: customerCount },
@@ -335,12 +477,57 @@ export async function loadLiveDashboard(locale: string): Promise<SharedDashboard
     .map((product) => String(product.name || "").trim())
     .filter(Boolean);
 
-  const [nicheCards, adminInsights] = await Promise.all([
+  const [nicheCards, adminInsights, myTasks, myScore] = await Promise.all([
     audience === "admin"
       ? loadAdminNicheCards({ supabase, orgId, niche, now })
       : loadNicheCards({ supabase, orgId, niche, now }),
     audience === "admin"
-      ? loadAdminInsights({ supabase, orgId, niche, locale, now })
+      ? loadAdminInsights({ supabase, orgId, niche, locale, now, opsBrainEnabled })
+      : Promise.resolve(undefined),
+    audience === "staff" && opsBrainEnabled
+      ? soft(
+          supabase
+            .from("tasks")
+            .select("id, title, notes, status, source, due_date, created_at, assigned_to")
+            .eq("organization_id", orgId)
+            .eq("assigned_to", ctx.profile.id)
+            .order("created_at", { ascending: false })
+            .limit(8)
+        ).then((res) =>
+          (res?.data || []).map(
+            (row): TaskRow => ({
+              id: row.id as string,
+              title: row.title as string,
+              notes: (row.notes as string | null) ?? null,
+              status: row.status as TaskRow["status"],
+              source: row.source as TaskRow["source"],
+              due_date: (row.due_date as string | null) ?? null,
+              assigneeName: ctx.profile.full_name || null,
+              created_at: row.created_at as string,
+            })
+          )
+        )
+      : Promise.resolve(undefined),
+    audience === "staff" && opsBrainEnabled
+      ? soft(
+          supabase
+            .from("staff_scores")
+            .select("score, sales_amount, refund_count, void_count")
+            .eq("organization_id", orgId)
+            .eq("user_id", ctx.profile.id)
+            .eq("score_date", formatDayKeyMY(now))
+            .maybeSingle()
+        ).then((res): StaffScoreEntry | null => {
+          const row = res?.data;
+          if (!row) return null;
+          return {
+            userId: ctx.profile.id,
+            name: ctx.profile.full_name || "",
+            score: Number(row.score || 0),
+            sales: Number(row.sales_amount || 0),
+            mistakes: Number(row.refund_count || 0) + Number(row.void_count || 0),
+          };
+        })
       : Promise.resolve(undefined),
   ]);
 
@@ -392,5 +579,8 @@ export async function loadLiveDashboard(locale: string): Promise<SharedDashboard
     topSellers,
     nicheCards,
     adminInsights,
+    opsBrainEnabled,
+    myTasks,
+    myScore,
   };
 }

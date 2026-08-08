@@ -89,6 +89,8 @@ export interface Organization {
   invoice_number_pattern?: string | null;
   logo_url?: string | null;
   logo_shape?: "round" | "square" | null;
+  /** Ops Brain kill switch. Optional: queried separately so a missing column is survivable. */
+  ops_brain_enabled?: boolean;
   created_at: string;
 }
 

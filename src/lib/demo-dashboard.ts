@@ -9,11 +9,14 @@ import {
   RECEIVABLE_OVERDUE_DAYS,
   REVENUE_TREND_DAYS,
   type AdminInsights,
+  type AlertRow,
   type DashboardAppointmentRow,
   type DashboardInvoiceRow,
   type DashboardSaleRow,
   type DashboardTopSellerRow,
   type SharedDashboardData,
+  type StaffScoreEntry,
+  type TaskRow,
 } from "@/lib/dashboard-data";
 
 /**
@@ -129,6 +132,118 @@ const DEMO_ACTIVITY = [
   { id: "l5", actor: "Danial", summary: "Added customer Mei Ling", minutesAgo: 400 },
 ];
 
+const DEMO_ALERTS: Omit<AlertRow, "created_at">[] = [
+  {
+    id: "al1",
+    type: "refund_rate",
+    severity: "high",
+    title: "Refund rate above limit",
+    message: "Danial refunded 3 of 18 sales this week (16.7%). Limit is 8%.",
+    status: "open",
+    staffName: "Danial",
+  },
+  {
+    id: "al2",
+    type: "cash_variance",
+    severity: "medium",
+    title: "Cash drawer short at close",
+    message: "Evening session closed RM26.50 short of the expected total.",
+    status: "investigating",
+    staffName: "Farah",
+  },
+  {
+    id: "al3",
+    type: "stock_leak",
+    severity: "low",
+    title: "Stock reduced without a sale",
+    message: "2 × Cable 2m (RM118) was adjusted out with no matching sale.",
+    status: "open",
+    staffName: null,
+  },
+];
+
+const DEMO_TASKS: Omit<TaskRow, "created_at">[] = [
+  {
+    id: "t1",
+    title: "Check CCTV for the 9:40 PM refund",
+    notes: "Matches the refund-rate alert for Danial.",
+    status: "open",
+    source: "alert",
+    due_date: null,
+    assigneeName: "Siti",
+  },
+  {
+    id: "t2",
+    title: "Reorder Gloves M before Friday",
+    notes: null,
+    status: "open",
+    source: "manual",
+    due_date: "2026-08-14",
+    assigneeName: "Farah",
+  },
+  {
+    id: "t3",
+    title: "Count top-10 value SKUs",
+    notes: "Cycle count from the AI supervisor.",
+    status: "done",
+    source: "ai",
+    due_date: null,
+    assigneeName: "Danial",
+  },
+];
+
+const DEMO_RANKING: StaffScoreEntry[] = [
+  { userId: "u2", name: "Farah Iman", score: 92, sales: 2135, mistakes: 0 },
+  { userId: "u1", name: "Nor Hafizah", score: 88, sales: 1842, mistakes: 0 },
+  { userId: "u3", name: "Danial Hakim", score: 74, sales: 1498, mistakes: 3 },
+  { userId: "u4", name: "Siti Aminah", score: 71, sales: 1124, mistakes: 1 },
+  { userId: "u5", name: "Kavitha R.", score: 64, sales: 863, mistakes: 2 },
+];
+
+function demoBriefing(locale: string, now: Date) {
+  const ms = locale.startsWith("ms");
+  const day = formatDayKeyMY(now);
+  const content = ms
+    ? [
+        `Taklimat harian — ${day}`,
+        "",
+        "Jualan hari ini: RM2,450.00 (47 transaksi). Untung bulan ini setakat ini: RM8,270.00.",
+        "",
+        "Perlu perhatian (3):",
+        "- [TINGGI] Kadar refund melebihi had — Danial",
+        "- [SEDERHANA] Laci tunai kurang semasa tutup — Farah",
+        "- [RENDAH] Stok keluar tanpa jualan",
+        "",
+        "Staf terbaik hari ini: Farah Iman (skor 92%, jualan RM2,135.00).",
+        "Stok rendah: Cable 2m, Adapter USB-C, Power bank.",
+        "Tugasan masih terbuka: 2.",
+        "",
+        "Tindakan: semak rakaman CCTV untuk refund 9:40 malam dan luluskan pesanan semula stok sebelum Jumaat.",
+      ].join("\n")
+    : [
+        `Daily briefing — ${day}`,
+        "",
+        "Sales today: RM2,450.00 (47 transactions). Month profit so far: RM8,270.00.",
+        "",
+        "Needs attention (3):",
+        "- [HIGH] Refund rate above limit — Danial",
+        "- [MEDIUM] Cash drawer short at close — Farah",
+        "- [LOW] Stock reduced without a sale",
+        "",
+        "Top staff today: Farah Iman (score 92%, sales RM2,135.00).",
+        "Low stock: Cable 2m, USB-C adapter, Power bank.",
+        "Open tasks: 2.",
+        "",
+        "Action: review the CCTV for the 9:40 PM refund and approve the stock reorder before Friday.",
+      ].join("\n");
+  return {
+    content,
+    model: "rules",
+    for_date: day,
+    generated_at: new Date(now.getTime() - 32 * 60000).toISOString(),
+  };
+}
+
 function buildDemoAdminInsights(niche: Niche, locale: string, now: Date): AdminInsights {
   const canPos = hasCapability(niche, "pos");
   const base = canPos ? 2100 : 1150;
@@ -158,6 +273,16 @@ function buildDemoAdminInsights(niche: Niche, locale: string, now: Date): AdminI
     teamSize: 6,
     branchCount: 2,
     marketing: marketingPlays(niche, locale),
+    alerts: DEMO_ALERTS.map((alert, index) => ({
+      ...alert,
+      created_at: new Date(now.getTime() - (index + 1) * 47 * 60000).toISOString(),
+    })),
+    tasks: DEMO_TASKS.map((task, index) => ({
+      ...task,
+      created_at: new Date(now.getTime() - (index + 2) * 83 * 60000).toISOString(),
+    })),
+    staffRanking: DEMO_RANKING,
+    briefing: demoBriefing(locale, now),
   };
 }
 
@@ -212,5 +337,25 @@ export function buildDemoDashboard({
         : buildDemoNicheCards(niche, now),
     adminInsights:
       audience === "admin" ? buildDemoAdminInsights(niche, locale, now) : undefined,
+    opsBrainEnabled: true,
+    myTasks:
+      audience === "staff"
+        ? DEMO_TASKS.filter((task) => task.status === "open").map((task, index) => ({
+            ...task,
+            assigneeName: locale.startsWith("ms") ? "Anda" : "You",
+            created_at: new Date(now.getTime() - (index + 1) * 95 * 60000).toISOString(),
+          }))
+        : undefined,
+    myScore:
+      audience === "staff"
+        ? {
+            userId: "me",
+            name: locale.startsWith("ms") ? "Anda" : "You",
+            score: 78,
+            sales: 1240,
+            mistakes: 0,
+          }
+        : undefined,
+    demo: true,
   };
 }

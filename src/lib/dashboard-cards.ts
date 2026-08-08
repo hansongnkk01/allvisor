@@ -15,26 +15,26 @@ export type DashboardCardDef = {
   /** The niche must have every listed capability. Empty means universal. */
   requires: readonly Capability[];
   span: CardSpan;
-  /** Depends on Ops Brain tables that do not exist yet, so it stays unrendered. */
+  /** Renders only when the org has the Ops Brain switched on (ops_brain_enabled). */
   opsBrain?: boolean;
 };
 
 const ADMIN_CARDS: DashboardCardDef[] = [
   { id: "adminHeadline", audience: "admin", requires: [], span: "full" },
+  // Ops Brain rows sit right under the headline: briefing full width, then the
+  // alerts inbox paired with the staff ranking.
+  { id: "adminAiBriefing", audience: "admin", requires: [], span: "full", opsBrain: true },
+  { id: "adminAlertsInbox", audience: "admin", requires: [], span: "half", opsBrain: true },
+  { id: "adminStaffRanking", audience: "admin", requires: [], span: "half", opsBrain: true },
   { id: "adminRevenueTrend", audience: "admin", requires: [], span: "full" },
   { id: "adminMonthPnl", audience: "admin", requires: [], span: "half" },
   { id: "adminReceivables", audience: "admin", requires: [], span: "half" },
   { id: "adminNicheGrid", audience: "admin", requires: [], span: "full" },
   { id: "adminStaffActivity", audience: "admin", requires: [], span: "full" },
+  { id: "adminTasks", audience: "admin", requires: [], span: "half", opsBrain: true },
   { id: "adminTeamBranches", audience: "admin", requires: [], span: "half" },
   { id: "adminLhdn", audience: "admin", requires: ["lhdn"], span: "half" },
   { id: "adminMarketing", audience: "admin", requires: [], span: "full" },
-
-  // Declared now so ordering is settled, rendered once Ops Brain tables land.
-  { id: "adminStaffRanking", audience: "admin", requires: [], span: "half", opsBrain: true },
-  { id: "adminAlertsInbox", audience: "admin", requires: [], span: "half", opsBrain: true },
-  { id: "adminTasks", audience: "admin", requires: [], span: "half", opsBrain: true },
-  { id: "adminAiBriefing", audience: "admin", requires: [], span: "full", opsBrain: true },
 ];
 
 /**
