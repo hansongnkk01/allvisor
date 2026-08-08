@@ -558,6 +558,34 @@ if (!guard.includes("/staff-dashboard")) {
   fail("requireOwner does not redirect rejected users to /staff-dashboard");
 }
 
+// ---------------------------------------------------------------------------
+// 8. The app-wide gates cannot silently disappear
+// ---------------------------------------------------------------------------
+
+const appLayout = readSource("src/app/[locale]/(app)/layout.tsx");
+if (!appLayout.includes("requireOrg")) {
+  fail("(app)/layout.tsx no longer calls requireOrg — every page would be public");
+}
+if (!appLayout.includes("VerifyAccountGate")) {
+  fail("(app)/layout.tsx no longer mounts VerifyAccountGate — unverified staff would get in");
+}
+
+// Manager Zone pages must be locked behind the password gate, not bare roles.
+// /admin renders its own inline lock (isAdminUnlocked); the rest share
+// SectionLockGate / isSectionUnlocked.
+const ZONE_GATE_TOKENS = ["SectionLockGate", "isSectionUnlocked", "isAdminUnlocked"];
+for (const href of ["/admin", "/accounting", "/lhdn", "/alerts"]) {
+  const rel = `src/app/[locale]/(app)${href}/page.tsx`;
+  if (!sourceExists(rel)) {
+    fail(`manager-zone route "${href}" has no page`);
+    continue;
+  }
+  const src = readSource(rel);
+  if (!ZONE_GATE_TOKENS.some((token) => src.includes(token))) {
+    fail(`manager-zone route "${href}" is not behind a password gate`);
+  }
+}
+
 if (failed) {
   process.exit(1);
 }

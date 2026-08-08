@@ -18,15 +18,24 @@ async function unsubscribe(token: string | null) {
   const { createClient } = await import("@supabase/supabase-js");
   const admin = createClient(url, serviceKey);
 
-  const { error } = await admin
+  const { data, error } = await admin
     .from("marketing_leads")
     .update({ unsubscribed_at: new Date().toISOString() })
     .eq("unsubscribe_token", token)
-    .is("unsubscribed_at", null);
+    .is("unsubscribed_at", null)
+    .select("id");
 
-  // An already-unsubscribed token updates nothing, which is still a success as
-  // far as the reader is concerned.
-  return !error;
+  if (error) return false;
+  if (data && data.length > 0) return true;
+
+  // 0 rows: either the token is bogus, or the lead already unsubscribed (which
+  // is still a success as far as the reader is concerned). Distinguish the two.
+  const { data: existing } = await admin
+    .from("marketing_leads")
+    .select("id")
+    .eq("unsubscribe_token", token)
+    .maybeSingle();
+  return !!existing;
 }
 
 function page(title: string, body: string) {
