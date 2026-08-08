@@ -160,6 +160,12 @@ export type BriefingSlice = {
   generated_at: string;
 };
 
+/** Assignable teammate for the task picker. */
+export type TaskAssignee = {
+  userId: string;
+  name: string;
+};
+
 /** Owner-only slice. Absent for the staff audience so the data never leaves the server. */
 export type AdminInsights = {
   revenueTrend: RevenueTrendPoint[];
@@ -181,6 +187,8 @@ export type AdminInsights = {
   staffRanking: StaffScoreEntry[];
   /** Ops Brain: cached AI briefing for today. Null until generated. */
   briefing: BriefingSlice | null;
+  /** Teammates a task can be assigned to. Empty when disabled. */
+  members: TaskAssignee[];
 };
 
 export type SharedDashboardData = {

@@ -394,17 +394,35 @@ export function AdminTasksCard({ data, insights }: AdminCardProps) {
 
       {!data.demo ? (
         <ActionForm action={addTaskAction} style={{ marginBottom: "0.75rem" }}>
-          <div className="row" style={{ gap: "0.4rem" }}>
-            <input
-              name="title"
-              required
-              maxLength={140}
-              placeholder={t("taskAddPlaceholder")}
-              style={{ flex: 1, minWidth: 0 }}
-            />
-            <button type="submit" className="btn btn-soft" style={{ whiteSpace: "nowrap" }}>
-              {t("taskAdd")}
-            </button>
+          <div className="stack" style={{ gap: "0.4rem" }}>
+            <div className="row" style={{ gap: "0.4rem" }}>
+              <input
+                name="title"
+                required
+                maxLength={140}
+                placeholder={t("taskAddPlaceholder")}
+                style={{ flex: 1, minWidth: 0 }}
+              />
+              <button type="submit" className="btn btn-soft" style={{ whiteSpace: "nowrap" }}>
+                {t("taskAdd")}
+              </button>
+            </div>
+            {insights.members.length ? (
+              <select
+                name="assigned_to"
+                defaultValue=""
+                className="input"
+                style={{ fontSize: "0.85rem" }}
+                aria-label={t("taskAssignee")}
+              >
+                <option value="">{t("taskUnassigned")}</option>
+                {insights.members.map((member) => (
+                  <option key={member.userId} value={member.userId}>
+                    {member.name}
+                  </option>
+                ))}
+              </select>
+            ) : null}
           </div>
         </ActionForm>
       ) : null}

@@ -1,5 +1,5 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { Link, redirect } from "@/i18n/navigation";
+import { Link } from "@/i18n/navigation";
 import { requireOrg } from "@/lib/org";
 import { getNicheVocab, vocabLabels, accountingCategories } from "@/lib/niches";
 import { createClient } from "@/lib/supabase/server";
@@ -7,7 +7,6 @@ import { PageHeader } from "@/components/PageHeader";
 import { ActionForm } from "@/components/ActionForm";
 import { createExpenseAction, createIncomeAction, isSectionUnlocked } from "@/app/actions";
 import { formatCurrency } from "@/lib/utils";
-import { canAccessSensitive } from "@/lib/roles";
 import { SectionLockGate } from "@/components/SectionLockGate";
 import { SectionActivityLog } from "@/components/SectionActivityLog";
 import { fetchSectionLogs } from "@/lib/section-logs";
@@ -52,10 +51,7 @@ export default async function AccountingPage({
   const accountingTitle = V.accountingTitle;
   const accountingSubtitle = V.accountingSubtitle;
 
-  if (!canAccessSensitive(ctx.membership.role)) {
-    redirect({ href: "/dashboard", locale });
-  }
-
+  // Any role may reach this page — the manager password gate is the lock.
   const unlocked = await isSectionUnlocked("accounting");
   if (!unlocked) {
     return (

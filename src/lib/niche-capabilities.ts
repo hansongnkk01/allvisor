@@ -791,8 +791,8 @@ export function getNavSectionsForNiche(
   if (audience === "staff") {
     return base.map((section) =>
       section.labelKey === "adminZone"
-        ? // Managers work the alert queue from their zone; plain staff never get
-          // this far because the section itself is leadership-only.
+        ? // Managers work the alert queue from their zone. The section shows for
+          // every role — the pages inside are locked by the zone password.
           { ...section, labelKey: "managerZone", keys: ["alerts", ...section.keys] }
         : section
     );

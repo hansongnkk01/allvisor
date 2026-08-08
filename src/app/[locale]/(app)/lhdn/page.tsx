@@ -1,5 +1,4 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { redirect } from "@/i18n/navigation";
 import { requireOrg } from "@/lib/org";
 import { vocabLabels } from "@/lib/niches";
 import { createClient } from "@/lib/supabase/server";
@@ -9,7 +8,7 @@ import { isSectionUnlocked, updateOrgSettingsAction } from "@/app/actions";
 import { canUseLhdn } from "@/lib/subscription";
 import { formatDateTime } from "@/lib/utils";
 import { Link } from "@/i18n/navigation";
-import { canAccessSensitive, canManageOrgSettings } from "@/lib/roles";
+import { canManageOrgSettings } from "@/lib/roles";
 import { SectionLockGate } from "@/components/SectionLockGate";
 import { SectionActivityLog } from "@/components/SectionActivityLog";
 import { fetchSectionLogs } from "@/lib/section-logs";
@@ -28,10 +27,7 @@ export default async function LhdnPage({
   const ctx = await requireOrg(locale);
   const V = vocabLabels(ctx.organization.niche, locale);
 
-  if (!canAccessSensitive(ctx.membership.role)) {
-    redirect({ href: "/dashboard", locale });
-  }
-
+  // Any role may reach this page — the manager password gate is the lock.
   const unlocked = await isSectionUnlocked("lhdn");
   if (!unlocked) {
     return (

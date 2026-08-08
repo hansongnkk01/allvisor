@@ -544,6 +544,8 @@
     "tasksEmpty": "Belum ada tugasan. Tambah satu, atau biar penyelia AI agihkan kerja daripada makluman.",
     "taskAddPlaceholder": "Tambah tugasan untuk pasukan…",
     "taskAdd": "Tambah",
+    "taskAssignee": "Tugaskan kepada",
+    "taskUnassigned": "Tiada tugasan khusus (semua staf)",
     "taskDone": "Tanda siap",
     "taskReopen": "Buka semula",
     "taskDue": "akhir",
@@ -2024,6 +2026,7 @@
   "Alerts": {
     "pageTitle": "Makluman",
     "pageSubtitle": "Semua yang penyelia AI tandakan — refund, beza tunai, pergerakan stok.",
+    "lockSubtitle": "Zon Manager — masukkan kata laluan zon untuk mengurus makluman.",
     "autoHandled": "Dikendalikan automatik",
     "filter": {
       "all": "Semua",

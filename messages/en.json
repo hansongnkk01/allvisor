@@ -544,6 +544,8 @@
     "tasksEmpty": "No tasks yet. Add one, or let the AI supervisor assign work from alerts.",
     "taskAddPlaceholder": "Add a task for the team…",
     "taskAdd": "Add",
+    "taskAssignee": "Assign to",
+    "taskUnassigned": "Unassigned (whole team)",
     "taskDone": "Mark done",
     "taskReopen": "Reopen",
     "taskDue": "due",
@@ -2025,6 +2027,7 @@
   "Alerts": {
     "pageTitle": "Alerts",
     "pageSubtitle": "Everything the AI supervisor flagged — refunds, cash gaps, stock movement.",
+    "lockSubtitle": "Manager Zone — enter the zone password to work the alert queue.",
     "autoHandled": "Handled automatically",
     "filter": {
       "all": "All",

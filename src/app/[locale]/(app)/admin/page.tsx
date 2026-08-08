@@ -1,5 +1,4 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { redirect } from "@/i18n/navigation";
 import { requireOrg } from "@/lib/org";
 import { hasCapability, getNicheVocab, vocabLabels } from "@/lib/niches";
 import { createClient } from "@/lib/supabase/server";
@@ -39,7 +38,6 @@ import { dayBoundsMY, formatDayKeyMY } from "@/lib/datetime-my";
 import { defaultAdminPassword } from "@/lib/admin-lock";
 import {
   assignableStaffRoles,
-  canAccessAdmin,
   canManageOrgSettings,
   kickableStaffRoles,
 } from "@/lib/roles";
@@ -55,10 +53,8 @@ export default async function AdminPage({
   const t = await getTranslations("Admin");
   const ctx = await requireOrg(locale);
 
-  if (!canAccessAdmin(ctx.membership.role)) {
-    redirect({ href: "/dashboard", locale });
-  }
-
+  // Any role may reach this page — the manager password gate below is the lock,
+  // so a supervisor on a staff account can step in without re-logging.
   const unlocked = await isAdminUnlocked();
   const hint = await getDefaultAdminPasswordHint();
   const rolesCanAssign = assignableStaffRoles(ctx.membership.role);

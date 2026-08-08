@@ -3340,10 +3340,9 @@ export async function isAdminZoneUnlocked() {
 }
 
 export async function unlockSectionAction(formData: FormData) {
-  const { organization, membership } = await requireMember();
-  if (!canAccessSensitive(membership.role)) {
-    return { error: "Only admin / supervisor / manager can unlock this section" };
-  }
+  const { organization } = await requireMember();
+  // Any role may unlock: knowing the zone password IS the authorisation. That
+  // is what lets a supervisor step in from a plain staff account mid-shift.
 
   const section = String(formData.get("section") || "admin") as LockedSection;
   if (!ADMIN_ZONE_SECTIONS.includes(section)) {

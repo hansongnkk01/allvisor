@@ -15,6 +15,7 @@ import {
   type DashboardAppointmentRow,
   type SharedDashboardData,
   type StaffScoreEntry,
+  type TaskAssignee,
   type TaskRow,
 } from "@/lib/dashboard-data";
 import type { Niche } from "@/lib/types";
@@ -175,9 +176,10 @@ async function loadAdminInsights({
   let tasks: TaskRow[] = [];
   let staffRanking: StaffScoreEntry[] = [];
   let briefing: BriefingSlice | null = null;
+  let members: TaskAssignee[] = [];
   if (opsBrainEnabled) {
     const todayKey = formatDayKeyMY(now);
-    const [alertsRes, tasksRes, scoresRes, briefingRes] = await Promise.all([
+    const [alertsRes, tasksRes, scoresRes, briefingRes, membersRes] = await Promise.all([
       soft(
         supabase
           .from("alerts")
@@ -212,6 +214,15 @@ async function loadAdminInsights({
           .eq("kind", "daily")
           .eq("for_date", todayKey)
           .maybeSingle()
+      ),
+      // Task assignee picker: every teammate, named.
+      soft(
+        supabase
+          .from("memberships")
+          .select("user_id, profiles(full_name, email)")
+          .eq("organization_id", orgId)
+          .order("created_at", { ascending: true })
+          .limit(100)
       ),
     ]);
 
@@ -263,6 +274,14 @@ async function loadAdminInsights({
           generated_at: String(briefingRes.data.generated_at || ""),
         }
       : null;
+    members = (membersRes?.data || [])
+      .map((row) => {
+        const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
+        const name =
+          String(profile?.full_name || "").trim() || String(profile?.email || "").trim();
+        return { userId: String(row.user_id || ""), name };
+      })
+      .filter((member) => member.userId && member.name);
   }
 
   return {
@@ -290,6 +309,7 @@ async function loadAdminInsights({
     tasks,
     staffRanking,
     briefing,
+    members,
   };
 }
 

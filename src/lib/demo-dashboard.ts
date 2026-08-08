@@ -283,6 +283,7 @@ function buildDemoAdminInsights(niche: Niche, locale: string, now: Date): AdminI
     })),
     staffRanking: DEMO_RANKING,
     briefing: demoBriefing(locale, now),
+    members: DEMO_RANKING.map((entry) => ({ userId: entry.userId, name: entry.name })),
   };
 }
 

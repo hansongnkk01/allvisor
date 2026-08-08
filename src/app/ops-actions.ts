@@ -14,8 +14,9 @@ import { generateBriefing, buildBriefingContext } from "@/lib/briefing";
 import { answerOwnerQuestion } from "@/lib/ai-chat";
 import { pickCycleCountSkus } from "@/lib/smart-inventory";
 import { dayBoundsMY } from "@/lib/datetime-my";
-import { adjustStockAction } from "@/app/actions";
+import { adjustStockAction, isAdminZoneUnlocked } from "@/app/actions";
 import type { AlertStatus } from "@/lib/dashboard-data";
+import type { MembershipRole } from "@/lib/types";
 
 async function requireMember() {
   const ctx = await getOrgContext();
@@ -24,11 +25,20 @@ async function requireMember() {
   return { ...ctx, supabase };
 }
 
+/**
+ * Alert queue + tasks are Manager Zone work: leadership roles always may, and
+ * any other role may once the zone password is unlocked on this device.
+ */
+async function canWorkZone(role: MembershipRole) {
+  if (canAccessSensitive(role)) return true;
+  return isAdminZoneUnlocked();
+}
+
 const ALERT_WRITE_STATUS: AlertStatus[] = ["investigating", "resolved"];
 
 export async function setAlertStatusAction(formData: FormData) {
   const { supabase, organization, membership, profile } = await requireMember();
-  if (!canAccessSensitive(membership.role)) return { error: "Forbidden" };
+  if (!(await canWorkZone(membership.role))) return { error: "Forbidden" };
 
   const alertId = String(formData.get("alert_id") || "");
   const status = String(formData.get("status") || "") as AlertStatus;
@@ -58,7 +68,7 @@ export async function setAlertStatusAction(formData: FormData) {
 
 export async function addTaskAction(formData: FormData) {
   const { supabase, organization, membership, profile } = await requireMember();
-  if (!canAccessSensitive(membership.role)) return { error: "Forbidden" };
+  if (!(await canWorkZone(membership.role))) return { error: "Forbidden" };
 
   const title = String(formData.get("title") || "").trim();
   if (!title) return { error: "Title required" };
@@ -104,7 +114,7 @@ export async function toggleTaskAction(formData: FormData) {
   if (!task) return { error: "Task not found" };
 
   const isAssignee = task.assigned_to === profile.id;
-  if (!isAssignee && !canAccessSensitive(membership.role)) return { error: "Forbidden" };
+  if (!isAssignee && !(await canWorkZone(membership.role))) return { error: "Forbidden" };
 
   const done = task.status !== "done";
   const { error } = await supabase
@@ -124,7 +134,7 @@ export async function toggleTaskAction(formData: FormData) {
 /** Detection thresholds for the loss-prevention rules (leadership-editable). */
 export async function updateAlertSettingsAction(formData: FormData) {
   const { supabase, organization, membership } = await requireMember();
-  if (!canAccessSensitive(membership.role)) return { error: "Forbidden" };
+  if (!(await canWorkZone(membership.role))) return { error: "Forbidden" };
 
   const num = (key: string, fallback: number, min: number, max: number) => {
     const parsed = Number(formData.get(key));

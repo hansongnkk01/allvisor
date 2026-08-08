@@ -1,10 +1,11 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { Link, redirect } from "@/i18n/navigation";
+import { Link } from "@/i18n/navigation";
 import { requireOrg } from "@/lib/org";
 import { createClient } from "@/lib/supabase/server";
-import { canAccessSensitive } from "@/lib/roles";
+import { isSectionUnlocked } from "@/app/actions";
 import { PageHeader } from "@/components/PageHeader";
 import { ActionForm } from "@/components/ActionForm";
+import { SectionLockGate } from "@/components/SectionLockGate";
 import { SeverityChip } from "@/components/dashboards/OpsCards";
 import { setAlertStatusAction } from "@/app/ops-actions";
 import { formatDateTime } from "@/lib/utils";
@@ -31,10 +32,14 @@ export default async function AlertsPage({
   const ctx = await requireOrg(locale);
   const supabase = await createClient();
 
-  // The alert queue is a leadership tool: owner/admin plus supervisors and
-  // managers. Plain staff stay on the floor dashboard.
-  if (!canAccessSensitive(ctx.membership.role)) {
-    redirect({ href: "/staff-dashboard", locale });
+  // The alert queue sits inside the Manager Zone: any role may reach this page,
+  // but the zone password must be unlocked first — same gate as Admin,
+  // Accounting and LHDN.
+  const unlocked = await isSectionUnlocked("admin");
+  if (!unlocked) {
+    return (
+      <SectionLockGate section="admin" title={t("pageTitle")} subtitle={t("lockSubtitle")} />
+    );
   }
 
   const query = await searchParams;

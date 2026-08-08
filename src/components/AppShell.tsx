@@ -56,9 +56,7 @@ import {
 } from "lucide-react";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import {
-  ADMIN_ZONE_NAV_KEYS,
   getNavSectionsForNiche,
-  hasCapability,
   vocabLabels,
 } from "@/lib/niches";
 import { navHrefFor } from "@/lib/niche-capabilities";
@@ -191,7 +189,6 @@ export function AppShell({
   orgName,
   orgLogoUrl,
   orgLogoShape,
-  role,
   audience = "staff",
   adminZoneUnlocked = false,
   opsBrainEnabled = false,
@@ -201,7 +198,6 @@ export function AppShell({
   orgName: string;
   orgLogoUrl?: string | null;
   orgLogoShape?: LogoShape | null;
-  role?: string;
   audience?: Audience;
   adminZoneUnlocked?: boolean;
   /** Owner chat widget mounts only for the admin audience with Ops Brain on. */
@@ -212,11 +208,6 @@ export function AppShell({
   const locale = useLocale();
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
-  const canSeeAdminZone =
-    role === "owner" ||
-    role === "admin" ||
-    role === "supervisor" ||
-    role === "manager";
 
   const sections = getNavSectionsForNiche(niche, audience);
   const V = vocabLabels(niche, locale);
@@ -321,10 +312,10 @@ export function AppShell({
             }}
           >
             {sections.map((section, index) => {
-              const keys = section.keys.filter((key) => {
-                if (!ADMIN_ZONE_NAV_KEYS.has(key)) return true;
-                return canSeeAdminZone;
-              });
+              // The Manager Zone stays visible to every role: the pages behind it
+              // are locked by the manager password, so the link itself is harmless
+              // and a supervisor can unlock it from any staff account.
+              const keys = section.keys;
               if (!keys.length) return null;
               return (
                 <div key={section.id} className="stack" style={{ gap: "0.35rem" }}>

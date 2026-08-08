@@ -68,7 +68,6 @@ export default async function AppLayout({
           orgName={ctx.organization.name}
           orgLogoUrl={ctx.organization.logo_url}
           orgLogoShape={ctx.organization.logo_shape}
-          role={ctx.membership.role}
           audience={audienceForRole(ctx.membership.role)}
           adminZoneUnlocked={adminZoneUnlocked}
           opsBrainEnabled={opsBrainEnabled}
