@@ -1,6 +1,13 @@
 import { Link } from "@/i18n/navigation";
 import { formatCurrency } from "@/lib/utils";
 
+export type DailyCloseRiskItem = {
+  label: string;
+  value: string;
+  href?: string;
+  tone?: "good" | "warn" | "alert";
+};
+
 export function DailyClosePanel({
   title,
   subtitle,
@@ -12,6 +19,8 @@ export function DailyClosePanel({
   lowStockNames,
   lhdnPendingCount,
   lhdnRejectedCount,
+  /** Keep max 3–5 floor money/risk items — not a 15-step exam. */
+  floorRiskItems = [],
   labels,
 }: {
   title: string;
@@ -26,6 +35,7 @@ export function DailyClosePanel({
   lowStockNames: string[];
   lhdnPendingCount: number;
   lhdnRejectedCount: number;
+  floorRiskItems?: DailyCloseRiskItem[];
   labels: {
     income: string;
     unpaid: string;
@@ -116,6 +126,35 @@ export function DailyClosePanel({
           </p>
         )}
       </div>
+      {floorRiskItems.length ? (
+        <div
+          style={{
+            marginTop: "0.85rem",
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+            gap: "0.65rem",
+          }}
+        >
+          {floorRiskItems.slice(0, 5).map((item) =>
+            item.href ? (
+              <Link key={item.label} href={item.href} style={{ textDecoration: "none", color: "inherit" }}>
+                <CloseStat
+                  label={item.label}
+                  value={item.value}
+                  tone={item.tone || "warn"}
+                />
+              </Link>
+            ) : (
+              <CloseStat
+                key={item.label}
+                label={item.label}
+                value={item.value}
+                tone={item.tone || "warn"}
+              />
+            )
+          )}
+        </div>
+      ) : null}
       <div className="row" style={{ marginTop: "0.85rem", flexWrap: "wrap", gap: 8 }}>
         <Link href="/invoices" className="btn btn-soft">
           {labels.openInvoices}

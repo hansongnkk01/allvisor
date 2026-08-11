@@ -1,13 +1,25 @@
 "use server";
 
 import { requireMemberWithCapability } from "@/lib/require-capability";
+import { canManageOrgSettings } from "@/lib/roles";
 import { logActivity } from "@/lib/activity";
 import { revalidateApp } from "@/lib/revalidate";
 import { formatDayKeyMY } from "@/lib/datetime-my";
 
+export type WalkInPackage = {
+  id: string;
+  name: string;
+  minutes: number;
+  price: number;
+  is_active: boolean;
+};
+
 export type WalkInSession = {
   id: string;
   customer_name: string;
+  ic_number: string | null;
+  address: string | null;
+  package_name: string | null;
   amount: number;
   minutes: number;
   started_at: string;
@@ -39,22 +51,34 @@ async function requireGymMember() {
   return ctx;
 }
 
-/** Counter sale: customer pays RM x → gets x × rate minutes of gym access. */
+/** Counter sale: pick an admin-defined package → price + duration come from it. */
 export async function createWalkInSessionAction(formData: FormData) {
   const { supabase, organization, profile } = await requireGymMember();
 
   const name = String(formData.get("customer_name") || "").trim();
-  const amount = Number(formData.get("amount") || 0);
-  const rate = Number(formData.get("minutes_per_rm") || 60);
+  const icNumber = String(formData.get("ic_number") || "").trim();
+  const address = String(formData.get("address") || "").trim();
+  const packageId = String(formData.get("package_id") || "");
 
-  if (!name) return { error: "Customer name required" };
+  if (!name) return { error: "Full name required" };
   if (name.length > 80) return { error: "Name too long" };
-  if (!Number.isFinite(amount) || amount <= 0) return { error: "Invalid amount" };
-  if (!Number.isFinite(rate) || rate <= 0 || rate > 24 * 60) {
-    return { error: "Invalid rate (minutes per RM1)" };
-  }
+  if (!icNumber) return { error: "IC number required" };
+  if (icNumber.length > 20) return { error: "IC number too long" };
+  if (!address) return { error: "Address required" };
+  if (address.length > 300) return { error: "Address too long" };
+  if (!packageId) return { error: "Pick a walk-in package" };
 
-  const minutes = Math.max(1, Math.round(amount * rate));
+  const { data: pkg } = await supabase
+    .from("gym_walkin_packages")
+    .select("id, name, minutes, price")
+    .eq("id", packageId)
+    .eq("organization_id", organization.id)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (!pkg) return { error: "Package not found — ask the admin to set one up in the Admin tab" };
+
+  const amount = Number(pkg.price);
+  const minutes = Math.max(1, Number(pkg.minutes));
   const now = new Date();
   const expiresAt = new Date(now.getTime() + minutes * 60_000);
 
@@ -63,6 +87,10 @@ export async function createWalkInSessionAction(formData: FormData) {
     .insert({
       organization_id: organization.id,
       customer_name: name,
+      ic_number: icNumber,
+      address,
+      package_id: pkg.id,
+      package_name: pkg.name,
       amount,
       minutes,
       started_at: now.toISOString(),
@@ -82,18 +110,63 @@ export async function createWalkInSessionAction(formData: FormData) {
     source_id: session.id,
     amount,
     entry_date: formatDayKeyMY(now),
-    description: `Walk-in: ${name} (${minutes} min)`,
+    description: `Walk-in (${pkg.name}): ${name}`,
   });
 
   await logActivity({
     action: "gym.walkin",
-    summary: `Walk-in ${name}: RM ${amount.toFixed(2)} · ${minutes} min`,
+    summary: `Walk-in ${name}: ${pkg.name} · RM ${amount.toFixed(2)} · ${minutes} min`,
     entityType: "gym_walkin_session",
     entityId: session.id,
   });
 
-  revalidateApp("/memberships", "/dashboard", "/accounting");
+  revalidateApp("/memberships", "/walkin", "/dashboard", "/accounting");
   return { success: true, id: session.id as string };
+}
+
+/** Admin defines the walk-in packages (Admin tab → Walk-in packages). */
+export async function addWalkInPackageAction(formData: FormData) {
+  const { supabase, organization, membership } = await requireGymMember();
+  if (!canManageOrgSettings(membership.role)) return { error: "Forbidden" };
+
+  const name = String(formData.get("name") || "").trim();
+  const minutes = Number(formData.get("minutes") || 0);
+  const price = Number(formData.get("price") || 0);
+  if (!name || name.length > 60) return { error: "Package name required" };
+  if (!Number.isFinite(minutes) || minutes < 5 || minutes > 24 * 60) {
+    return { error: "Duration must be between 5 minutes and 24 hours" };
+  }
+  if (!Number.isFinite(price) || price < 0) return { error: "Invalid price" };
+
+  const { error } = await supabase.from("gym_walkin_packages").insert({
+    organization_id: organization.id,
+    name,
+    minutes: Math.round(minutes),
+    price,
+  });
+  if (error) return { error: error.message };
+
+  await logActivity({
+    action: "gym.walkin_package",
+    summary: `Walk-in package "${name}": RM ${price.toFixed(2)} · ${Math.round(minutes)} min`,
+    entityType: "gym_walkin_package",
+    entityId: null,
+  });
+  revalidateApp("/admin", "/walkin", "/memberships");
+  return { success: true };
+}
+
+export async function deleteWalkInPackageAction(id: string) {
+  const { supabase, organization, membership } = await requireGymMember();
+  if (!canManageOrgSettings(membership.role)) return { error: "Forbidden" };
+  const { error } = await supabase
+    .from("gym_walkin_packages")
+    .delete()
+    .eq("id", id)
+    .eq("organization_id", organization.id);
+  if (error) return { error: error.message };
+  revalidateApp("/admin", "/walkin", "/memberships");
+  return { success: true };
 }
 
 /**
@@ -134,17 +207,18 @@ export async function gymPresenceSnapshotAction(): Promise<GymPresenceSnapshot> 
       .toISOString()
       .slice(0, 10);
 
+    const sessionCols = "id, customer_name, ic_number, address, package_name, amount, minutes, started_at, expires_at, status";
     const [activeRes, expiredRes, membersRes] = await Promise.all([
       supabase
         .from("gym_walkin_sessions")
-        .select("id, customer_name, amount, minutes, started_at, expires_at, status")
+        .select(sessionCols)
         .eq("organization_id", organization.id)
         .eq("status", "active")
         .order("expires_at", { ascending: true })
         .limit(50),
       supabase
         .from("gym_walkin_sessions")
-        .select("id, customer_name, amount, minutes, started_at, expires_at, status")
+        .select(sessionCols)
         .eq("organization_id", organization.id)
         .eq("status", "expired")
         .gte("expires_at", walkinCutoff)

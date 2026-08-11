@@ -1,0 +1,1061 @@
+================================================================================
+ALLVISOR — PANDUAN DASHBOARD SETIAP NICHE (ADMIN / MANAGER / STAFF)
+Berdasarkan apa yang SUDAH dibina dalam project folder allvisor
+================================================================================
+
+Cara baca:
+- "Staff" = audience staff (role: supervisor / manager / staff) → /staff-dashboard
+- "Manager" = Manager Zone dalam sidebar staff (alerts, admin, accounting, lhdn)
+  → kena unlock password Admin/Manager Zone dulu
+- "Admin" = audience owner/co-admin (role: owner / admin) → /admin-dashboard
+  → ada Owner Zone + Admin Zone
+
+Nota penting:
+- Sidebar BUKAN “tabs dalam satu page”. Setiap item sidebar = satu page/route.
+- Banyak specialty niche guna pattern sama: NicheModulePage = form Add + table list (CRUD nipis).
+- Feature yang ada di capability/DB tapi tiada page penuh akan disebut di bahagian “Belum ada di frontend”.
+
+
+================================================================================
+A. OVERALL DASHBOARD LOOK (SANGAT DETAIL)
+================================================================================
+
+1) Layout keseluruhan (AppShell)
+- Desktop: grid 2 kolum — kiri sidebar tetap ~260px, kanan content utama.
+- Sidebar sticky penuh tinggi skrin, boleh scroll jika nav panjang.
+- Atas sidebar: logo klinik/bisnes (kalau ada) + wordmark Allvisor + nama organization.
+- Bawah brand: Language Switcher (BM / EN) + butang Log out.
+- Main content: padding luas, stack vertical (jarak ~1.25rem antara section).
+- Kalau akaun ada lebih dari 1 branch/org: BranchBar muncul atas content untuk switch branch.
+- Mobile: sidebar hilang → top bar dengan hamburger + logo org; sidebar jadi drawer overlay.
+
+2) Warna & mood
+- Default: background kertas hangat (cream/paper #f6f4f1 → #efeae4), teks gelap (#1c1b19),
+  muted gray-brown, garis default teal (#0f766e).
+- Card/surface: semi-glass putih translucent, border line lembut, radius mengikut niche.
+- Button: primary (accent filled), soft (accent soft), ghost.
+- Setiap niche tukar theme via data-niche:
+  clinic teal mint | retail orange shop | gym dark rose | salon pink | pharmacy emerald |
+  optical sky | tuition blue notebook | workshop orange | vet lime | fashion black editorial |
+  electronics dark cyan | wholesale slate | laundry sky | physio sage | lab indigo |
+  fnb amber kitchen | hotel gold | property indigo | courier yellow hi-vis |
+  contractor amber site | manufacturing dark cyan | legal navy formal | events purple stage |
+  farm green earthy.
+
+3) Sidebar navigation
+- Dibahagi section label uppercase kecil (Operations / Settings / Manager Zone atau
+  Owner Zone / Admin Zone).
+- Setiap link ada icon Lucide + label (vocab ikut niche: Patients / Customers / Members / Students).
+- Active link highlight; click ada soft transition (opacity pending).
+- Bila Manager/Admin Zone unlocked: muncul butang “Exit Admin/Manager Zone”.
+
+4) Staff Dashboard (/staff-dashboard) — floor view
+Susunan atas → bawah:
+a. Header: “Welcome, {nama}” + subtitle nama org.
+b. Strip KPI 2×2 (surface cards) SEBELAH Dashboard AI tips panel:
+   - Niche appointment (bukan POS): Appointments today
+   - Niche POS: Sales today (MYR)
+   - Unpaid invoices count
+   - People count (Patients/Customers/Members/Students)
+   - Low stock count
+c. AI panel staff: tip rule-based (bukan chat LLM) — chip hijau/merah/biru tentang
+   low stock, unpaid, cashflow, TIN/LHDN, appointments.
+d. Daily Close panel: checklist tutup hari (income, unpaid, no-show ATAU txn count,
+   low stock names, LHDN pending/rejected) + quick links.
+e. Quick action buttons: Customers, Invoices, (+ Appointments / POS kalau capability ada).
+f. NicheCardGrid: kad ringkas ikut capability niche (cash session, classes, jobs, dll).
+g. Kalau ada appointments: timetable jam untuk hari ini.
+h. Grid: recent invoices + (today sales kalau POS / upcoming appointments kalau care).
+i. Kalau POS: top sellers.
+j. Ops Brain: StaffMyScoreCard + StaffMyTasksCard (score & task sendiri).
+
+5) Admin Dashboard (/admin-dashboard) — owner oversight
+Susunan card (capability-driven):
+a. Header welcome + subtitle owner oversight.
+b. Headline KPIs: today collected, month profit, overdue receivables, team size.
+c. AI Supervisor briefing (full width) — daily briefing.
+d. Alerts inbox (half) + Staff ranking (half).
+e. Revenue trend chart 14 hari (full).
+f. Month P&L (half) + Receivables (half) → link ke Money.
+g. Niche-specific oversight grid (contoh: class fill, membership churn, cash variance,
+   stock value, table turnover — bergantung capability).
+h. Staff activity table → Team.
+i. Tasks (half) + Team/Branches (half).
+j. LHDN card (kalau ada) + Marketing plays cards.
+k. Floating AiChatWidget (owner chat) muncul di sudut bila Ops Brain on.
+
+6) Manager Zone vs Admin Zone vs Owner Zone
+STAFF sidebar:
+  Operations → (Settings jika commerce) → Manager Zone [Alerts, Admin, Accounting, LHDN]
+
+OWNER/CO-ADMIN sidebar:
+  Operations → (Settings) → Owner Zone [Alerts, Team, Performance, Money, Marketing]
+  → Admin Zone [Admin, Categories (kalau perlu), LHDN]
+  Nota: Owner TAK nampak Accounting di sidebar — diganti oleh Money.
+
+Password gate:
+- Admin / Accounting / LHDN / Alerts / Categories guna unlock password yang sama.
+- Default password hint biasanya {NamaOrg}{tahun}.
+- Unlock simpan cookie zone.
+
+
+================================================================================
+B. SHARED PAGES — INTERFACE YANG DIPAKAI RAMAI NICHE
+================================================================================
+
+--- Dashboard (Staff) ---
+Fungsi: ringkasan kerja harian floor.
+Interface: KPI tiles, AI tips, Daily Close, quick actions, niche cards, lists (lihat A.4).
+
+--- Dashboard (Admin/Owner) ---
+Fungsi: oversight bisnes, wang, team, risiko.
+Interface: headline KPIs, AI briefing, alerts, ranking, charts, niche oversight (lihat A.5).
+
+--- Customers / Patients / Members / Students ---
+Fungsi: CRM — simpan orang yang berurusan dengan bisnes.
+Interface:
+a. Form Add: name, IC, email, phone, address (required), notes.
+b. Clinic/vet/physio: risk level + allergies.
+c. Tuition: checkbox subjects untuk enroll.
+d. Searchable list: edit/delete, buka timeline (visits/invoices).
+e. History zone kuning: deleted customers + activity log section.
+
+--- Appointments ---
+Fungsi: book & urus jadual (clinic/salon/optical/vet/physio/lab).
+Interface:
+a. Toggle Calendar / List + month navigation.
+b. Calendar day cells dengan badge bilangan appointment.
+c. Pilih hari → DayHourTimetable (slot jam) + booking panel:
+   search patient, pilih service category, notes, Book now / reset.
+d. List mode: card setiap appointment — status select, complete tick, edit
+   (starts/ends/status/notes), delete.
+e. Activity log bawah.
+
+--- Invoices ---
+Fungsi: bil, bayaran, print, LHDN.
+Interface:
+a. Day filter + search; senarai invoice berwarna ikut status (paid/unpaid/void/LHDN).
+b. Click → modal/portal: line items, record payment, edit status, print,
+   LHDN submit/refresh/cancel (bergantung role/plan/TIN), cost extras.
+c. Closing unpaid minta early-exit reason.
+d. Activity log.
+
+--- Inventory ---
+Fungsi: stok produk, adjust, cycle count, smart reorder.
+Interface:
+a. Smart reorder table + dead stock table.
+b. Cycle count start/submit.
+c. Frequently used stock.
+d. Add product form (barcode HID scanner support; commerce: category, sold_by, image, POS flags).
+e. Stock table adjust/select + activity log.
+
+--- POS ---
+Fungsi: jualan counter → invoice + potong stok.
+Interface:
+a. Kiri: New ticket / held tickets, search/barcode, category chips, frequent products, product list Add.
+b. Kanan: cart qty steppers, pilih customer, payment method (cash/card/ewallet/transfer),
+   Hold / Void / Checkout, success + last invoice link.
+c. Empty cart message; out-of-stock error; price-on-sale prompt.
+
+--- Cash ---
+Fungsi: buka/tutup laci duit + gerakan cash.
+Interface:
+a. Open float form.
+b. Cash in/out movements semasa session open.
+c. Close session: counted cash → variance.
+d. Session history table.
+
+--- Receipts ---
+Fungsi: cari & semak resit jualan.
+Interface:
+a. Filter date / employee / customer.
+b. List + detail (lines, payments, print, refund).
+
+--- Categories ---
+Fungsi: service categories/items + product categories (password zone).
+Interface:
+a. Service category/item CRUD (catalog untuk invoice/appointment).
+b. Product categories + bulk assign (kalau retail capabilities).
+
+--- Logistics ---
+Fungsi: supplier & pergerakan stok gudang.
+Interface tabs dalam page:
+a. Suppliers — form + table.
+b. GRN (Goods Receipt) — terima stok.
+c. Adjustments — adjust stok.
+d. Transfers — pindah stok.
+
+--- Printers ---
+Fungsi: setting resit/sticker.
+Interface:
+a. Receipt settings + sticker settings.
+b. Test print / Bluetooth stub.
+c. Sticker preview box.
+
+--- Alerts (Manager/Owner) ---
+Fungsi: Ops Brain alert queue (refund_rate, voids, cash variance, stock leak, dll).
+Interface:
+a. Status filter chips.
+b. Severity chips.
+c. Set investigating / resolved.
+d. Empty state bila tiada alert.
+
+--- Admin (Manager/Admin Zone page) ---
+Fungsi: setting bisnes sensitif + team tools + import + branch.
+Interface (selepas unlock):
+a. Lock screen dulu: password form + default hint.
+b. Pending branch-link approve/reject.
+c. Detection thresholds (Ops Brain sensitivity).
+d. Notification channels Telegram/WhatsApp (owner/admin only untuk edit org-level).
+e. Security: tukar Admin Zone password (owner/admin).
+f. Business settings: nama, phone, address, TIN, SST, dll (owner/admin).
+g. Hours / service charge (clinic-style settings).
+h. Gym only: Walk-in packages CRUD (name, minutes, price).
+i. Logo editor.
+j. Invoice number format.
+k. Data Import panel (CSV/Excel).
+l. Create branch / link existing branch.
+Nota: Staff management detail lebih lengkap di Owner → Team; Admin page fokus settings.
+
+--- Accounting (Manager Zone) ---
+Fungsi: buku kasar ringkas untuk manager floor.
+Interface:
+a. Period chips.
+b. KPI income / expense / profit.
+c. Cash chart.
+d. Add income / expense forms.
+e. Paged expense + ledger tables + activity.
+
+--- Money (Owner Zone) ---
+Fungsi: overview wang owner (ganti Accounting di sidebar owner).
+Interface:
+a. Bookkeeping sama seperti accounting.
+b. Expense-by-category.
+c. Receivables current/overdue tables.
+d. Open unpaid invoices list.
+e. Tiada password zone (owner page terus).
+
+--- LHDN ---
+Fungsi: MyInvois e-Invoice Malaysia.
+Interface:
+a. Mode banner (intermediary/sandbox/production).
+b. How-to steps.
+c. TIN / intermediary link form.
+d. Submissions table (status accepted/rejected/pending).
+e. Activity log.
+
+--- Team (Owner) ---
+Fungsi: urus staff + ranking prestasi.
+Interface:
+a. Add/kick staff ikut hierarchy role.
+b. Staff score ranking dengan ScoreBars.
+c. Recalculate scores.
+
+--- Performance (Owner) ---
+Fungsi: prestasi bisnes & staff ikut julat masa.
+Interface:
+a. Range chips (week/month/…).
+b. KPIs vs prior period.
+c. Revenue chart.
+d. Staff scores.
+e. Branch scorecard kalau multi-branch.
+
+--- Marketing (Owner) ---
+Fungsi: playbook idea marketing ikut niche.
+Interface:
+a. Static cards (title + body) dari marketingPlays.
+b. TIADA send campaign UI dalam app (lead email ada di funnel /start, bukan page ni).
+
+--- NicheModulePage (pattern specialty) ---
+Fungsi: CRUD nipis untuk modul niche.
+Interface SELALU sama:
+a. PageHeader title + subtitle.
+b. Surface “Add”: grid fields + Save.
+c. Surface table: columns mentah dari DB, max 100 rows, empty “No records yet.”
+d. Tiada search advanced, status board, atau workflow kaya.
+
+
+================================================================================
+1. CLINIC
+Theme: teal mint, soft medical, pill buttons.
+Belum ada di frontend khas: POS, cash drawer (clinic bukan retail).
+================================================================================
+
+Staff:
+i. Dashboard (ringkasan floor klinik)
+* Interface:
+a. KPI: appointments today, unpaid, patients, low stock + AI tips + Daily Close +
+   quick actions + appointment timetable + recent invoices/upcoming appointments +
+   my score/tasks.
+
+ii. Patients / Customers (CRM pesakit)
+* Interface:
+a. Form tambah pesakit (name, IC, email, phone, address, notes, risk, allergies).
+b. List searchable + edit/delete + timeline panel.
+c. History zone deletion + activity log.
+
+iii. Appointments (book appointment)
+* Interface:
+a. Calendar/List board, slot jam, book patient + category, status/complete/edit/delete.
+b. Activity log.
+
+iv. Invoices (bil & bayaran rawatan)
+* Interface:
+a. Senarai invoice + modal payment/print/LHDN/line items.
+
+v. Inventory (stok ubat/bekalan)
+* Interface:
+a. Product list, adjust stock, smart reorder, cycle count, barcode, activity log.
+
+
+Manager:
+i. Alerts (Ops Brain untuk supervisor/manager)
+* Interface:
+a. Filter status/severity; mark investigating/resolved.
+
+ii. Admin (setting klinik + unlock zone)
+* Interface:
+a. Password lock → business settings, hours/service charge, logo, invoice format,
+   import, branch links, detection thresholds, notif channels (ikut role).
+
+iii. Accounting (buku kasar floor)
+* Interface:
+a. Period KPIs, income/expense forms, ledger tables.
+
+iv. LHDN (e-Invoice)
+* Interface:
+a. TIN setup, submissions table, how-to intermediary.
+
+
+Admin (Owner / co-admin):
+i. Admin Dashboard (oversight)
+* Interface:
+a. Collected/profit/overdue/team KPIs, AI briefing, alerts inbox, staff ranking,
+   revenue trend, P&L, receivables, appointment utilisation + stock cards,
+   staff activity, tasks, LHDN, marketing.
+
+ii. Patients / Appointments / Invoices / Inventory
+* Interface:
+a. Sama seperti Staff (owner juga boleh kerja floor dari Operations).
+
+iii. Alerts (Owner Zone)
+* Interface:
+a. Sama queue alert, oversight.
+
+iv. Team
+* Interface:
+a. Add/kick staff + score ranking + recalculate.
+
+v. Performance
+* Interface:
+a. Range KPIs, revenue chart, staff/branch scorecards.
+
+vi. Money
+* Interface:
+a. Full money view + receivables + unpaid invoices.
+
+vii. Marketing
+* Interface:
+a. Clinic marketing play cards (static).
+
+viii. Admin Zone → Admin + Categories + LHDN
+* Interface:
+a. Admin settings penuh; Categories untuk service catalog; LHDN submissions.
+
+
+================================================================================
+2. RETAIL
+Theme: orange practical shop floor.
+================================================================================
+
+Staff:
+i. Dashboard
+* Interface:
+a. Sales today KPI (bukan appointments), unpaid, customers, low stock, AI tips,
+   Daily Close (txn today), POS quick action, cash/POS niche cards, today sales,
+   top sellers, my score/tasks.
+
+ii. Customers
+* Interface:
+a. CRM standard (tiada risk/allergies clinic).
+
+iii. POS (jualan counter)
+* Interface:
+a. Catalog + cart + hold/void/checkout + barcode HID + payment methods.
+
+iv. Cash (laci duit)
+* Interface:
+a. Open/close session, movements, variance history.
+
+v. Invoices
+* Interface:
+a. Senarai/resit formal + payment/LHDN.
+
+vi. Settings → Receipts
+* Interface:
+a. Filter & detail resit, print/refund.
+
+vii. Settings → Categories
+* Interface:
+a. Product/service categories (password).
+
+viii. Settings → Inventory
+* Interface:
+a. Full inventory + commerce fields (sold_by, category, POS flags).
+
+ix. Settings → Logistics
+* Interface:
+a. Tabs Suppliers / GRN / Adjustments / Transfers.
+
+x. Settings → Printers
+* Interface:
+a. Receipt/sticker settings + test print stub.
+
+
+Manager:
+i. Alerts
+ii. Admin
+iii. Accounting
+iv. LHDN
+* Interface:
+a. Sama shared Manager Zone (lihat bahagian B). Admin retail tiada walk-in packages.
+
+
+Admin:
+i. Admin Dashboard
+* Interface:
+a. Oversight + POS sales cards, void watch, cash variance, stock value/dead stock,
+   marketing, LHDN, team activity.
+
+ii. Operations + Settings pages (sama Staff)
+iii. Owner Zone: Alerts, Team, Performance, Money, Marketing
+iv. Admin Zone: Admin, LHDN (Categories sudah dalam Settings)
+
+
+================================================================================
+3. SALON
+Theme: pink soft glam.
+================================================================================
+
+Staff:
+i. Dashboard — KPI sales/appointments mix + commission/job style cards bila relevan.
+ii. Customers — CRM standard.
+iii. Appointments — board book rawatan/salon slot.
+iv. POS — jual produk/service di counter.
+v. Invoices — bil & bayar.
+vi. Settings → Receipts — resit.
+vii. Settings → Commissions (CRUD nipis)
+* Interface:
+a. Add commission rule fields + table salon_commission_rules (thin NicheModule).
+viii. Settings → Categories — catalog.
+ix. Settings → Inventory — stok produk.
+
+
+Manager: Alerts / Admin / Accounting / LHDN (shared).
+
+Admin:
+i. Admin Dashboard — termasuk commission payout oversight card.
+ii. Owner Zone + Admin Zone shared.
+iii. Operations/Settings sama Staff.
+
+Belum dalam frontend mendalam: commission calculation engine kaya / payout workflow auto.
+
+
+================================================================================
+4. PHARMACY
+Theme: emerald.
+================================================================================
+
+Staff:
+i. Dashboard — POS floor KPIs + batch expiry staff card.
+ii. Customers
+iii. POS
+iv. Cash
+v. Invoices
+vi. Receipts
+vii. Batches (CRUD nipis lot/expiry)
+* Interface:
+a. Add: lot_number, product_id, expiry_date, quantity → table batches.
+viii. Categories / Inventory / Logistics / Printers — sama retail stack.
+
+
+Manager: Alerts / Admin / Accounting / LHDN.
+
+Admin:
+i. Dashboard termasuk adminBatchRisk card.
+ii. Owner + Admin zones shared.
+
+Belum mendalam: rx_attach workflow page khas (capability wujud, tiada dedicated page).
+
+
+================================================================================
+5. OPTICAL
+Theme: sky frosted.
+================================================================================
+
+Staff:
+i. Dashboard
+ii. Customers
+iii. Appointments — book eye check.
+iv. POS — jual frame/lens.
+v. Invoices
+vi. Receipts
+vii. Eye Rx (CRUD nipis)
+* Interface:
+a. Form + table eye prescriptions fields.
+viii. Lab Orders (CRUD nipis)
+* Interface:
+a. Form + table optical lab orders.
+ix. Categories / Inventory
+
+
+Manager: Alerts / Admin / Accounting / LHDN.
+
+Admin:
+i. Dashboard + lab turnaround oversight card.
+ii. Owner + Admin zones.
+
+
+================================================================================
+6. TUITION
+Theme: blue notebook / Source Serif feel.
+================================================================================
+
+Staff:
+i. Dashboard
+* Interface:
+a. KPI students/unpaid/sales-or-appt style + cards: classes, attendance, grading;
+   recent invoices; my tasks/score.
+
+ii. Students / Customers
+* Interface:
+a. CRM + subject enrollment checkboxes + enrolled subjects table.
+
+iii. Subjects
+* Interface:
+a. Add subject/price/teacher/salary; KPI tiles; list delete; teacher payroll rollup.
+
+iv. Classes
+* Interface:
+a. Add class (+ subject link); weekday timetable groups; enroll student form.
+
+v. Attendance
+* Interface:
+a. Mark present/absent; recent attendance table.
+
+vi. Assessments
+* Interface:
+a. Create assessment; submissions grading forms.
+
+vii. Invoices — yuran/term fees billing.
+
+
+Manager: Alerts / Admin / Accounting / LHDN.
+
+Admin:
+i. Admin Dashboard — class fill, attendance rate, teacher payroll cards.
+ii. Owner Zone + Admin Zone (+ Categories injected untuk service catalog).
+iii. Operations pages sama Staff.
+
+Belum ada page khas: /term-fees (capability term_fees wujud untuk cards/payroll).
+Student portal UI dibuang (redirect); schema lama mungkin masih ada.
+
+
+================================================================================
+7. WORKSHOP
+Theme: orange utilitarian uppercase.
+================================================================================
+
+Staff:
+i. Dashboard — job cards staff card + POS KPIs.
+ii. Customers
+iii. Jobs (CRUD nipis)
+* Interface:
+a. Add: job title, status (default intake), vehicle_id, customer_id, notes → table.
+iv. POS
+v. Invoices
+vi. Receipts
+vii. Vehicles (CRUD nipis)
+* Interface:
+a. Add vehicle profile fields + table.
+viii. Categories / Inventory
+
+
+Manager: Alerts / Admin / Accounting / LHDN.
+
+Admin:
+i. Dashboard + job throughput card.
+ii. Owner + Admin zones.
+
+Belum mendalam: kanban job board visual / mechanic assignment UI.
+
+
+================================================================================
+8. GYM
+Theme: dark + rose/red, uppercase brand.
+Extra: GymPresenceNotifier floating untuk walk-in expiry.
+================================================================================
+
+Staff:
+i. Dashboard
+* Interface:
+a. Floor KPIs + memberships/checkins cards + lists + my score/tasks.
+
+ii. Customers / Members — CRM ahli.
+
+iii. Memberships (CRUD nipis)
+* Interface:
+a. Add: Member ID, Plan, Starts, Ends → table plan_name/status/dates.
+b. (Status default dari action; tiada rich renew UI.)
+
+iv. Classes
+* Interface:
+a. Class schedule UI dikongsi dengan tuition (tuition_classes) tapi copy Gym:
+   add class, weekday groups, enroll member.
+
+v. Walk-in (DEEP UI)
+* Interface:
+a. Pilih package (dari Admin packages), isi name/IC/address, start timed session.
+b. Active list dengan countdown live (poll + timer).
+c. Expired list + Ack button.
+d. Bawah page: embedded member check-ins NicheModule (customer_id + checked_in_at).
+
+vi. Invoices — bil membership/walk-in/related.
+
+
+Manager: Alerts / Admin / Accounting / LHDN.
+* Admin page khas gym:
+a. Walk-in packages section — name, minutes, price; add/delete packages.
+
+
+Admin:
+i. Admin Dashboard — membership churn + checkin trend cards.
+ii. Owner Zone: Alerts, Team, Performance, Money, Marketing.
+iii. Admin Zone: Admin (termasuk walk-in packages), Categories, LHDN.
+iv. Operations sama Staff.
+
+Belum ada di frontend:
+- Dedicated PT sessions page (capability pt_sessions wujud).
+- /checkins standalone wujud tapi TIDAK dalam nav (embedded dalam Walk-in).
+
+
+================================================================================
+9. VET
+Theme: lime warm green.
+================================================================================
+
+Staff:
+i. Dashboard
+ii. Customers (owner haiwan) — risk/allergies style care fields bila relevan.
+iii. Pets (CRUD nipis)
+* Interface:
+a. Add: name, species, breed, owner_id → table.
+iv. Appointments — book checkup.
+v. Invoices
+vi. Inventory — stok ubat/vet supplies.
+
+
+Manager: Alerts / Admin / Accounting / LHDN.
+
+Admin:
+i. Dashboard + vaccination compliance card (capability-driven).
+ii. Owner + Admin zones.
+
+Belum ada page: pet_vaccinations dedicated (capability + dashboard card sahaja).
+
+
+================================================================================
+10. FASHION
+Theme: near-black editorial, sharp.
+================================================================================
+
+Staff:
+i. Dashboard / Customers / POS / Cash / Invoices — retail skeleton.
+ii. Receipts
+iii. Variants (CRUD nipis)
+* Interface:
+a. Add: product_id, size, color, sku, barcode, quantity → table.
+iv. Categories / Inventory / Logistics / Printers
+
+
+Manager: Alerts / Admin / Accounting / LHDN.
+
+Admin:
+i. Dashboard + variant sell-through card.
+ii. Owner + Admin zones.
+
+
+================================================================================
+11. ELECTRONICS
+Theme: dark slate + cyan.
+================================================================================
+
+Staff:
+i. Retail ops skeleton (Dashboard, Customers, POS, Cash, Invoices, Receipts,
+   Categories, Inventory, Logistics, Printers).
+ii. Serials (CRUD nipis)
+* Interface:
+a. Add: product_id, serial_number, status → table.
+
+
+Manager: Alerts / Admin / Accounting / LHDN.
+
+Admin:
+i. Dashboard + serial exposure card.
+ii. Owner + Admin zones.
+
+
+================================================================================
+12. WHOLESALE
+Theme: slate industrial dense tables.
+================================================================================
+
+Staff:
+i. Retail ops skeleton.
+ii. Price Tiers (CRUD nipis)
+* Interface:
+a. Add: name, discount_percent → table.
+
+
+Manager: Alerts / Admin / Accounting / LHDN.
+
+Admin:
+i. Dashboard + price tier mix card.
+ii. Owner + Admin zones.
+
+
+================================================================================
+13. LAUNDRY
+Theme: sky clean soft.
+================================================================================
+
+Staff:
+i. Dashboard
+ii. Customers
+iii. Laundry (CRUD nipis tickets)
+* Interface:
+a. Add ticket_number/status/item_count/customer_id → table.
+iv. POS
+v. Invoices
+vi. Receipts
+vii. Inventory
+
+
+Manager: Alerts / Admin / Accounting / LHDN.
+
+Admin:
+i. Dashboard + laundry ageing card.
+ii. Owner + Admin zones.
+
+Belum mendalam: status pipeline UI (received → washing → ready → collected).
+
+
+================================================================================
+14. PHYSIO
+Theme: sage Fraunces, large radii.
+================================================================================
+
+Staff:
+i. Dashboard
+ii. Customers (care fields)
+iii. Appointments
+iv. Packages (CRUD nipis session packages)
+* Interface:
+a. Add: customer_id, name, total_sessions, used_sessions → table.
+v. Invoices
+vi. Inventory
+
+
+Manager: Alerts / Admin / Accounting / LHDN.
+
+Admin:
+i. Dashboard + package utilisation card.
+ii. Owner + Admin zones.
+
+
+================================================================================
+15. LAB
+Theme: indigo sharp dense.
+================================================================================
+
+Staff:
+i. Dashboard
+ii. Customers
+iii. Appointments
+iv. Lab Results (CRUD nipis)
+* Interface:
+a. Add: customer_id, test_name, status, result_summary → table.
+v. Invoices
+
+
+Manager: Alerts / Admin / Accounting / LHDN.
+
+Admin:
+i. Dashboard + lab tests oversight card.
+ii. Owner + Admin zones.
+
+
+================================================================================
+16. F&B
+Theme: amber kitchen Fraunces.
+================================================================================
+
+Staff:
+i. Dashboard — table/POS/cash cards.
+ii. Customers
+iii. Tables (CRUD nipis)
+* Interface:
+a. Add: name, seats, status → dining_tables table.
+iv. POS
+v. Cash
+vi. Invoices
+vii. Receipts / Categories / Inventory
+
+
+Manager: Alerts / Admin / Accounting / LHDN.
+
+Admin:
+i. Dashboard + table turnover card.
+ii. Owner + Admin zones.
+
+Belum mendalam: full KOT kitchen display / floor map visual.
+
+
+================================================================================
+17. HOTEL
+Theme: gold quiet luxury uppercase.
+================================================================================
+
+Staff:
+i. Dashboard — occupancy style cards.
+ii. Customers (guests)
+iii. Rooms (CRUD nipis)
+* Interface:
+a. Add: room_number, room_type, status, rate → table.
+iv. Invoices
+
+
+Manager: Alerts / Admin / Accounting / LHDN.
+
+Admin:
+i. Dashboard + occupancy card.
+ii. Owner + Admin zones.
+
+Belum mendalam: reservation calendar / check-in-out board.
+
+
+================================================================================
+18. PROPERTY
+Theme: indigo.
+================================================================================
+
+Staff:
+i. Dashboard
+ii. Customers
+iii. Listings (CRUD nipis)
+* Interface:
+a. Add: title, status, notes → table.
+iv. Invoices
+
+
+Manager: Alerts / Admin / Accounting / LHDN.
+
+Admin:
+i. Dashboard + listing pipeline card.
+ii. Owner + Admin zones.
+
+
+================================================================================
+19. COURIER
+Theme: yellow hi-vis on stone, uppercase.
+================================================================================
+
+Staff:
+i. Dashboard
+ii. Customers
+iii. Shipments (CRUD nipis)
+* Interface:
+a. Add: tracking_no, status, notes → table.
+iv. Invoices
+
+
+Manager: Alerts / Admin / Accounting / LHDN.
+
+Admin:
+i. Dashboard + shipment service card.
+ii. Owner + Admin zones.
+
+
+================================================================================
+20. CONTRACTOR
+Theme: amber brown site aesthetic.
+================================================================================
+
+Staff:
+i. Dashboard
+ii. Customers
+iii. Projects (CRUD nipis)
+* Interface:
+a. Add: name, status, claim_amount → table.
+iv. Invoices
+
+
+Manager: Alerts / Admin / Accounting / LHDN.
+
+Admin:
+i. Dashboard + project claims card.
+ii. Owner + Admin zones.
+
+
+================================================================================
+21. MANUFACTURING
+Theme: dark control-room cyan.
+================================================================================
+
+Staff:
+i. Dashboard
+ii. Customers
+iii. Work Orders (CRUD nipis)
+* Interface:
+a. Add: name, status, notes → table.
+iv. Inventory
+v. Invoices
+
+
+Manager: Alerts / Admin / Accounting / LHDN.
+
+Admin:
+i. Dashboard + WIP ageing card.
+ii. Owner + Admin zones.
+
+Belum mendalam: BOM / routing / shop-floor scanning UI.
+
+
+================================================================================
+22. LEGAL
+Theme: navy formal serif, near-zero radius.
+================================================================================
+
+Staff:
+i. Dashboard
+ii. Customers (clients)
+iii. Matters (CRUD nipis)
+* Interface:
+a. Add: title, status, notes → table.
+iv. Invoices
+
+
+Manager: Alerts / Admin / Accounting / LHDN.
+
+Admin:
+i. Dashboard + matter status card.
+ii. Owner + Admin zones.
+
+
+================================================================================
+23. EVENTS
+Theme: dark purple stage.
+================================================================================
+
+Staff:
+i. Dashboard
+ii. Customers
+iii. Events (CRUD nipis)
+* Interface:
+a. Add: title, event_date, status → event_plans table.
+iv. Invoices
+
+
+Manager: Alerts / Admin / Accounting / LHDN.
+
+Admin:
+i. Dashboard + event pipeline card.
+ii. Owner + Admin zones.
+
+
+================================================================================
+24. FARM
+Theme: green earthy cream Fraunces.
+================================================================================
+
+Staff:
+i. Dashboard
+ii. Customers
+iii. Plots (CRUD nipis)
+* Interface:
+a. Add: name, crop, status → table.
+iv. Inventory
+v. Invoices
+
+
+Manager: Alerts / Admin / Accounting / LHDN.
+
+Admin:
+i. Dashboard + plot status card.
+ii. Owner + Admin zones.
+
+
+================================================================================
+C. RINGKASAN ROLE → APA YANG MEREKA NAMPAK
+================================================================================
+
+Staff (role staff):
+- Operations (+ Settings kalau ada)
+- Manager Zone nampak dalam nav TAPI page locked password
+- Dashboard floor
+
+Supervisor / Manager:
+- Sama seperti staff UI
+- Boleh unlock Manager Zone (Alerts/Admin/Accounting/LHDN)
+- Boleh manage staff terbatas (ikut hierarchy)
+
+Owner / Admin (co-admin):
+- /admin-dashboard oversight
+- Owner Zone: Alerts, Team, Performance, Money, Marketing
+- Admin Zone: Admin, LHDN, Categories (bila perlu)
+- Floating AI chat widget
+- Accounting diganti Money
+
+
+================================================================================
+D. FEATURE YANG WUJUD DI BACKEND/CAPABILITY TAPI TIPIS / TIADA FRONTEND PENUH
+================================================================================
+
+- NicheModule specialty pages: CRUD sahaja (UUID fields sering plain text ID).
+- Marketing page: static plays only (tiada send campaign).
+- Printer Bluetooth: stub button.
+- pt_sessions (gym): capability sahaja, tiada page.
+- pet_vaccinations: capability + dashboard card, tiada page.
+- term_fees: capability untuk payroll/cards, tiada /term-fees page.
+- service_duration / rx_attach: declared, tiada dedicated UI page.
+- /checkins: page wujud, tak masuk gym nav (ada dalam Walk-in).
+- /student-accounts, /cashflow, /settings: redirect sahaja.
+- Billplz/Stripe SaaS billing: belum wired.
+- WhatsApp channel: simpan target; delivery lebih ke copy/manual, bukan full API blast.
+- Ops Brain column ops_brain_enabled: layout presently treats ops as on.
+
+
+================================================================================
+E. CONTOH BACAAN CEPAT — CLINIC VS RETAIL VS GYM
+================================================================================
+
+Clinic staff kerja harian:
+Dashboard → Patients → Appointments → Invoices → Inventory
+Manager unlock → Alerts/Admin/Accounting/LHDN
+Owner → Admin Dashboard + Team/Performance/Money/Marketing + Admin/LHDN
+
+Retail staff kerja harian:
+Dashboard → Customers → POS → Cash → Invoices
+Settings → Receipts/Categories/Inventory/Logistics/Printers
+Manager unlock → Alerts/Admin/Accounting/LHDN
+Owner → oversight + Money (bukan Accounting link)
+
+Gym staff kerja harian:
+Dashboard → Members → Memberships → Classes → Walk-in (countdown) → Invoices
+Manager unlock → Admin (set walk-in packages) + Accounting/LHDN/Alerts
+Owner → churn/checkin oversight + Money/Team/Performance
+
+
+================================================================================
+END
+================================================================================

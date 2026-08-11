@@ -148,12 +148,18 @@ export async function savePosTicketAction(formData: FormData) {
 export async function voidPosTicketAction(formData: FormData) {
   const { supabase, organization, profile } = await requireRetailMember();
   const id = String(formData.get("ticket_id") || "");
+  const voidReason = String(formData.get("void_reason") || "").trim();
   if (!id) return { error: "Ticket required" };
+  if (!voidReason) return { error: "Void reason is required" };
   // Only held tickets can be voided — a completed sale must go through the
   // refund flow so money and stock are reversed properly.
   const { data: voided, error } = await supabase
     .from("pos_tickets")
-    .update({ status: "void", updated_at: new Date().toISOString() })
+    .update({
+      status: "void",
+      void_reason: voidReason,
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", id)
     .eq("organization_id", organization.id)
     .eq("status", "held")
@@ -162,6 +168,13 @@ export async function voidPosTicketAction(formData: FormData) {
   if (!voided || !voided.length) {
     return { error: "Only held tickets can be voided — use refund for completed sales." };
   }
+  await logActivity({
+    action: "pos.ticket.void",
+    summary: `Voided held ticket: ${voidReason}`,
+    entityType: "pos_ticket",
+    entityId: id,
+    meta: { reason: voidReason, by: profile.id },
+  });
   // Fire-and-forget: the AI supervisor re-checks this staff member's rates.
   void (async () => {
     try {
@@ -179,14 +192,18 @@ export async function voidPosTicketAction(formData: FormData) {
 }
 
 export async function refundInvoiceAction(formData: FormData) {
-  const { supabase, organization, profile } = await requireRetailMember();
+  const { supabase, organization, profile, membership } = await requireRetailMember();
+  const { canAccessSensitive } = await import("@/lib/roles");
+  if (!canAccessSensitive(membership.role)) {
+    return { error: "Manager / supervisor approval required for refunds" };
+  }
   const invoiceId = String(formData.get("invoice_id") || "");
   const note = String(formData.get("note") || "POS refund").trim();
   if (!invoiceId) return { error: "Invoice required" };
   const [{ data: invoice }, { data: lines }, { data: existing }, { data: originalPayments }] = await Promise.all([
     supabase
       .from("invoices")
-      .select("id, invoice_number, customer_id, total, subtotal, tax_amount")
+      .select("id, invoice_number, customer_id, total, subtotal, tax_amount, status, amount_paid")
       .eq("id", invoiceId)
       .eq("organization_id", organization.id)
       .single(),
@@ -203,7 +220,11 @@ export async function refundInvoiceAction(formData: FormData) {
     supabase.from("payments").select("method").eq("invoice_id", invoiceId),
   ]);
   if (!invoice) return { error: "Receipt not found" };
+  if (invoice.status === "void") return { error: "Cannot refund a void invoice" };
   if (existing?.length) return { error: "This receipt has already been refunded" };
+  if (Number(invoice.amount_paid || 0) <= 0 && Number(invoice.total || 0) > 0) {
+    return { error: "Invoice has no recorded payment to refund" };
+  }
   const refundNumber = `RF-${invoice.invoice_number}-${Date.now().toString().slice(-4)}`;
   const { data: refund, error } = await supabase
     .from("invoices")
@@ -224,7 +245,12 @@ export async function refundInvoiceAction(formData: FormData) {
     })
     .select("id")
     .single();
-  if (error || !refund) return { error: error?.message || "Refund failed" };
+  if (error || !refund) {
+    if (error?.code === "23505" || /duplicate|unique/i.test(error?.message || "")) {
+      return { error: "This receipt has already been refunded" };
+    }
+    return { error: error?.message || "Refund failed" };
+  }
   if (lines?.length) {
     const { error: lineError } = await supabase.from("invoice_lines").insert(
       lines.map((line) => ({
@@ -460,7 +486,11 @@ function parseLines(formData: FormData): StockDocumentLine[] | null {
 }
 
 export async function createGoodsReceiptAction(formData: FormData) {
-  const { supabase, organization, profile } = await requireRetailMember();
+  const { supabase, organization, profile, membership } = await requireRetailMember();
+  const { canAccessSensitive } = await import("@/lib/roles");
+  if (!canAccessSensitive(membership.role)) {
+    return { error: "Manager / supervisor approval required for GRN" };
+  }
   const lines = parseLines(formData);
   if (!lines?.length) return { error: "Add at least one GRN line" };
   const ids = lines.map((line) => line.product_id);
@@ -516,7 +546,11 @@ export async function createGoodsReceiptAction(formData: FormData) {
 }
 
 export async function createStockAdjustmentDocumentAction(formData: FormData) {
-  const { supabase, organization, profile } = await requireRetailMember();
+  const { supabase, organization, profile, membership } = await requireRetailMember();
+  const { canAccessSensitive } = await import("@/lib/roles");
+  if (!canAccessSensitive(membership.role)) {
+    return { error: "Manager / supervisor approval required for stock adjustments" };
+  }
   const lines = parseLines(formData);
   if (!lines?.length) return { error: "Add at least one adjustment line" };
   const { data: products } = await supabase

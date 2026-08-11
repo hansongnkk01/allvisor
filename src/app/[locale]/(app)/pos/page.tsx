@@ -29,7 +29,7 @@ export default async function PosPage({
     await Promise.all([
       supabase
         .from("products")
-        .select("id, name, sku, barcode, unit_price, quantity, sold_by, track_stock, price_on_sale, category_id")
+        .select("id, name, sku, barcode, unit_price, quantity, sold_by, track_stock, price_on_sale, category_id, serialised")
         .eq("organization_id", ctx.organization.id)
         .eq("is_active", true)
         .eq("available_to_sale", true)
@@ -74,6 +74,7 @@ export default async function PosPage({
       track_stock: true,
       price_on_sale: false,
       category_id: null,
+      serialised: false,
     }));
   }
 
@@ -99,6 +100,7 @@ export default async function PosPage({
     track_stock: (p as { track_stock?: boolean }).track_stock !== false,
     price_on_sale: (p as { price_on_sale?: boolean }).price_on_sale === true,
     category_id: (p as { category_id?: string | null }).category_id || null,
+    serialised: (p as { serialised?: boolean }).serialised === true,
   }));
 
   return (

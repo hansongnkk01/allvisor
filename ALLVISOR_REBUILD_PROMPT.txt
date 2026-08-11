@@ -1,0 +1,697 @@
+================================================================================
+ALLVISOR — MASTER REBUILD / SPEC PROMPT
+================================================================================
+Cara guna:
+1. Copy SEMUA teks dari bahagian "=== BEGIN PROMPT ===" sampai "=== END PROMPT ==="
+2. Paste ke AI coding agent (Cursor / Claude / ChatGPT / dll)
+3. Kalau nak rebuild dari kosong, tambah arahan: "Build this from scratch"
+4. Kalau nak continue/extend codebase sedia ada, tambah: "Use the existing allvisor folder as source of truth"
+
+Nota: Prompt ni ditulis dalam English supaya AI coding agent faham lebih tepat.
+Semua concept + technical details di bawah berdasarkan codebase Allvisor yang sudah dibina.
+
+================================================================================
+=== BEGIN PROMPT ===
+================================================================================
+
+You are a senior full-stack engineer. Build (or faithfully rebuild) **Allvisor** — a production-ready, multi-niche SaaS platform for Malaysian SMEs.
+
+This prompt is the complete product + technical specification. Follow it precisely. Do not invent payment gateways that are not specified. Prefer a capability-gated multi-tenant architecture over hard-coded niche forks.
+
+--------------------------------------------------------------------------------
+1. PRODUCT VISION
+--------------------------------------------------------------------------------
+
+Allvisor is a bilingual (Bahasa Malaysia / English) multi-tenant operations platform for Malaysian small businesses.
+
+Core promise:
+- One codebase, many business verticals ("niches")
+- Shared CRM, invoicing, inventory, accounting, LHDN e-Invoice
+- Niche-specific operations unlocked by a capability engine
+- Split UX: Owner/Admin oversight vs Staff floor operations
+- Malaysian business reality: MYR currency, Malaysian holidays, LHDN MyInvois, IC numbers, BM/EN UI
+
+Primary deep niches (first-class UX):
+1. Clinic
+2. Retail / commerce POS
+3. Gym (memberships, check-ins, classes, walk-in timed sessions)
+4. Tuition (subjects, classes, attendance, assessments)
+5. Owner Ops Brain (alerts, tasks, AI supervisor, performance)
+
+Also supported (capability + CRUD modules, often via a generic NicheModulePage):
+salon, pharmacy, optical, workshop, vet, fashion, electronics, wholesale, laundry, physio, lab, fnb, hotel, property, courier, contractor, manufacturing, legal, events, farm
+
+Total niches: 25.
+
+Target users:
+- Business owners / co-admins
+- Supervisors / managers / floor staff
+- Marketing prospects via /start lead funnel
+
+--------------------------------------------------------------------------------
+2. TECH STACK (MUST USE)
+--------------------------------------------------------------------------------
+
+Frontend / App:
+- Next.js 16 (App Router)
+- React 19
+- TypeScript 5
+- Tailwind CSS 4
+- Custom design system in globals.css (CSS variables + utility classes)
+- lucide-react icons
+- react-hook-form + zod + @hookform/resolvers
+- next-intl for i18n (locales: `ms` default, `en`; always locale-prefixed routes)
+- date-fns
+- xlsx for CSV/Excel imports
+- clsx
+
+Backend:
+- Next.js Server Actions as primary mutation layer
+- A few API routes for cron + unsubscribe
+- Supabase Auth (email), Postgres, RLS, Storage
+
+Hosting / infra:
+- Vercel (region sin1 Singapore)
+- Vercel Cron jobs
+- GitHub → Vercel deploy
+
+Integrations:
+- Supabase (auth/db/storage; org-logos bucket)
+- LHDN MyInvois (sandbox + production; intermediary mode)
+- Resend (marketing lead email sequence; no-op if key missing)
+- OpenAI-compatible LLM API (briefings + owner AI chat; rule-based fallback if no key)
+- Telegram Bot API (outbound notifications via notification_channels)
+- WhatsApp channel rows store draft/manual copy (not full API send)
+- Barcode HID keyboard wedge helpers for inventory/POS
+
+NOT implemented (do not fake as live payment):
+- Billplz / Stripe for SaaS plan billing
+- Plan upgrades can update org subscription fields after admin unlock, but no gateway required for v1
+
+--------------------------------------------------------------------------------
+3. HIGH-LEVEL ARCHITECTURE
+--------------------------------------------------------------------------------
+
+Pattern:
+- Multi-tenant organizations
+- Users belong to orgs via memberships (staff roles)
+- Niche on the organization drives capabilities, navigation, vocab, and theme
+- Capability engine is the single source of truth for feature access
+- Audience split:
+  - admin audience = owner / admin → Owner Zone + admin dashboard
+  - staff audience = supervisor / manager / staff → floor dashboard + Manager Zone
+
+Suggested structure:
+
+allvisor/
+  src/
+    app/
+      [locale]/
+        (app)/                 # authenticated app shell
+        login/, register/, onboarding/, start/, student/
+      api/                     # cron + unsubscribe
+      actions.ts               # core server actions
+      gym-actions.ts
+      retail-actions.ts
+      niche-actions.ts
+      tuition-actions.ts
+      ops-actions.ts
+      marketing-actions.ts
+      globals.css
+    components/                # AppShell, POS, dashboards, gym walk-in, etc.
+    lib/                       # niches, roles, LHDN, AI, alerts, supabase
+    modules/                   # thin niche capability exports
+    i18n/
+    middleware.ts
+  messages/                    # en.json, ms.json
+  supabase/migrations/        # sequential SQL 001 → 036+
+  public/
+  vercel.json
+  .env.example
+
+Key architectural rules:
+1. Pages/actions MUST gate with hasCapability() / requireCapability(), not scattered niche === "clinic" checks.
+2. Shared CRM/invoices/inventory/accounting/admin pages serve all niches.
+3. Niche-specific deep workspaces exist where needed (POS, appointments, gym walk-in, etc.).
+4. Many specialty niches can use a generic NicheModulePage CRUD pattern.
+5. RLS must ensure Org A never sees Org B data.
+6. Prefer Server Components + Server Actions + ActionForm patterns.
+
+--------------------------------------------------------------------------------
+4. DOMAIN CONCEPTS (IMPORTANT VOCABULARY)
+--------------------------------------------------------------------------------
+
+Niche:
+  Business vertical chosen at signup (clinic, retail, gym, ...). Drives capabilities, nav, labels, theme.
+
+Capability:
+  Atomic feature flag unit, e.g. pos, appointments, memberships, class_checkin, batch_expiry, walk-in related flows, etc.
+
+Engine groups:
+  care | commerce | hybrid | fnb | hospitality | specialty
+
+Organization / branch:
+  Tenant. Multiple orgs can be linked as branches (branch_links / branch_link_requests). Active org stored in cookie.
+
+Membership (staff):
+  Row in `memberships` table: user ↔ organization + role.
+  Roles: owner | admin | supervisor | manager | staff
+  DO NOT confuse with gym memberships.
+
+Gym membership:
+  Customer plan stored in `gym_memberships` (separate table from staff memberships).
+
+Walk-in (gym):
+  Counter-paid timed session for non-members / day visitors.
+  Has duration, expiry, status (active / expired / done), IC/address optional.
+  Packages = admin-defined priced minute bundles (e.g. 1 hour / 2 hours).
+  Presence notifier alerts staff when session expires.
+
+Check-in:
+  Logged presence for gym members (`gym_checkins`).
+
+Class schedule:
+  Shared capability. Tuition and gym can reuse class tables/UI (tuition_classes) with niche-specific copy.
+
+Audience:
+  admin vs staff UX experiences.
+
+Admin Zone / Manager Zone:
+  Password-locked sensitive area for admin/accounting/lhdn (and alerts for staff managers).
+  Password hash stored on org; default pattern conceptually `{OrgName}{year}`; unlock via cookie.
+
+Ops Brain:
+  Alerts + tasks + rules (refund_rate, repeat_voids, cash_variance, stock_leak, etc.) + cycle counts.
+
+AI Supervisor:
+  Daily cached briefing + owner chat widget. Uses LLM if configured, else rule-based text. Can notify via Telegram.
+
+LHDN / MyInvois:
+  Malaysian e-invoice submission. Allvisor acts as intermediary for shops.
+  Modes: intermediary (default) or taxpayer (self-test).
+  Environments: sandbox | production.
+
+Subscription plans:
+  free | starter | growth | pro
+  Gate staff counts, invoice volume, LHDN features, etc.
+
+Vocab:
+  Niche-specific entity words: patient (clinic) vs customer (retail) vs member (gym) vs student (tuition), etc.
+  Use niche-vocab mapping in UI strings.
+
+HVCO /start funnel:
+  Marketing acquisition landing + playbook + thank-you, with Resend email sequence for leads.
+
+--------------------------------------------------------------------------------
+5. AUTH, ROLES, GATES
+--------------------------------------------------------------------------------
+
+Auth:
+- Supabase Email auth
+- Middleware refreshes session + applies next-intl routing
+- Locale always prefixed: /ms/..., /en/...
+
+Roles:
+- owner, admin, supervisor, manager, staff
+
+Audience mapping:
+- owner/admin → admin audience → /admin-dashboard, Owner Zone
+- supervisor/manager/staff → staff audience → /staff-dashboard, Manager Zone
+
+Permission model:
+- canManageOrgSettings: owner/admin only (identity, plan, zone password)
+- canAccessSensitive / canAccessAdmin: owner/admin/supervisor/manager
+- canManageStaff with assignable/kickable role hierarchy
+- requireOwner for owner-only pages: team, performance, money, marketing
+
+Access gates (in order):
+1. Signed in + org membership (requireOrg)
+2. Non-owners: staff verification code before entering app
+3. Capability gate per page (requireCapability)
+4. Admin/Manager Zone password unlock cookie for sensitive sections
+5. Owner-only checks where needed
+
+Staff invite:
+- Uses SUPABASE_SERVICE_ROLE_KEY when available
+- Concept: one account primarily joins one business/org membership model for invites
+
+Login routes:
+- /login, /login/admin, /login/staff, /admin/login, /staff/login
+
+Cookies (conceptual names):
+- allvisor_active_org
+- allvisor_zone_{orgId}
+- section unlock cookies
+
+--------------------------------------------------------------------------------
+6. CAPABILITY ENGINE + 25 NICHES
+--------------------------------------------------------------------------------
+
+Implement a central NICHE_DEFINITIONS map:
+- id, engine, signup group, capabilities[], navSections[], labelKey
+
+Every page/action checks capabilities.
+
+Example deep niche capability sets:
+
+Clinic:
+  dashboard, customers, appointments, allergies, clinic_hours, invoices, inventory, admin, accounting, lhdn
+
+Retail:
+  dashboard, customers, pos, cash_drawer, receipts, inventory, product_categories, logistics, printers, invoices, admin, accounting, lhdn
+
+Gym:
+  dashboard, customers, memberships, class_schedule / class_checkin, walk-in flows, invoices/inventory/admin/accounting/lhdn as applicable
+  Note: pt_sessions may be declared as capability but can be thin/stub unless fully implemented
+
+Tuition:
+  subjects, classes, attendance, assessments (+ shared CRM/invoices/admin stack)
+
+Commerce variants:
+- pharmacy: batch_expiry, rx_attach + retail stack
+- fashion: variants + retail stack
+- electronics: serial_numbers + retail stack
+- wholesale: price_tiers + retail stack
+- salon: appointments, commissions, service_duration, pos
+- optical: eye_rx, lab_orders, appointments, pos
+- workshop: job_cards, vehicle_profile, pos
+- vet: pet_profiles, pet_vaccinations, appointments, inventory
+- laundry: laundry_tickets, pos
+- physio: appointments, session_packages
+- lab: appointments, lab_results
+- fnb: tables_kot, pos, cash_drawer
+- hotel: rooms
+- specialty: property_listings, courier_tracking, project_claims, bom_wip, matter_billing, event_timeline, farm_plots
+
+Navigation:
+- Build sidebar from niche navSections
+- Zones: operationsZone, settingsZone, adminZone, managerZone, ownerZone, careZone, studioZone (as needed)
+- Owner-only sections: team, performance, money, marketing
+- Ops Brain alerts available when enabled
+
+--------------------------------------------------------------------------------
+7. FEATURE MODULES TO BUILD
+--------------------------------------------------------------------------------
+
+A) Public / acquisition
+- Marketing landing with niche picker + themed demos
+- Register + onboarding (create organization + choose niche)
+- /start HVCO lead funnel: landing → playbook → thank-you
+- Lead email sequence via Resend + cron
+- Unsubscribe API route
+
+B) Shared authenticated platform
+- AppShell: sidebar, branch bar, language switcher, AI chat widget, gym presence notifier when relevant
+- Dual dashboards: AdminDashboardView vs StaffDashboardView
+- CRM customers/patients (risk level, allergies, address, timeline/activity)
+- Invoices + invoice lines + payments + print + service charge + status logs
+- Inventory + stock movements + barcode HID + categories
+- Accounting (staff) and Money view (owner); /cashflow redirects to /money
+- LHDN e-Invoice workspace
+- Admin: org settings, catalog/services, staff, logo, plan, imports, gym walk-in packages
+- Settings
+- Subscription plan gating
+- CSV/Excel data import panel
+- Activity logs / audit trail
+- Multi-branch switch + link requests
+
+C) Clinic depth
+- Appointment board
+- Patient risk + allergies
+- Clinic hours / closed weekdays
+- Service categories + service items + price list
+- Invoice extras / service charge line kinds
+
+D) Retail / commerce depth
+- POS workspace (sale → invoice + stock deduct)
+- Cash drawer sessions + cash movements
+- Receipts
+- Logistics: suppliers, goods receipts, stock transfers, stock adjustments
+- Printers / print settings
+- Product categories + barcodes
+- Stock counts / cycle counts
+
+E) Gym depth
+- Gym memberships (customer plans)
+- Member check-ins
+- Classes (can reuse tuition class tables with gym copy)
+- Walk-in timed sessions:
+  - start session with duration/package/price
+  - track active presence
+  - expire → notify staff
+  - mark done
+- Walk-in packages in admin (name, minutes, price)
+
+F) Tuition depth
+- Subjects, classes, enrollments, attendance, assessments
+- Student portal tables may exist in DB; UI student portal can redirect to login if not productized yet
+
+G) Ops Brain + AI + people
+- Alerts + tasks + alert settings
+- Rules: refund_rate, repeat_voids, cash_variance, stock_leak, etc.
+- Staff scores / performance scorecards + cron
+- Team page (owner)
+- AI daily briefing cron + Dashboard AI panel + AiChatWidget
+- Notification channels (telegram/whatsapp)
+- Manager zone unlock migration/RLS awareness
+
+H) Specialty niches
+- Provide capability-gated CRUD pages (NicheModulePage pattern is acceptable)
+- Each niche should appear in signup picker + landing demos where relevant
+- Do not overbuild every specialty to clinic/retail depth unless asked; keep schema + basic CRUD + nav working
+
+--------------------------------------------------------------------------------
+8. DATABASE DESIGN (CONCEPTUAL SCHEMA)
+--------------------------------------------------------------------------------
+
+Use Postgres via Supabase with RLS on all tenant tables.
+
+Core:
+- profiles (from auth.users)
+- organizations (niche, tax fields, subscription, hours, invoice numbering, logo, ops_brain_enabled, LHDN intermediary flags, admin_password_hash, ...)
+- memberships (user_id, organization_id, role, job_title, verified_at, verification_code, ...)
+- customers
+- products
+- stock_movements
+- invoices, invoice_lines, payments
+- appointments
+- expenses, ledger_entries
+- lhdn_submissions
+- activity_logs
+- service_categories, service_items, price_list_items
+- invoice_status_logs
+- customer_deletions
+- branch_link_requests, branch_links
+
+Retail ops:
+- product_categories
+- pos_tickets, pos_ticket_lines
+- cash_sessions, cash_movements
+- suppliers
+- goods_receipts (+ lines)
+- stock_transfers (+ lines)
+- stock_adjustments (+ lines)
+- print_settings
+- stock_counts
+
+Multi-niche examples:
+- salon_commission_rules
+- product_batches
+- eye_prescriptions, optical_lab_orders
+- tuition_subjects, tuition_classes, enrollments, attendance, assessments
+- vehicles, job_cards
+- gym_memberships, gym_checkins
+- gym_walkin_sessions, gym_walkin_packages
+- pets
+- product variants, serials, price_tiers
+- laundry_tickets
+- session_packages
+- lab_results
+- dining_tables
+- hotel_rooms
+- property_listings
+- courier_shipments
+- contractor_projects
+- manufacturing_orders
+- legal_matters
+- event_plans
+- farm_plots
+
+Ops / AI / marketing:
+- alerts, tasks, alert_settings
+- ai_briefings
+- notification_channels
+- ai_chat_sessions, ai_chat_messages
+- staff_scores
+- marketing_leads, marketing_emails
+
+Relationships (conceptual):
+auth.users → profiles
+organizations 1—* memberships *—1 profiles
+organizations 1—* customers, products, invoices, appointments, ...
+invoices 1—* invoice_lines, payments, lhdn_submissions
+customers 1—* gym_memberships, gym_checkins, appointments, pets, ...
+organizations 1—* gym_walkin_packages 1—* gym_walkin_sessions (optional package)
+branch_links connect organizations
+
+RLS pattern:
+- is_org_member(organization_id)
+- has_org_role(...)
+- service role for crons and some invites
+
+Critical naming pitfall:
+- `memberships` = staff membership in org
+- `gym_memberships` = customer gym plans
+Never mix these.
+
+Migration philosophy:
+- Sequential SQL migrations
+- Start with multi-tenant + RLS foundation
+- Expand clinic/admin catalog
+- Expand roles/branches/invoice extras
+- Retail ops depth
+- Multi-niche enum + niche tables
+- Tuition
+- Marketing leads + staff scores + verification
+- Ops Brain + AI + stock counts + manager zone
+- Gym memberships fix + walk-in sessions/packages
+
+--------------------------------------------------------------------------------
+9. UI / UX / DESIGN SYSTEM
+--------------------------------------------------------------------------------
+
+Locales:
+- Default BM (`ms`), also `en`
+- All routes under /[locale]/...
+
+Visual system:
+- Warm paper backgrounds
+- Teal default accent
+- CSS variables: --bg, --ink, --accent, --muted, --line, surfaces
+- Per-niche themes via [data-niche="..."] (e.g. gym rose/red)
+- Utility classes: .stack, .surface, .field, .input, .select, nav, skeletons
+- Currency formatting: MYR / ms-MY
+- Malaysian holidays awareness where calendar/ops need it
+
+Shell UX:
+- Sidebar driven by niche sections
+- Branch switcher
+- Language switcher
+- Soft navigation transitions
+- AI chat widget for owners when enabled
+- Gym presence notifier for walk-in expiry
+
+Page patterns:
+- Server Components for data loading
+- Client islands for interactive boards (POS, appointments, walk-in panel)
+- ActionForm wrappers around server actions
+- Generic NicheModulePage for thin vertical CRUDs
+- Rich workspaces for POS, invoices, inventory, appointments, gym walk-in
+- Marketing landing demos per niche
+
+i18n:
+- messages/en.json + messages/ms.json
+- Niche vocab overrides for entity naming
+
+Design constraints for landing/marketing surfaces:
+- Strong brand presence
+- Clean bilingual SME SaaS feel
+- Avoid generic purple-gradient AI aesthetic
+- Practical Malaysian SMB tone
+
+--------------------------------------------------------------------------------
+10. SERVER ACTIONS / API SURFACE
+--------------------------------------------------------------------------------
+
+Organize mutations as:
+- actions.ts — core CRM, invoices, admin, LHDN, org, branches, imports, etc.
+- retail-actions.ts — POS, cash, logistics, printers
+- gym-actions.ts — memberships, check-ins, walk-in sessions/packages
+- tuition-actions.ts — subjects/classes/attendance/assessments
+- niche-actions.ts — specialty CRUD
+- ops-actions.ts — alerts/tasks/ops brain
+- marketing-actions.ts — /start leads + sequences
+
+API routes:
+- /api/cron/daily-briefing
+- /api/cron/lead-emails
+- /api/cron/staff-scores
+- /api/unsubscribe
+
+Cron auth via CRON_SECRET.
+Deploy schedules in vercel.json (Singapore region).
+
+--------------------------------------------------------------------------------
+11. SUBSCRIPTION GATING
+--------------------------------------------------------------------------------
+
+Plans: free, starter, growth, pro
+Statuses: trialing, active, past_due, canceled
+
+Gate examples:
+- staff seat limits
+- invoice volume / month
+- LHDN submission access
+- advanced ops/AI features as appropriate
+
+Upgrade UI can exist, but SaaS payment gateway is optional/TODO. Do not block product rebuild on Stripe/Billplz.
+
+--------------------------------------------------------------------------------
+12. ENVIRONMENT VARIABLES (NAMES ONLY)
+--------------------------------------------------------------------------------
+
+Required:
+- NEXT_PUBLIC_SUPABASE_URL
+- NEXT_PUBLIC_SUPABASE_ANON_KEY
+- SUPABASE_SERVICE_ROLE_KEY
+- NEXT_PUBLIC_APP_URL
+
+Cron:
+- CRON_SECRET
+
+AI:
+- LLM_BASE_URL
+- LLM_API_KEY
+- LLM_MODEL
+(OpenAI-compatible; e.g. Moonshot/Kimi. If blank → rule-based fallback)
+
+Marketing:
+- RESEND_API_KEY
+- MARKETING_FROM_EMAIL
+
+LHDN:
+- LHDN_CLIENT_ID
+- LHDN_CLIENT_SECRET
+- LHDN_MODE=intermediary|taxpayer
+- LHDN_INTERMEDIARY_NAME
+- LHDN_ENV=sandbox|production
+- optional LHDN_MSIC, LHDN_MSIC_NAME
+
+Staff verification:
+- STAFF_VERIFICATION_CODE (fallback allowed for local/dev)
+
+--------------------------------------------------------------------------------
+13. KEY BUSINESS FLOWS TO SUPPORT END-TO-END
+--------------------------------------------------------------------------------
+
+Clinic happy path:
+register → create clinic org → add patient → book appointment → create invoice → record payment → submit LHDN sandbox
+
+Retail happy path:
+register → create retail org → add product → open POS sale → deduct stock → cash drawer → accounting/money view
+
+Gym happy path:
+register → create gym org → add member + gym membership → check-in → schedule/class → sell walk-in package session → expiry notifier → admin manage packages
+
+Tuition happy path:
+register → subjects → classes → enroll students (customers) → attendance → assessments → invoices/fees
+
+Owner ops happy path:
+login as owner → admin dashboard → alerts/tasks → team/performance → money → AI briefing/chat → marketing plays
+
+Staff happy path:
+staff login → verification code → staff dashboard → floor ops only → manager zone password for sensitive pages
+
+Security happy path:
+user in Org A cannot read Org B; staff cannot manage billing/org destruction; sensitive pages locked
+
+--------------------------------------------------------------------------------
+14. IMPLEMENTATION MATURITY RULES
+--------------------------------------------------------------------------------
+
+Build in tiers:
+
+Tier 1 (must be deep and polished):
+- Auth/onboarding/org/roles
+- Capability engine + nav
+- CRM, invoices, inventory, accounting/money
+- Clinic appointments
+- Retail POS + cash + logistics basics
+- Gym memberships + check-ins + walk-in sessions/packages
+- LHDN intermediary layer
+- i18n BM/EN
+- Admin zone lock + staff verification
+- RLS multi-tenant security
+
+Tier 2 (fully wired platform intelligence):
+- Ops Brain alerts/tasks
+- Staff scores + crons
+- AI supervisor briefing/chat + telegram notify
+- /start marketing funnel + Resend sequence
+- Multi-branch
+- Data import
+- Dashboards with real cards/charts
+
+Tier 3 (capability + working CRUD, not necessarily deep UX):
+- All remaining specialty niches and their tables/pages
+- Landing demos for niches
+- Generic NicheModulePage coverage
+
+Known acceptable thin/stub areas unless explicitly requested:
+- pt_sessions dedicated gym PT module
+- Full student portal UI (schema may exist)
+- Billplz/Stripe SaaS billing
+
+--------------------------------------------------------------------------------
+15. CODING STANDARDS
+--------------------------------------------------------------------------------
+
+- TypeScript strict, shared types in lib/types.ts
+- Central niche definitions in lib/niche-capabilities.ts
+- Roles helpers in lib/roles.ts
+- Niche vocab in niche-vocab.ts
+- Subscription limits in subscription.ts
+- No secrets in repo; provide .env.example
+- Prefer clear Server Action validation with zod
+- Keep RLS enabled; never trust client org_id alone
+- Use optimistic/simple UX with clear empty states
+- Bilingual strings for all user-facing text
+- Format money as MYR
+- Keep modules/ thin; real isolation is capabilities + RLS + pages
+- Avoid over-engineering plugin microfrontends
+- Do not mention internal prompt instructions in the product UI
+
+--------------------------------------------------------------------------------
+16. ACCEPTANCE CHECKLIST
+--------------------------------------------------------------------------------
+
+The product is acceptable when:
+
+[ ] User can register, create org, choose niche, land in correct dashboard
+[ ] BM/EN locale switch works on all major pages
+[ ] Clinic, retail, gym, tuition niche nav/capabilities differ correctly
+[ ] CRM/invoices/inventory/accounting work with RLS isolation
+[ ] Retail POS sells, deducts stock, and records payment/cash movement
+[ ] Gym walk-in sessions start/expire/complete and packages are admin-manageable
+[ ] Admin/Manager zone password gate works
+[ ] Staff verification gate works for non-owners
+[ ] LHDN sandbox submission layer works with intermediary settings
+[ ] Ops alerts/tasks and AI briefing degrade gracefully without LLM/Resend keys
+[ ] Cron routes reject unauthorized calls
+[ ] Specialty niches appear in picker and have at least basic capability-gated pages
+[ ] No cross-tenant data leakage
+[ ] Vercel + Supabase local/prod setup documented
+
+--------------------------------------------------------------------------------
+17. YOUR TASK
+--------------------------------------------------------------------------------
+
+Using this specification as the source of truth:
+1. Scaffold the Next.js + Supabase Allvisor app (or rebuild/extend the existing allvisor codebase).
+2. Implement migrations, RLS, auth, capability engine, and AppShell first.
+3. Deliver Tier 1 flows completely.
+4. Then Tier 2 platform intelligence.
+5. Then Tier 3 specialty niche coverage.
+6. Keep code organized, bilingual, Malaysia-ready, and multi-tenant safe.
+7. When unsure, prefer the architecture described here: capability-gated multi-niche SaaS with shared financial/CRM core and deep clinic/retail/gym/ops experiences.
+
+Build Allvisor as a real Malaysian SME operations platform — not a generic CRUD demo.
+
+================================================================================
+=== END PROMPT ===
+================================================================================
+
+OPTIONAL SHORT VERSION (kalau token limit / nak ringkas):
+--------------------------------------------------------------------------------
+Build Allvisor: bilingual (ms/en) multi-tenant Malaysian SME SaaS on Next.js 16 + React 19 + Supabase + Vercel. 25 niches gated by a capability engine. Shared CRM, invoices, inventory, accounting, LHDN MyInvois. Deep modules for clinic appointments, retail POS/cash/logistics, gym memberships/check-ins/walk-in timed packages, tuition classes/attendance, and owner Ops Brain (alerts, staff scores, AI briefing/chat, Telegram). Roles: owner/admin/supervisor/manager/staff with admin vs staff dashboards, staff verification, and password-locked Admin/Manager Zone. Use Server Actions, RLS, next-intl, Tailwind 4 + custom CSS tokens, Resend for /start lead emails, OpenAI-compatible LLM with rule fallback. No Stripe/Billplz required for v1. MYR, Malaysian holidays, intermediary LHDN mode. Follow capability-gated architecture; do not hardcode niche forks everywhere.
+--------------------------------------------------------------------------------

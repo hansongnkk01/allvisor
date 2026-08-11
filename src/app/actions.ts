@@ -295,13 +295,38 @@ export async function upsertCustomerAction(formData: FormData) {
 }
 
 export async function deleteCustomerAction(id: string) {
-  const { supabase, organization, profile } = await requireMember();
+  const { supabase, organization, profile, membership } = await requireMember();
+  if (!canAccessSensitive(membership.role)) {
+    return { error: "Manager / supervisor approval required to delete customers" };
+  }
   const { data: customer } = await supabase
     .from("customers")
     .select("name")
     .eq("id", id)
     .eq("organization_id", organization.id)
     .maybeSingle();
+
+  const { count: openInv } = await supabase
+    .from("invoices")
+    .select("*", { count: "exact", head: true })
+    .eq("organization_id", organization.id)
+    .eq("customer_id", id)
+    .in("status", ["unpaid", "partial", "draft"]);
+  if ((openInv || 0) > 0) {
+    return { error: "Cannot delete customer with open invoices — settle or void them first" };
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const { count: futureAppt } = await supabase
+    .from("appointments")
+    .select("*", { count: "exact", head: true })
+    .eq("organization_id", organization.id)
+    .eq("customer_id", id)
+    .gte("starts_at", `${today}T00:00:00.000Z`)
+    .neq("status", "cancelled");
+  if ((futureAppt || 0) > 0) {
+    return { error: "Cannot delete customer with upcoming appointments" };
+  }
 
   if (customer) {
     await supabase.from("customer_deletions").insert({
@@ -476,7 +501,10 @@ export async function upsertProductAction(formData: FormData) {
 }
 
 export async function adjustStockAction(formData: FormData) {
-  const { supabase, organization, profile } = await requireMember();
+  const { supabase, organization, profile, membership } = await requireMember();
+  if (!canAccessSensitive(membership.role)) {
+    return { error: "Manager / supervisor approval required for stock adjustments" };
+  }
   const productId = String(formData.get("product_id") || "");
   const type = String(formData.get("type") || "adjust") as "in" | "out" | "adjust";
   const quantity = Number(formData.get("quantity") || 0);
@@ -549,7 +577,10 @@ export async function adjustStockAction(formData: FormData) {
 }
 
 export async function bulkAdjustStockAction(formData: FormData) {
-  const { supabase, organization, profile } = await requireMember();
+  const { supabase, organization, profile, membership } = await requireMember();
+  if (!canAccessSensitive(membership.role)) {
+    return { error: "Manager / supervisor approval required for stock adjustments" };
+  }
   const productIds = [...new Set(formData.getAll("product_ids").map(String).filter(Boolean))];
   const type = String(formData.get("type") || "in") as "in" | "out" | "adjust";
   const quantity = Number(formData.get("quantity") || 0);
@@ -911,23 +942,18 @@ export async function recordPaymentAction(formData: FormData) {
     .eq("organization_id", organization.id)
     .single();
   if (!invoice) return { error: "Invoice not found" };
+  if (invoice.status === "void") return { error: "Cannot pay a void invoice" };
+  if (invoice.status === "paid") return { error: "Invoice is already fully paid" };
 
   // Never accept more than the outstanding balance — overpaying would mark the
   // invoice paid while inflating the ledger.
-  const balance = Number(invoice.total) - Number(invoice.amount_paid || 0);
+  const priorPaid = Number(invoice.amount_paid || 0);
+  const balance = Number(invoice.total) - priorPaid;
   if (amount > balance + 0.001) {
     return { error: `Amount exceeds the outstanding balance (RM ${balance.toFixed(2)})` };
   }
 
-  const { error: payError } = await supabase.from("payments").insert({
-    organization_id: organization.id,
-    invoice_id: invoiceId,
-    amount,
-    method,
-  });
-  if (payError) return { error: payError.message };
-
-  const amountPaid = Number(invoice.amount_paid) + amount;
+  const amountPaid = priorPaid + amount;
   let status: InvoiceStatus = "partial";
   if (amountPaid >= Number(invoice.total)) status = "paid";
   else if (amountPaid <= 0) status = "unpaid";
@@ -937,7 +963,8 @@ export async function recordPaymentAction(formData: FormData) {
       ? invoice.title.replace(/\s*·\s*pending\s*$/i, " · paid")
       : invoice.title;
 
-  await supabase
+  // Claim balance FIRST (optimistic lock) — then insert payment so races leave no orphans
+  const { data: paidRows, error: updErr } = await supabase
     .from("invoices")
     .update({
       amount_paid: amountPaid,
@@ -945,7 +972,40 @@ export async function recordPaymentAction(formData: FormData) {
       ...(titleNext !== invoice.title ? { title: titleNext } : {}),
     })
     .eq("id", invoiceId)
-    .eq("organization_id", organization.id);
+    .eq("organization_id", organization.id)
+    .eq("amount_paid", priorPaid)
+    .neq("status", "void")
+    .in("status", ["draft", "unpaid", "partial"])
+    .select("id");
+  if (updErr || !paidRows?.length) {
+    return {
+      error: "Invoice balance changed concurrently — refresh and try again",
+    };
+  }
+
+  const { data: paymentRow, error: payError } = await supabase
+    .from("payments")
+    .insert({
+      organization_id: organization.id,
+      invoice_id: invoiceId,
+      amount,
+      method,
+    })
+    .select("id")
+    .single();
+  if (payError || !paymentRow) {
+    // Roll back the balance claim
+    await supabase
+      .from("invoices")
+      .update({
+        amount_paid: priorPaid,
+        status: invoice.status,
+        ...(titleNext !== invoice.title ? { title: invoice.title } : {}),
+      })
+      .eq("id", invoiceId)
+      .eq("amount_paid", amountPaid);
+    return { error: payError?.message || "Payment insert failed" };
+  }
 
   if (invoice.status !== status) {
     await supabase.from("invoice_status_logs").insert({
@@ -1094,9 +1154,14 @@ export async function updateAppointmentStatusAction(id: string, status: Appointm
   const { supabase, organization } = await requireMember();
   const allowed: AppointmentStatus[] = ["scheduled", "confirmed", "completed", "cancelled", "no_show"];
   if (!allowed.includes(status)) return { error: "Invalid status" };
+  const patch: Record<string, unknown> = { status };
+  // Keep queue board in sync with appointment status
+  if (status === "cancelled") patch.queue_status = null;
+  if (status === "completed") patch.queue_status = "completed";
+  if (status === "no_show") patch.queue_status = "no_show";
   const { error } = await supabase
     .from("appointments")
-    .update({ status })
+    .update(patch)
     .eq("id", id)
     .eq("organization_id", organization.id);
   if (error) return { error: error.message };
@@ -1108,7 +1173,7 @@ export async function updateAppointmentStatusAction(id: string, status: Appointm
     entityId: id,
   });
 
-  revalidateApp("/appointments", "/dashboard", "/staff");
+  revalidateApp("/appointments", "/dashboard", "/staff", "/queue");
   return { success: true };
 }
 
@@ -1541,7 +1606,7 @@ export async function deleteAppointmentAction(id: string) {
 }
 
 export async function posCheckoutAction(formData: FormData) {
-  const { supabase, organization, profile } = await requireMember();
+  const { supabase, organization, profile, membership } = await requireMember();
   const { hasCapability } = await import("@/lib/niches");
   if (!hasCapability(organization.niche, "pos")) {
     return { error: "POS is not available for this business type." };
@@ -1609,6 +1674,24 @@ export async function posCheckoutAction(formData: FormData) {
     lineTotal: number;
   }> = [];
 
+  let tierDiscountPct = 0;
+  if (hasCapability(organization.niche, "price_tiers") && customerId) {
+    const { data: customer } = await supabase
+      .from("customers")
+      .select("price_tier_id")
+      .eq("id", customerId)
+      .eq("organization_id", organization.id)
+      .maybeSingle();
+    if (customer?.price_tier_id) {
+      const { data: tier } = await supabase
+        .from("price_tiers")
+        .select("discount_percent")
+        .eq("id", customer.price_tier_id)
+        .maybeSingle();
+      tierDiscountPct = Number(tier?.discount_percent || 0);
+    }
+  }
+
   for (const [pid, item] of merged) {
     const qty = item.quantity;
     const product = productsById.get(pid);
@@ -1619,10 +1702,19 @@ export async function posCheckoutAction(formData: FormData) {
     if (product.track_stock !== false && Number(product.quantity) < qty) {
       return { error: `Insufficient stock for ${product.name}` };
     }
-    const unitPrice =
+    let unitPrice =
       product.price_on_sale === true && Number.isFinite(item.unit_price) && Number(item.unit_price) >= 0
         ? Number(item.unit_price)
         : Number(product.unit_price);
+    if (tierDiscountPct > 0 && product.price_on_sale !== true) {
+      unitPrice = Math.round(unitPrice * (1 - tierDiscountPct / 100) * 100) / 100;
+    }
+    if (hasCapability(organization.niche, "price_tiers")) {
+      const moq = Number(product.moq || 1);
+      if (moq > 1 && qty < moq) {
+        return { error: `${product.name} MOQ is ${moq}` };
+      }
+    }
     lines.push({
       product,
       quantity: qty,
@@ -1630,7 +1722,99 @@ export async function posCheckoutAction(formData: FormData) {
     });
   }
 
-  const subtotal = lines.reduce((s, l) => s + l.lineTotal, 0);
+  // Electronics: resolve + validate serials BEFORE any money/stock mutation
+  type ResolvedSerial = {
+    productId: string;
+    serialId: string;
+    serialNumber: string;
+    warrantyMonths: number;
+  };
+  const resolvedSerials: ResolvedSerial[] = [];
+  let serialMap: Record<string, string[]> = {};
+  const serialJson = String(formData.get("serials_json") || "").trim();
+  if (hasCapability(organization.niche, "serial_numbers")) {
+    if (serialJson) {
+      try {
+        serialMap = JSON.parse(serialJson) as Record<string, string[]>;
+      } catch {
+        return { error: "Invalid serial data" };
+      }
+    }
+    for (const line of lines) {
+      if (!line.product.serialised) continue;
+      const serials = serialMap[line.product.id] || [];
+      if (serials.length < line.quantity) {
+        return { error: `Enter ${line.quantity} serial number(s) for ${line.product.name}` };
+      }
+      for (const serial of serials.slice(0, line.quantity)) {
+        const { data: existing } = await supabase
+          .from("product_serials")
+          .select("id, status, warranty_months")
+          .eq("organization_id", organization.id)
+          .eq("serial_number", serial.trim())
+          .maybeSingle();
+        if (!existing) {
+          return {
+            error: `Serial ${serial} is not registered in stock — add it under Serials first`,
+          };
+        }
+        if (existing.status !== "in_stock") {
+          return { error: `Serial ${serial} is not in stock` };
+        }
+        resolvedSerials.push({
+          productId: line.product.id,
+          serialId: existing.id,
+          serialNumber: serial.trim(),
+          warrantyMonths: Number(existing.warranty_months || 12),
+        });
+      }
+    }
+  }
+
+  const cartSubtotal = lines.reduce((s, l) => s + l.lineTotal, 0);
+  const discountAmount = Math.max(0, Number(formData.get("discount_amount") || 0));
+  const discountReason = String(formData.get("discount_reason") || "").trim();
+  if (discountAmount > 0) {
+    if (!canAccessSensitive(membership.role)) {
+      return { error: "Manager / supervisor approval required for discounts" };
+    }
+    if (!discountReason) {
+      return { error: "Discount reason is required" };
+    }
+  }
+  if (discountAmount > cartSubtotal) {
+    return { error: "Discount cannot exceed cart total" };
+  }
+  const subtotal = Math.round((cartSubtotal - discountAmount) * 100) / 100;
+
+  // Claim stock BEFORE money so concurrent POS cannot oversell (optimistic qty lock)
+  type StockClaim = { productId: string; fromQty: number; qty: number };
+  const stockClaims: StockClaim[] = [];
+  for (const l of lines) {
+    if (l.product.track_stock === false) continue;
+    const fromQty = Number(l.product.quantity);
+    const { data: claimed, error: stockErr } = await supabase
+      .from("products")
+      .update({ quantity: fromQty - l.quantity })
+      .eq("id", l.product.id)
+      .eq("organization_id", organization.id)
+      .eq("quantity", fromQty)
+      .gte("quantity", l.quantity)
+      .select("id");
+    if (stockErr || !claimed?.length) {
+      // Roll back any earlier claims in this checkout
+      for (const prev of stockClaims) {
+        await supabase
+          .from("products")
+          .update({ quantity: prev.fromQty })
+          .eq("id", prev.productId)
+          .eq("quantity", prev.fromQty - prev.qty);
+      }
+      return { error: `Insufficient stock for ${l.product.name} (concurrent sale)` };
+    }
+    stockClaims.push({ productId: l.product.id, fromQty, qty: l.quantity });
+  }
+
   const { count } = await supabase
     .from("invoices")
     .select("*", { count: "exact", head: true })
@@ -1653,15 +1837,27 @@ export async function posCheckoutAction(formData: FormData) {
       tax_amount: 0,
       total: subtotal,
       amount_paid: subtotal,
+      discount_amount: discountAmount,
+      discount_reason: discountAmount > 0 ? discountReason : null,
+      source_type: "pos",
       created_by: profile.id,
       created_by_name: profile.full_name || profile.email || "Staff",
     })
     .select("*")
     .single();
 
-  if (error || !invoice) return { error: error?.message || "Checkout failed" };
+  if (error || !invoice) {
+    for (const prev of stockClaims) {
+      await supabase
+        .from("products")
+        .update({ quantity: prev.fromQty })
+        .eq("id", prev.productId)
+        .eq("quantity", prev.fromQty - prev.qty);
+    }
+    return { error: error?.message || "Checkout failed" };
+  }
 
-  await supabase.from("invoice_lines").insert(
+  const { error: lineError } = await supabase.from("invoice_lines").insert(
     lines.map((l) => ({
       invoice_id: invoice.id,
       organization_id: organization.id,
@@ -1672,13 +1868,35 @@ export async function posCheckoutAction(formData: FormData) {
       line_total: l.lineTotal,
     }))
   );
+  if (lineError) {
+    await supabase.from("invoices").update({ status: "void" }).eq("id", invoice.id);
+    for (const prev of stockClaims) {
+      await supabase
+        .from("products")
+        .update({ quantity: prev.fromQty })
+        .eq("id", prev.productId)
+        .eq("quantity", prev.fromQty - prev.qty);
+    }
+    return { error: lineError.message };
+  }
 
-  await supabase.from("payments").insert({
+  const { error: payError } = await supabase.from("payments").insert({
     organization_id: organization.id,
     invoice_id: invoice.id,
     amount: subtotal,
     method: paymentMethod,
   });
+  if (payError) {
+    await supabase.from("invoices").update({ status: "void" }).eq("id", invoice.id);
+    for (const prev of stockClaims) {
+      await supabase
+        .from("products")
+        .update({ quantity: prev.fromQty })
+        .eq("id", prev.productId)
+        .eq("quantity", prev.fromQty - prev.qty);
+    }
+    return { error: payError.message };
+  }
 
   for (const l of lines) {
     if (l.product.track_stock === false) continue;
@@ -1690,10 +1908,35 @@ export async function posCheckoutAction(formData: FormData) {
       note: `POS ${invoiceNumber}`,
       created_by: profile.id,
     });
-    await supabase
-      .from("products")
-      .update({ quantity: Number(l.product.quantity) - l.quantity })
-      .eq("id", l.product.id);
+  }
+
+  // Serials were pre-validated as in_stock — claim with optimistic lock (no invent-on-sale)
+  for (const serial of resolvedSerials) {
+    const wEnds = new Date();
+    wEnds.setMonth(wEnds.getMonth() + serial.warrantyMonths);
+    const { data: claimed, error: serialErr } = await supabase
+      .from("product_serials")
+      .update({
+        status: "sold",
+        sold_at: new Date().toISOString(),
+        customer_id: customerId,
+        invoice_id: invoice.id,
+        warranty_ends_on: wEnds.toISOString().slice(0, 10),
+        status_changed_at: new Date().toISOString(),
+      })
+      .eq("id", serial.serialId)
+      .eq("status", "in_stock")
+      .select("id");
+    if (serialErr || !claimed?.length) {
+      // Money already committed; do not return error — flag for ops follow-up
+      await logActivity({
+        action: "pos.serial.claim_failed",
+        summary: `Serial claim failed after sale: ${serial.serialNumber}`,
+        entityType: "invoice",
+        entityId: invoice.id,
+        meta: { serial: serial.serialNumber },
+      });
+    }
   }
 
   if (paymentMethod === "cash") {
@@ -2304,6 +2547,142 @@ export async function switchBranchAction(orgId: string) {
     sameSite: "lax",
   });
   revalidateAppLayout();
+  return { success: true };
+}
+
+/**
+ * Add branch: create a brand-new organisation under the owner's account
+ * (same niche + settings inherited), link it both ways, and optionally
+ * register a first staff account for it. The branch appears in the branch
+ * bar immediately because the owner gets a membership row in it.
+ */
+export async function createBranchAction(formData: FormData) {
+  const { organization, membership, profile } = await requireMember();
+  // Owner/admin only — supervisors must not mint a new org where they become owner
+  if (!canManageOrgSettings(membership.role)) {
+    return { error: "Only the owner or a co-admin can add branches" };
+  }
+
+  const branchName = String(formData.get("branch_name") || "").trim();
+  if (branchName.length < 2) return { error: "Branch name required" };
+  if (branchName.length > 80) return { error: "Branch name too long" };
+  if (branchName.toLowerCase() === organization.name.toLowerCase()) {
+    return { error: "That is this business's own name" };
+  }
+
+  const admin = await getServiceAdmin();
+  if (!admin) return { error: "Service role required" };
+
+  const { data: clash } = await admin
+    .from("organizations")
+    .select("id")
+    .ilike("name", branchName)
+    .maybeSingle();
+  if (clash) return { error: `Another Allvisor business already uses "${branchName}"` };
+
+  // Inherit niche + settings; retry minimal if a migration column is missing.
+  const fullPayload: Record<string, unknown> = {
+    name: branchName,
+    niche: organization.niche,
+    locale_default: organization.locale_default,
+    subscription_plan: organization.subscription_plan,
+    subscription_status: organization.subscription_status,
+    trial_ends_at: organization.trial_ends_at,
+    service_charge_percent: organization.service_charge_percent ?? 0,
+    clinic_open_hour: organization.clinic_open_hour ?? 0,
+    clinic_close_hour: organization.clinic_close_hour ?? 23,
+    closed_weekdays: organization.closed_weekdays ?? [],
+    invoice_prefix: organization.invoice_prefix ?? "INV",
+    invoice_seq_digits: organization.invoice_seq_digits ?? 5,
+    invoice_number_pattern: organization.invoice_number_pattern ?? "{PREFIX}-{YYYY}-{SEQ}",
+  };
+  let newOrgId: string | null = null;
+  const firstTry = await admin
+    .from("organizations")
+    .insert(fullPayload)
+    .select("id")
+    .single();
+  if (firstTry.error) {
+    const retry = await admin
+      .from("organizations")
+      .insert({
+        name: branchName,
+        niche: organization.niche,
+        locale_default: organization.locale_default,
+      })
+      .select("id")
+      .single();
+    if (retry.error || !retry.data) {
+      return { error: retry.error?.message || "Could not create branch" };
+    }
+    newOrgId = retry.data.id as string;
+  } else {
+    newOrgId = firstTry.data.id as string;
+  }
+
+  const { error: memError } = await admin.from("memberships").insert({
+    organization_id: newOrgId,
+    user_id: profile.id,
+    role: "owner",
+  });
+  if (memError) {
+    await admin.from("organizations").delete().eq("id", newOrgId);
+    return { error: memError.message };
+  }
+
+  const linkError = await upsertBidirectionalBranchLinks(admin, organization.id, newOrgId);
+  if (linkError) return { error: linkError.message };
+
+  // Optional first staff account for the new branch.
+  const staffEmail = String(formData.get("staff_email") || "").trim().toLowerCase();
+  if (staffEmail) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(staffEmail)) {
+      return { error: "Branch created, but the staff email was invalid" };
+    }
+    const staffPassword = String(formData.get("staff_password") || "");
+    const staffName = String(formData.get("staff_name") || "").trim();
+    const staffRole = String(formData.get("staff_role") || "staff") as MembershipRole;
+    const allowedRoles = assignableStaffRoles(membership.role);
+    if (!allowedRoles.includes(staffRole)) {
+      return { error: "Branch created, but the staff role was invalid" };
+    }
+    if (staffPassword.length < 6) {
+      return { error: "Branch created, but the staff password needs at least 6 characters" };
+    }
+
+    const { data: created, error: createError } = await admin.auth.admin.createUser({
+      email: staffEmail,
+      password: staffPassword,
+      email_confirm: true,
+      user_metadata: { full_name: staffName, account_type: "allvisor-staff" },
+    });
+    if (createError || !created.user) {
+      return { error: `Branch created, but staff signup failed: ${createError?.message}` };
+    }
+    await admin.from("profiles").upsert({
+      id: created.user.id,
+      email: staffEmail,
+      full_name: staffName || null,
+    });
+    const { error: staffMemError } = await admin.from("memberships").insert({
+      organization_id: newOrgId,
+      user_id: created.user.id,
+      role: staffRole,
+    });
+    if (staffMemError) {
+      return { error: `Branch created, but staff membership failed: ${staffMemError.message}` };
+    }
+  }
+
+  await logActivity({
+    action: "branch.create",
+    summary: `Created branch "${branchName}"`,
+    entityType: "organization",
+    entityId: newOrgId,
+  });
+
+  revalidateAppLayout();
+  revalidateApp("/admin");
   return { success: true };
 }
 
@@ -3179,33 +3558,87 @@ export async function getInvoicePreviewAction(invoiceId: string) {
 
 /** In-place revoke: mark invoice void so list shows grey + strikethrough. */
 export async function revokeInvoiceAction(invoiceId: string) {
-  const { supabase, organization, membership } = await requireMember();
+  const { supabase, organization, membership, profile } = await requireMember();
   if (!canAccessSensitive(membership.role)) return { error: "Forbidden" };
   if (!invoiceId) return { error: "Missing invoice" };
 
   const { data: invoice } = await supabase
     .from("invoices")
-    .select("id, invoice_number, status")
+    .select("id, invoice_number, status, amount_paid, source_type, total")
     .eq("id", invoiceId)
     .eq("organization_id", organization.id)
     .maybeSingle();
   if (!invoice) return { error: "Invoice not found" };
   if (invoice.status === "void") return { success: true };
 
-  const { error } = await supabase
+  // Paid / partially paid / POS receipts must be refunded — revoke would orphan stock & ledger
+  if (Number(invoice.amount_paid || 0) > 0 || invoice.status === "paid" || invoice.status === "partial") {
+    return {
+      error: "Cannot revoke a paid invoice — use Refund from POS / Money instead",
+    };
+  }
+  if (invoice.source_type === "pos") {
+    return { error: "Cannot revoke a POS sale — use Refund to reverse stock" };
+  }
+
+  const { count: payCount } = await supabase
+    .from("payments")
+    .select("*", { count: "exact", head: true })
+    .eq("invoice_id", invoiceId);
+  if ((payCount || 0) > 0) {
+    return { error: "Invoice has payments — refund instead of revoke" };
+  }
+
+  const { data: voided, error } = await supabase
     .from("invoices")
     .update({ status: "void" })
-    .eq("id", invoiceId);
+    .eq("id", invoiceId)
+    .eq("organization_id", organization.id)
+    .in("status", ["draft", "unpaid"])
+    .select("id");
   if (error) return { error: error.message };
+  if (!voided?.length) return { error: "Invoice could not be revoked (status changed)" };
+
+  // Restore stock for medicine/product lines deducted when the invoice was open
+  const { data: stockLines } = await supabase
+    .from("invoice_lines")
+    .select("product_id, quantity, line_kind, description")
+    .eq("invoice_id", invoiceId)
+    .not("product_id", "is", null);
+  for (const line of stockLines || []) {
+    const qty = Math.abs(Number(line.quantity || 0));
+    if (!line.product_id || !(qty > 0)) continue;
+    const { data: product } = await supabase
+      .from("products")
+      .select("id, quantity, track_stock")
+      .eq("id", line.product_id)
+      .eq("organization_id", organization.id)
+      .maybeSingle();
+    if (!product || product.track_stock === false) continue;
+    await supabase
+      .from("products")
+      .update({ quantity: Number(product.quantity) + qty })
+      .eq("id", product.id)
+      .eq("quantity", Number(product.quantity));
+    await supabase.from("stock_movements").insert({
+      organization_id: organization.id,
+      product_id: product.id,
+      type: "in",
+      quantity: qty,
+      note: `Revoke ${invoice.invoice_number}`,
+      created_by: profile.id,
+    });
+  }
 
   await logActivity({
     action: "invoice.revoke",
     summary: `Revoked invoice ${invoice.invoice_number}`,
     entityType: "invoice",
     entityId: invoiceId,
+    meta: { stockRestored: (stockLines || []).length },
   });
 
-  revalidateApp("/invoices", "/dashboard", "/lhdn", "/staff");
+  revalidateApp("/invoices", "/dashboard", "/lhdn", "/staff", "/inventory");
   return { success: true };
 }
 
@@ -3542,11 +3975,16 @@ export async function changeAdminPasswordAction(formData: FormData) {
 export async function getDefaultAdminPasswordHint() {
   const ctx = await getOrgContext();
   if (!ctx) return "";
-  // The default zone password is a secret: only owner/admin may see the hint.
-  // Showing it on the lock screen to every member would defeat the lock.
-  if (!canManageOrgSettings(ctx.membership.role)) return "";
-  if (ctx.organization.admin_password_hash) return "(custom password set)";
-  return defaultAdminPassword(ctx.organization.name, ctx.organization.created_at);
+  // Never reveal the default formula or password on the lock screen.
+  // Owners manage the password under Admin → Zone password after unlock.
+  if (ctx.organization.admin_password_hash) {
+    return canManageOrgSettings(ctx.membership.role)
+      ? "(custom password set — ask an owner if you forgot it)"
+      : "";
+  }
+  return canManageOrgSettings(ctx.membership.role)
+    ? "(default zone password — change it in Admin after unlock)"
+    : "";
 }
 
 /** Resolve own org or linked branch for admin settings writes. */

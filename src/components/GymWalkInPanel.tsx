@@ -8,7 +8,9 @@ import {
   createWalkInSessionAction,
   gymPresenceSnapshotAction,
   type GymPresenceSnapshot,
+  type WalkInPackage,
 } from "@/app/gym-actions";
+import { formatCurrency } from "@/lib/utils";
 
 function formatRemaining(ms: number): string {
   const totalMin = Math.max(0, Math.ceil(ms / 60_000));
@@ -26,15 +28,16 @@ function formatClock(iso: string, locale: string): string {
 
 export function GymWalkInPanel({
   initial,
+  packages,
   locale,
 }: {
   initial: GymPresenceSnapshot;
+  packages: WalkInPackage[];
   locale: string;
 }) {
   const t = useTranslations("Gym");
   const [snapshot, setSnapshot] = useState(initial);
-  const [amount, setAmount] = useState("1");
-  const [rate, setRate] = useState("60");
+  const [packageId, setPackageId] = useState(packages[0]?.id || "");
   // null until the first client tick — keeps server and first client render identical.
   const [now, setNow] = useState<number | null>(null);
 
@@ -61,10 +64,9 @@ export function GymWalkInPanel({
     };
   }, []);
 
-  const amountNum = Number(amount) || 0;
-  const rateNum = Number(rate) || 60;
-  const minutes = Math.max(1, Math.round(amountNum * rateNum));
-  const expiryPreview = now !== null ? new Date(now + minutes * 60_000) : null;
+  const selected = packages.find((p) => p.id === packageId) || null;
+  const expiryPreview =
+    selected && now !== null ? new Date(now + selected.minutes * 60_000) : null;
 
   return (
     <div className="surface" style={{ padding: "1.25rem" }}>
@@ -73,54 +75,62 @@ export function GymWalkInPanel({
         {t("walkInSubtitle")}
       </p>
 
-      <ActionForm action={createWalkInSessionAction} className="stack">
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-            gap: "0.75rem",
-            alignItems: "end",
-          }}
-        >
-          <label className="stack" style={{ gap: "0.25rem" }}>
-            <span className="muted">{t("walkInName")}</span>
-            <input name="customer_name" required maxLength={80} placeholder="Ali" />
-          </label>
-          <label className="stack" style={{ gap: "0.25rem" }}>
-            <span className="muted">{t("walkInAmount")}</span>
-            <input
-              name="amount"
-              type="number"
-              min="0.5"
-              step="0.5"
-              required
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-            />
-          </label>
-          <label className="stack" style={{ gap: "0.25rem" }}>
-            <span className="muted">{t("walkInRate")}</span>
-            <input
-              name="minutes_per_rm"
-              type="number"
-              min="1"
-              max="1440"
-              required
-              value={rate}
-              onChange={(e) => setRate(e.target.value)}
-            />
-          </label>
-          <button type="submit" className="btn btn-primary">
-            {t("walkInSubmit")}
-          </button>
-        </div>
-        <p className="muted" style={{ margin: "0.5rem 0 0" }}>
-          {t("walkInDuration")}: <strong>{formatRemaining(minutes * 60_000)}</strong>
-          {expiryPreview
-            ? ` · ${t("walkInExpiresAt")} ${formatClock(expiryPreview.toISOString(), locale)}`
-            : ""}
-        </p>
-      </ActionForm>
+      {packages.length === 0 ? (
+        <p className="muted">{t("walkInNoPackages")}</p>
+      ) : (
+        <ActionForm action={createWalkInSessionAction} className="stack">
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
+              gap: "0.75rem",
+              alignItems: "end",
+            }}
+          >
+            <label className="stack" style={{ gap: "0.25rem" }}>
+              <span className="muted">{t("walkInName")}</span>
+              <input name="customer_name" required maxLength={80} placeholder="Ali bin Abu" />
+            </label>
+            <label className="stack" style={{ gap: "0.25rem" }}>
+              <span className="muted">{t("walkInIc")}</span>
+              <input name="ic_number" required maxLength={20} placeholder="900101-14-1234" />
+            </label>
+            <label className="stack" style={{ gap: "0.25rem" }}>
+              <span className="muted">{t("walkInAddress")}</span>
+              <input name="address" required maxLength={300} placeholder="Taman ..." />
+            </label>
+            <label className="stack" style={{ gap: "0.25rem" }}>
+              <span className="muted">{t("walkInPackage")}</span>
+              <select
+                name="package_id"
+                className="select"
+                required
+                value={packageId}
+                onChange={(e) => setPackageId(e.target.value)}
+              >
+                {packages.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} · {formatCurrency(Number(p.price))} · {formatRemaining(p.minutes * 60_000)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button type="submit" className="btn btn-primary">
+              {t("walkInSubmit")}
+            </button>
+          </div>
+          {selected ? (
+            <p className="muted" style={{ margin: "0.5rem 0 0" }}>
+              {t("walkInDuration")}: <strong>{formatRemaining(selected.minutes * 60_000)}</strong>
+              {" · "}
+              {formatCurrency(Number(selected.price))}
+              {expiryPreview
+                ? ` · ${t("walkInExpiresAt")} ${formatClock(expiryPreview.toISOString(), locale)}`
+                : ""}
+            </p>
+          ) : null}
+        </ActionForm>
+      )}
 
       {snapshot.activeWalkIns.length > 0 ? (
         <div className="stack" style={{ gap: "0.5rem", marginTop: "1rem" }}>
@@ -143,7 +153,7 @@ export function GymWalkInPanel({
                 <span>
                   <strong>{s.customer_name}</strong>{" "}
                   <span className="muted">
-                    RM {Number(s.amount).toFixed(2)} · {formatRemaining(s.minutes * 60_000)}
+                    {s.package_name ? `${s.package_name} · ` : ""}RM {Number(s.amount).toFixed(2)} · {formatRemaining(s.minutes * 60_000)}
                   </span>
                 </span>
                 <span style={{ fontVariantNumeric: "tabular-nums" }}>
@@ -209,3 +219,4 @@ export function GymWalkInPanel({
     </div>
   );
 }
+

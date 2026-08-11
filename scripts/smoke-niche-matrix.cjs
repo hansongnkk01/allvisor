@@ -41,8 +41,8 @@ const NICHE_CAPABILITIES = {
   ],
   salon: [
     "dashboard", "customers", "appointments", "service_duration", "commissions",
-    "pos", "inventory", "product_categories", "invoices", "receipts", "admin",
-    "accounting", "lhdn",
+    "session_packages", "pos", "inventory", "product_categories", "invoices",
+    "receipts", "admin", "accounting", "lhdn",
   ],
   pharmacy: [
     "dashboard", "customers", "pos", "cash_drawer", "receipts", "inventory",

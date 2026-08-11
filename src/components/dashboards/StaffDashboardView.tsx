@@ -33,6 +33,54 @@ export function StaffDashboardView({ data }: { data: SharedDashboardData }) {
   const V = vocabLabels(niche, locale);
   const peopleLabel = V.entityTitle;
   const now = useMemo(() => new Date(data.nowIso), [data.nowIso]);
+  const floorRiskItems = useMemo(() => {
+    const items: Array<{
+      label: string;
+      value: string;
+      href?: string;
+      tone?: "good" | "warn" | "alert";
+    }> = [];
+    if (kpis.unpaidCount > 0) {
+      items.push({
+        label: "Unpaid to chase",
+        value: String(kpis.unpaidCount),
+        href: "/invoices",
+        tone: "alert",
+      });
+    }
+    if (canAppointments && kpis.noShowToday > 0) {
+      items.push({
+        label: "No-shows today",
+        value: String(kpis.noShowToday),
+        href: "/queue",
+        tone: "warn",
+      });
+    }
+    if (canPos && kpis.lowStockCount > 0) {
+      items.push({
+        label: "Low stock SKUs",
+        value: String(kpis.lowStockCount),
+        href: "/inventory",
+        tone: "warn",
+      });
+    }
+    if (kpis.lhdnRejectedCount > 0) {
+      items.push({
+        label: "LHDN rejected",
+        value: String(kpis.lhdnRejectedCount),
+        href: "/lhdn",
+        tone: "alert",
+      });
+    }
+    return items.slice(0, 4);
+  }, [
+    canAppointments,
+    canPos,
+    kpis.unpaidCount,
+    kpis.noShowToday,
+    kpis.lowStockCount,
+    kpis.lhdnRejectedCount,
+  ]);
 
   return (
     <div className="stack" style={{ gap: "1.25rem" }}>
@@ -108,6 +156,7 @@ export function StaffDashboardView({ data }: { data: SharedDashboardData }) {
         lowStockNames={kpis.lowStockNames}
         lhdnPendingCount={kpis.lhdnPendingCount}
         lhdnRejectedCount={kpis.lhdnRejectedCount}
+        floorRiskItems={floorRiskItems}
         labels={{
           income: t("closeIncome"),
           unpaid: t("closeUnpaid"),

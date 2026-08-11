@@ -53,6 +53,14 @@ import {
   BellRing,
   Menu,
   X,
+  ListOrdered,
+  Stethoscope,
+  FileHeart,
+  Syringe,
+  Dumbbell,
+  ShieldAlert,
+  ScrollText,
+  Coins,
 } from "lucide-react";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import {
@@ -98,6 +106,7 @@ const icons: Record<string, ReactNode> = {
   jobs: <Wrench size={18} />,
   vehicles: <Car size={18} />,
   memberships: <BadgeCheck size={18} />,
+  walkin: <BadgeCheck size={18} />,
   checkins: <BadgeCheck size={18} />,
   pets: <PawPrint size={18} />,
   variants: <Shirt size={18} />,
@@ -121,6 +130,14 @@ const icons: Record<string, ReactNode> = {
   money: <PiggyBank size={18} />,
   marketing: <Megaphone size={18} />,
   alerts: <BellRing size={18} />,
+  queue: <ListOrdered size={18} />,
+  clinicalNotes: <Stethoscope size={18} />,
+  mcLetters: <FileHeart size={18} />,
+  vaccinations: <Syringe size={18} />,
+  ptSessions: <Dumbbell size={18} />,
+  controlledRegister: <ShieldAlert size={18} />,
+  rxAttach: <ScrollText size={18} />,
+  termFees: <Coins size={18} />,
 };
 
 function NavItem({
@@ -367,7 +384,7 @@ export function AppShell({
 
         <main className="app-main">
           <div className="app-content">
-            {branches && branches.length > 1 && activeOrgId ? (
+            {branches && branches.length >= 1 && activeOrgId ? (
               <BranchBar branches={branches} activeOrgId={activeOrgId} />
             ) : null}
             {children}

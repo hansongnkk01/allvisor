@@ -77,9 +77,17 @@ export async function createLabOrderAction(formData: FormData) {
     "optical_lab_orders",
     {
       customer_id: String(formData.get("customer_id") || "") || null,
+      prescription_id: String(formData.get("prescription_id") || "") || null,
       frame_name: String(formData.get("frame_name") || "").trim() || null,
+      lens_type: String(formData.get("lens_type") || "") || null,
+      coating: String(formData.get("coating") || "") || null,
+      lab_name: String(formData.get("lab_name") || "") || null,
+      lab_cost: Number(formData.get("lab_cost") || 0),
+      sell_price: Number(formData.get("sell_price") || 0),
+      expected_ready_on: String(formData.get("expected_ready_on") || "") || null,
       status: String(formData.get("status") || "pending"),
       notes: String(formData.get("notes") || "") || null,
+      status_changed_at: new Date().toISOString(),
     },
     ["/lab-orders"]
   );
@@ -128,6 +136,7 @@ export async function createVehicleAction(formData: FormData) {
 }
 
 export async function createJobCardAction(formData: FormData) {
+  const promised = String(formData.get("promised_at") || "");
   return insertSimple(
     "job_cards",
     "job_cards",
@@ -137,6 +146,11 @@ export async function createJobCardAction(formData: FormData) {
       title: String(formData.get("title") || "").trim(),
       status: String(formData.get("status") || "intake"),
       notes: String(formData.get("notes") || "") || null,
+      assigned_to: String(formData.get("assigned_to") || "") || null,
+      labour_amount: Number(formData.get("labour_amount") || 0),
+      parts_amount: Number(formData.get("parts_amount") || 0),
+      promised_at: promised ? new Date(`${promised}T17:00:00`).toISOString() : null,
+      status_changed_at: new Date().toISOString(),
     },
     ["/jobs"]
   );
@@ -158,12 +172,65 @@ export async function createMembershipAction(formData: FormData) {
 }
 
 export async function createCheckinAction(formData: FormData) {
-  return insertSimple(
-    "class_checkin",
-    "gym_checkins",
-    { customer_id: String(formData.get("customer_id") || "") },
-    ["/checkins"]
-  );
+  const { supabase, organization, profile } =
+    await requireMemberWithCapability("class_checkin");
+  const customerId = String(formData.get("customer_id") || "");
+  if (!customerId) return { error: "Member required" };
+
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: membership } = await supabase
+    .from("gym_memberships")
+    .select("id, status, ends_on, frozen_until")
+    .eq("organization_id", organization.id)
+    .eq("customer_id", customerId)
+    .eq("status", "active")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!membership) {
+    return { error: "No active membership — renew or unfreeze before check-in" };
+  }
+  if (membership.ends_on && String(membership.ends_on) < today) {
+    return { error: "Membership expired" };
+  }
+  if (membership.frozen_until && String(membership.frozen_until) >= today) {
+    return { error: "Membership is frozen" };
+  }
+
+  const { data, error } = await supabase
+    .from("gym_checkins")
+    .insert({
+      organization_id: organization.id,
+      customer_id: customerId,
+      membership_id: membership.id,
+    })
+    .select("id")
+    .single();
+  if (error) {
+    // membership_id column may be absent pre-migration — retry without it
+    if (/membership_id|schema cache|column/i.test(error.message)) {
+      const retry = await supabase
+        .from("gym_checkins")
+        .insert({ organization_id: organization.id, customer_id: customerId })
+        .select("id")
+        .single();
+      if (retry.error) return { error: retry.error.message };
+      revalidateApp("/checkins", "/memberships");
+      return { success: true };
+    }
+    return { error: error.message };
+  }
+
+  await logActivity({
+    action: "niche.gym_checkins.create",
+    summary: "Member check-in",
+    entityType: "gym_checkins",
+    entityId: data.id,
+    meta: { by: profile.id, membershipId: membership.id },
+  });
+  revalidateApp("/checkins", "/memberships");
+  return { success: true };
 }
 
 export async function createPetAction(formData: FormData) {
@@ -198,6 +265,7 @@ export async function createVariantAction(formData: FormData) {
 }
 
 export async function createSerialAction(formData: FormData) {
+  const warrantyMonths = Math.max(0, Number(formData.get("warranty_months") || 12));
   return insertSimple(
     "serial_numbers",
     "product_serials",
@@ -205,6 +273,8 @@ export async function createSerialAction(formData: FormData) {
       product_id: String(formData.get("product_id") || ""),
       serial_number: String(formData.get("serial_number") || "").trim(),
       status: "in_stock",
+      warranty_months: warrantyMonths,
+      notes: String(formData.get("notes") || "") || null,
     },
     ["/serials"]
   );
@@ -231,7 +301,11 @@ export async function createLaundryTicketAction(formData: FormData) {
       ticket_number: String(formData.get("ticket_number") || `L-${Date.now().toString().slice(-6)}`),
       status: "received",
       item_count: Number(formData.get("item_count") || 1),
+      amount: Number(formData.get("amount") || 0),
+      express: String(formData.get("express") || "false") === "true",
+      special_instructions: String(formData.get("special_instructions") || "") || null,
       notes: String(formData.get("notes") || "") || null,
+      status_changed_at: new Date().toISOString(),
     },
     ["/laundry"]
   );
@@ -246,6 +320,9 @@ export async function createSessionPackageAction(formData: FormData) {
       name: String(formData.get("name") || "").trim(),
       total_sessions: Number(formData.get("total_sessions") || 10),
       used_sessions: 0,
+      expires_on: String(formData.get("expires_on") || "") || null,
+      price_paid: Number(formData.get("price_paid") || 0),
+      status: "active",
     },
     ["/packages"]
   );
@@ -260,6 +337,11 @@ export async function createLabResultAction(formData: FormData) {
       test_name: String(formData.get("test_name") || "").trim(),
       status: String(formData.get("status") || "pending"),
       result_summary: String(formData.get("result_summary") || "") || null,
+      result_value: String(formData.get("result_value") || "") || null,
+      result_unit: String(formData.get("result_unit") || "") || null,
+      reference_range: String(formData.get("reference_range") || "") || null,
+      amount: Number(formData.get("amount") || 0),
+      status_changed_at: new Date().toISOString(),
     },
     ["/lab-results"]
   );
@@ -301,10 +383,25 @@ export async function createListingAction(formData: FormData) {
 }
 
 export async function createShipmentAction(formData: FormData) {
+  const tracking =
+    String(formData.get("tracking_no") || "").trim() ||
+    `AV-${Date.now().toString().slice(-8)}`;
   return insertSimple("courier_tracking", "courier_shipments", {
-    tracking_no: String(formData.get("tracking_no") || "").trim(),
+    tracking_no: tracking,
     status: "created",
     notes: String(formData.get("notes") || "") || null,
+    customer_id: String(formData.get("customer_id") || "") || null,
+    sender_name: String(formData.get("sender_name") || "") || null,
+    receiver_name: String(formData.get("receiver_name") || "") || null,
+    receiver_phone: String(formData.get("receiver_phone") || "") || null,
+    pickup_address: String(formData.get("pickup_address") || "") || null,
+    delivery_address: String(formData.get("delivery_address") || "") || null,
+    service_type: String(formData.get("service_type") || "standard"),
+    weight_kg: Number(formData.get("weight_kg") || 0) || null,
+    amount: Number(formData.get("amount") || 0),
+    cod_amount: Number(formData.get("cod_amount") || 0),
+    rider_name: String(formData.get("rider_name") || "") || null,
+    status_changed_at: new Date().toISOString(),
   }, ["/shipments"]);
 }
 

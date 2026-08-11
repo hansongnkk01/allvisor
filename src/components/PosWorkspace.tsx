@@ -9,6 +9,7 @@ import {
   isEditableTarget,
 } from "@/lib/hid-barcode";
 import { formatCurrency } from "@/lib/utils";
+import { DISCOUNT_REASONS, VOID_REASONS } from "@/lib/status-pipelines";
 
 export type PosProduct = {
   id: string;
@@ -21,6 +22,7 @@ export type PosProduct = {
   track_stock: boolean;
   price_on_sale: boolean;
   category_id: string | null;
+  serialised?: boolean;
 };
 
 type CartLine = {
@@ -101,6 +103,8 @@ export function PosWorkspace({
   const [lastInvoiceId, setLastInvoiceId] = useState("");
   const [customerId, setCustomerId] = useState("");
   const [method, setMethod] = useState("cash");
+  const [discountAmount, setDiscountAmount] = useState(0);
+  const [discountReason, setDiscountReason] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [okMsg, setOkMsg] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -135,7 +139,8 @@ export function PosWorkspace({
       .slice(0, 60);
   }, [products, query, categoryId]);
 
-  const total = cart.reduce((s, l) => s + l.unitPrice * l.qty, 0);
+  const cartSubtotal = cart.reduce((s, l) => s + l.unitPrice * l.qty, 0);
+  const total = Math.max(0, cartSubtotal - (Number(discountAmount) || 0));
 
   function addProduct(p: PosProduct, qty = 1) {
     setError(null);
@@ -220,11 +225,46 @@ export function PosWorkspace({
     if (customerId) fd.set("customer_id", customerId);
     fd.set("payment_method", method);
     if (activeTicketId) fd.set("ticket_id", activeTicketId);
+    if (discountAmount > 0) {
+      if (!discountReason) {
+        setError("Discount reason is required");
+        return;
+      }
+      fd.set("discount_amount", String(discountAmount));
+      fd.set("discount_reason", discountReason);
+    }
+    const serialMap: Record<string, string[]> = {};
+    for (const line of cart) {
+      const product = byId.get(line.productId);
+      if (!product?.serialised) continue;
+      const entered = window.prompt(
+        `Enter ${line.qty} serial/IMEI for ${line.name} (comma-separated)`,
+        ""
+      );
+      if (entered === null) {
+        setError("Serial capture cancelled");
+        return;
+      }
+      const serials = entered
+        .split(/[\n,;]+/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+      if (serials.length < line.qty) {
+        setError(`Need ${line.qty} serial(s) for ${line.name}`);
+        return;
+      }
+      serialMap[line.productId] = serials;
+    }
+    if (Object.keys(serialMap).length) {
+      fd.set("serials_json", JSON.stringify(serialMap));
+    }
 
     if (demoMode) {
       setCart([]);
       setCustomerId("");
       setMethod("cash");
+      setDiscountAmount(0);
+      setDiscountReason("");
       setActiveTicketId("");
       setLastInvoiceId("demo-inv");
       setTickets((current) => current.filter((ticket) => ticket.id !== activeTicketId));
@@ -242,6 +282,8 @@ export function PosWorkspace({
       setCart([]);
       setCustomerId("");
       setMethod("cash");
+      setDiscountAmount(0);
+      setDiscountReason("");
       setActiveTicketId("");
       setLastInvoiceId("invoiceId" in res && typeof res.invoiceId === "string" ? res.invoiceId : "");
       setTickets((current) => current.filter((ticket) => ticket.id !== activeTicketId));
@@ -255,6 +297,8 @@ export function PosWorkspace({
     setCart([]);
     setCustomerId("");
     setMethod("cash");
+    setDiscountAmount(0);
+    setDiscountReason("");
     setActiveTicketId("");
     setError(null);
     setOkMsg(null);
@@ -562,6 +606,41 @@ export function PosWorkspace({
           <strong>{labels.total}</strong>
           <strong style={{ fontSize: "1.25rem" }}>{formatCurrency(total)}</strong>
         </div>
+        {discountAmount > 0 ? (
+          <div className="muted" style={{ fontSize: "0.8rem", marginTop: 4 }}>
+            Subtotal {formatCurrency(cartSubtotal)} − discount {formatCurrency(discountAmount)}
+          </div>
+        ) : null}
+
+        <div className="field" style={{ marginTop: "0.85rem" }}>
+          <label>Discount (MYR)</label>
+          <input
+            className="input"
+            type="number"
+            min={0}
+            step="0.01"
+            value={discountAmount || ""}
+            onChange={(e) => setDiscountAmount(Math.max(0, Number(e.target.value) || 0))}
+          />
+        </div>
+        {discountAmount > 0 ? (
+          <div className="field">
+            <label>Discount reason (required)</label>
+            <select
+              className="select"
+              value={discountReason}
+              onChange={(e) => setDiscountReason(e.target.value)}
+              required
+            >
+              <option value="">— Select reason —</option>
+              {DISCOUNT_REASONS.map((reason) => (
+                <option key={reason} value={reason}>
+                  {reason}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
 
         <div className="field" style={{ marginTop: "0.85rem" }}>
           <label>{labels.customer}</label>
@@ -629,6 +708,15 @@ export function PosWorkspace({
             style={{ width: "100%", marginTop: ".5rem" }}
             disabled={pending}
             onClick={() => {
+              const reason =
+                window.prompt(
+                  `Void reason required:\n${VOID_REASONS.join(" / ")}`,
+                  VOID_REASONS[0]
+                ) || "";
+              if (!reason.trim()) {
+                setError("Void reason is required");
+                return;
+              }
               if (demoMode) {
                 setTickets((current) => current.filter((t) => t.id !== activeTicketId));
                 newTicket();
@@ -636,6 +724,7 @@ export function PosWorkspace({
               }
               const fd = new FormData();
               fd.set("ticket_id", activeTicketId);
+              fd.set("void_reason", reason.trim());
               startTransition(async () => {
                 const result = await voidPosTicketAction(fd);
                 if (result && "error" in result && result.error) return setError(result.error);

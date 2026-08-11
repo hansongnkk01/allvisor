@@ -4,8 +4,10 @@ import { hasCapability, getNicheVocab, vocabLabels } from "@/lib/niches";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { ActionForm } from "@/components/ActionForm";
+import { ExpandSection } from "@/components/BranchGroup";
 import {
   changeAdminPasswordAction,
+  createBranchAction,
   getDefaultAdminPasswordHint,
   isAdminUnlocked,
   requestBranchLinkAction,
@@ -19,12 +21,12 @@ import {
   setNotificationChannelEnabledAction,
 } from "@/app/ops-actions";
 import { DataImportPanel } from "@/components/DataImportPanel";
+import { addWalkInPackageAction, deleteWalkInPackageAction } from "@/app/gym-actions";
 import { InvoiceFormatForm } from "@/components/InvoiceFormatForm";
 import { BranchClinicSettings } from "@/components/BranchClinicSettings";
 import { ClinicLogoEditor } from "@/components/ClinicLogoEditor";
-import { formatDateTime } from "@/lib/utils";
-import { defaultAdminPassword } from "@/lib/admin-lock";
-import { canManageOrgSettings } from "@/lib/roles";
+import { formatCurrency, formatDateTime } from "@/lib/utils";
+import { assignableStaffRoles, canManageOrgSettings } from "@/lib/roles";
 
 export default async function AdminPage({
   params,
@@ -41,6 +43,7 @@ export default async function AdminPage({
   const unlocked = await isAdminUnlocked();
   const hint = await getDefaultAdminPasswordHint();
   const canEditOrgSettings = canManageOrgSettings(ctx.membership.role);
+  const rolesAssignable = assignableStaffRoles(ctx.membership.role);
 
   if (!unlocked) {
     return (
@@ -131,6 +134,22 @@ export default async function AdminPage({
   }
   const telegramChannel = channels.find((row) => row.kind === "telegram") ?? null;
   const whatsappChannel = channels.find((row) => row.kind === "whatsapp") ?? null;
+
+  // Gym walk-in packages (migration 036). Missing table = empty list.
+  let walkinPackages: { id: string; name: string; minutes: number; price: number }[] = [];
+  if (org.niche === "gym") {
+    try {
+      const { data: pkgRows, error: pkgError } = await supabase
+        .from("gym_walkin_packages")
+        .select("id, name, minutes, price")
+        .eq("organization_id", orgId)
+        .eq("is_active", true)
+        .order("price", { ascending: true });
+      if (!pkgError) walkinPackages = (pkgRows || []) as typeof walkinPackages;
+    } catch {
+      walkinPackages = [];
+    }
+  }
   const isClinic = hasCapability(org.niche, "appointments") || hasCapability(org.niche, "allergies");
   const isRetail = hasCapability(org.niche, "pos");
   const vocab = getNicheVocab(org.niche);
@@ -357,12 +376,9 @@ export default async function AdminPage({
       <div className="surface" style={{ padding: "1.25rem" }}>
             <h3 style={{ marginTop: 0 }}>{t("securityTitle")}</h3>
             <p className="muted">
-              {t("defaultPasswordHelp")}:{" "}
-              <code>
-                {org.admin_password_hash
-                  ? "(custom)"
-                  : defaultAdminPassword(org.name, org.created_at)}
-              </code>
+              {org.admin_password_hash
+                ? "Custom zone password is set. Change it below if needed."
+                : "Using the built-in default zone password — set a custom password below."}
             </p>
             <ActionForm action={changeAdminPasswordAction} className="stack" style={{ maxWidth: 360 }}>
               <input
@@ -459,6 +475,76 @@ export default async function AdminPage({
             }}
           />
 
+          {org.niche === "gym" ? (
+            <div className="surface" style={{ padding: "1.25rem" }}>
+              <h3 style={{ marginTop: 0 }}>{t("walkinPackages")}</h3>
+              <p className="muted">{t("walkinPackagesHint")}</p>
+              {walkinPackages.length ? (
+                <div className="stack" style={{ gap: "0.5rem", marginBottom: "0.75rem" }}>
+                  {walkinPackages.map((pkg) => (
+                    <div
+                      key={pkg.id}
+                      className="surface-soft"
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: "0.75rem",
+                        padding: "0.55rem 0.85rem",
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <span>
+                        <strong>{pkg.name}</strong>{" "}
+                        <span className="muted">
+                          {formatCurrency(Number(pkg.price))} · {pkg.minutes} min
+                        </span>
+                      </span>
+                      <form
+                        action={async () => {
+                          "use server";
+                          await deleteWalkInPackageAction(pkg.id);
+                        }}
+                      >
+                        <button type="submit" className="btn btn-ghost">
+                          {t("deletePackage")}
+                        </button>
+                      </form>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="muted">{t("noPackages")}</p>
+              )}
+              <ActionForm action={addWalkInPackageAction} className="stack">
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+                    gap: "0.65rem",
+                    alignItems: "end",
+                  }}
+                >
+                  <div className="field">
+                    <label>{t("packageName")}</label>
+                    <input name="name" className="input" required maxLength={60} placeholder="1 Jam" />
+                  </div>
+                  <div className="field">
+                    <label>{t("packageMinutes")}</label>
+                    <input name="minutes" type="number" min={5} max={1440} step={5} required className="input" placeholder="60" />
+                  </div>
+                  <div className="field">
+                    <label>{t("packagePrice")}</label>
+                    <input name="price" type="number" min={0} step={0.5} required className="input" placeholder="5.00" />
+                  </div>
+                  <button type="submit" className="btn btn-primary">
+                    {t("addPackage")}
+                  </button>
+                </div>
+              </ActionForm>
+            </div>
+          ) : null}
+
           <ClinicLogoEditor
             initialUrl={org.logo_url}
             initialShape={org.logo_shape === "square" ? "square" : "round"}
@@ -542,24 +628,94 @@ export default async function AdminPage({
 
           <div className="surface" style={{ padding: "1.25rem" }}>
             <h3 style={{ marginTop: 0 }}>{t("addBranch")}</h3>
-            <p className="muted">{V.addBranchHint}</p>
-            <ActionForm action={requestBranchLinkAction} className="row">
-              <input
-                name="branch_name"
-                className="input"
-                required
-                placeholder={V.branchExample}
-                style={{ maxWidth: 320 }}
-              />
-              <button type="submit" className="btn btn-primary">
-                {t("linkBranch")}
+            <p className="muted">{t("addBranchCreateHint")}</p>
+            <ActionForm action={createBranchAction} className="stack">
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                  gap: "0.65rem",
+                }}
+              >
+                <div className="field">
+                  <label>{t("branchNameLabel")}</label>
+                  <input
+                    name="branch_name"
+                    className="input"
+                    required
+                    minLength={2}
+                    maxLength={80}
+                    placeholder={V.branchExample}
+                  />
+                </div>
+              </div>
+              <details className="surface-soft" style={{ padding: "0.75rem 0.9rem" }}>
+                <summary style={{ cursor: "pointer" }}>
+                  {t("branchStaffOptional")}
+                </summary>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+                    gap: "0.65rem",
+                    marginTop: "0.65rem",
+                  }}
+                >
+                  <div className="field">
+                    <label>{t("staffEmail")}</label>
+                    <input name="staff_email" type="email" className="input" />
+                  </div>
+                  <div className="field">
+                    <label>{t("staffName")}</label>
+                    <input name="staff_name" className="input" />
+                  </div>
+                  <div className="field">
+                    <label>{t("staffPassword")}</label>
+                    <input
+                      name="staff_password"
+                      type="password"
+                      minLength={6}
+                      className="input"
+                      autoComplete="new-password"
+                    />
+                  </div>
+                  <div className="field">
+                    <label>{t("staffRole")}</label>
+                    <select name="staff_role" className="select" defaultValue="staff">
+                      {rolesAssignable.map((role) => (
+                        <option key={role} value={role}>
+                          {role}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </details>
+              <button type="submit" className="btn btn-primary" style={{ alignSelf: "flex-start" }}>
+                {t("createBranch")}
               </button>
             </ActionForm>
-            {(outgoingPending || []).length ? (
-              <p className="muted" style={{ marginTop: 8 }}>
-                {t("outgoingPending")}: {(outgoingPending || []).length}
-              </p>
-            ) : null}
+
+            <ExpandSection title={t("linkExistingTitle")}>
+              <p className="muted">{V.addBranchHint}</p>
+              <ActionForm action={requestBranchLinkAction} className="row">
+                <input
+                  name="branch_name"
+                  className="input"
+                  required
+                  placeholder={V.branchExample}
+                  style={{ maxWidth: 320 }}
+                />
+                <button type="submit" className="btn btn-soft">
+                  {t("linkBranch")}
+                </button>
+              </ActionForm>
+              {(outgoingPending || []).length ? (
+                <p className="muted" style={{ marginTop: 8 }}>
+                  {t("outgoingPending")}: {(outgoingPending || []).length}
+                </p>
+              ) : null}
+            </ExpandSection>
           </div>
 
     </div>

@@ -67,7 +67,14 @@ export default async function AppLayout({
   });
 
   return (
-    <OrgProvider organization={ctx.organization} role={ctx.membership.role}>
+    <OrgProvider
+      organization={{
+        id: ctx.organization.id,
+        name: ctx.organization.name,
+        niche: ctx.organization.niche,
+      }}
+      role={ctx.membership.role}
+    >
       <ConfirmProvider>
         <AppShell
           niche={ctx.organization.niche}
